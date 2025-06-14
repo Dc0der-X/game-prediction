@@ -1,0 +1,14 @@
+{
+  "targets": {
+    "prediction-ai-a4dfe": {
+      "hosting": {
+        "app": [
+          "aicasinopredictor"
+        ]
+      }
+    }
+  },
+  "projects": {
+    "default": "prediction-ai-a4dfe"
+  }
+}

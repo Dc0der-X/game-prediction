@@ -1,0 +1,40 @@
+<ion-content [fullscreen]="true">
+  <section class="Header__container">
+    <img class="ion-padding" src="assets/img/login.svg" />
+  </section>
+  <div>
+    <form class="Form__Container" [formGroup]="loginFG">
+      <ion-item>
+        <ion-icon name="person-outline" slot="start"></ion-icon>
+        <ion-input
+          type="email"
+          placeholder="Email"
+          formControlName="email"
+        ></ion-input>
+      </ion-item>
+
+      <ion-item class="ion-margin-top">
+        <ion-icon name="lock-open-outline" slot="start"></ion-icon>
+        <ion-input
+          shape="round"
+          type="password"
+          formControlName="password"
+          placeholder="Password"
+        ></ion-input>
+      </ion-item>
+      <div class="action__wrapper">
+        <ion-button
+          mode="ios"
+          shape="round"
+          class="ion-margin-top"
+          type="button"
+          color="primary"
+          (click)="login()"
+        >
+          Login
+        </ion-button>
+      </div>
+    </form>
+  </div>
+  <ion-text class="Footer__Text"></ion-text>
+</ion-content>

@@ -1,0 +1,48 @@
+// using colors derectly varaible name
+$primary: rgba(var(--ion-color-primary-rgb), 1.6);
+$Secondary: rgba(var(--ion-color-secondary-rgb), 8.9);
+$Dark: rgba(var(--ion-color-dark-rgb), 3.9);
+$Medium: rgba(var(--ion-color-medium-rgb), 3.9);
+$light: rgba(var(--ion-color-light-rgb), 1.6);
+
+// Using font size derectly used varabile name
+$Paragraph: 1em;
+$Subtitle: $Paragraph * 1.6;
+$title: ($Paragraph * 2);
+// Using font size derectly used form mobile screen varabile name
+$MobileParagraph: 1em;
+$MobileSubtitle: 1.4em;
+$Mobiletitle: 2em;
+//Pages Comman Headers
+.Page {
+  &__header {
+    text-align: center;
+    box-shadow: none;
+    ion-title {
+      font-size: 120%;
+      font-weight: 500;
+    }
+  }
+}
+
+//BRGINS
+// @import "../scss/style.module.scss";
+
+#Card {
+  &__Container {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    font-size: 200%;
+
+    ion-icon {
+      display: flex;
+      font-size: 140%;
+      color: $Secondary;
+    }
+    ion-text {
+      font-size: 1em;
+    }
+  }
+}
+//END

@@ -1,0 +1,10 @@
+
+node_modules/
+platforms/
+plugins/
+www/
+.env
+.DS_Store
+.idea/
+.vscode/
+*.log

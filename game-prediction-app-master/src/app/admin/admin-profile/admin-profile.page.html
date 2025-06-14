@@ -1,0 +1,133 @@
+<ion-header>
+  <ion-toolbar color="primary" mode="ios">
+    <ion-title>Customer Profile</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <ion-card color="light" class="profile__container">
+    <ion-card-content>
+      <ion-avatar>
+        <ion-icon name="person-circle" item-start></ion-icon>
+      </ion-avatar>
+
+      <div id="Text__Content" class="ion-padding">
+        <!-- <ng-container *ngFor="let index of data">
+          <ng-container *ngIf="localStorage.getItem('UID') == index.id">
+            <h1>{{index.name}}</h1>
+            <h2>{{index.email}}</h2>
+            <h2>{{index.number}}</h2>
+          </ng-container>
+        </ng-container> -->
+
+        <div>
+          <ion-button color="secondary" id="present1" (click)="onLogout()">
+            Logout
+          </ion-button>
+          <!-- <ion-alert
+            header="Are You Sure?"
+            trigger="present1"
+            buttons={[
+              {
+                text: "No",
+                role: "cancel",
+                handler: () => {
+                  setHandlerMessage("Alert canceled");
+                },
+              },
+              {
+                text: "Yes",
+                role: "confirm",
+                handler: () => {
+                  setHandlerMessage("Alert confirmed");
+                  Logout();
+                },
+              },
+            ]}
+            onDidDismiss={({ detail }) =>
+              setRoleMessage(`Dismissed with role: ${detail.role}`)
+            }
+          ></ion-alert> -->
+          <!-- <ion-button
+            color="secondary"
+            expand="block"
+            (click)="setIsOpen(true)"
+          >
+            Reset Password
+          </ion-button> -->
+        </div>
+      </div>
+    </ion-card-content>
+  </ion-card>
+</ion-content>
+
+<!-- <ion-modal [isOpen]="isOpen" class="modal__container">
+  <ion-toolbar>
+    <ion-title>Modal</ion-title>
+    <ion-buttons slot="end">
+      <ion-button color="light" (click)="setIsOpen(false)">
+        Close
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+  <ion-list>
+    <form>
+      <div>
+        <ion-item>
+          <ion-input
+            type="password"
+            label="Enter Old Password"
+            name="password"
+            [(ngModel)]="Userpassword.password"
+          ></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-input
+            type="password"
+            label="Enter New Password"
+            name="newpassword"
+            [(ngModel)]="Userpassword.newpassword"
+          ></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-input
+            type="password"
+            label="Confim Password"
+            name="confirmpassword"
+            [(ngModel)]="Userpassword.confirmpassword"
+          ></ion-input>
+        </ion-item>
+        <div class="{{style.Save__Btn}}">
+          <ion-button mode="ios" id="present-alert">
+            Save
+          </ion-button>
+        </div>
+        <ion-alert
+          header="Are You Sure?"
+          trigger="present-alert"
+          buttons={[
+            {
+              text: "No",
+              role: "cancel",
+              handler: () => {
+                setHandlerMessage("Alert canceled");
+              },
+            },
+            {
+              text: "Yes",
+              role: "confirm",
+              handler: () => {
+                setHandlerMessage("Alert confirmed");
+                ResetPassword();
+              },
+            },
+          ]}
+          onDidDismiss={({ detail }) =>
+            setRoleMessage(`Dismissed with role: ${detail.role}`)
+          }
+        ></ion-alert>
+      </div>
+    </form>
+  </ion-list>
+</ion-modal> -->
+<app-dashboard-footer></app-dashboard-footer>

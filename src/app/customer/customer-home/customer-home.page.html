@@ -1,0 +1,201 @@
+<app-customer-header [game]="'Baccarat'"></app-customer-header>
+<ion-content class="ion-padding">
+  <div class="start__btn">
+    <ion-button
+      mode="ios"
+      expand="block"
+      color="secondary"
+      fill="solid"
+      (click)="openModal()"
+      id="open-modal"
+    >
+      <ion-icon name="refresh-circle-outline"></ion-icon>
+      Start New
+    </ion-button>
+  </div>
+
+  <ion-card mode="ios" class="overview__card">
+    <ion-card-header>
+      <ion-card-title>Our Prediction</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <div class="overview__item overview__item--lg">
+        <div>Bet On:</div>
+        <div [ngClass]="nextOutcome === 'B' ? 'blue' : 'red'">
+          <!-- <div [ngClass]="nextOutcome === 'P' ? 'blue' : 'red'"> -->
+          <!-- {{nextOutcome}} -->
+          {{nextOutcome === 'R' ? 'B' : nextOutcome === 'B' ? 'P' : ''}}
+        </div>
+        <!-- <div>
+          {{nextOutcome}} {{nextOutcome === 'P' ? '(PLAYER)' : nextOutcome ===
+          'B' ? '(BANKER)' : ''}}
+        </div> -->
+      </div>
+      <div class="overview__item">
+        <div>Bet Amount:</div>
+        <div>{{token}}</div>
+      </div>
+      <div class="overview__item">
+        <div>Overall Win/Loss:</div>
+        <div>{{accumulatedWinLoss}}</div>
+      </div>
+    </ion-card-content>
+  </ion-card>
+
+  <ion-card mode="ios" class="input__card">
+    <ion-card-header>
+      <div>
+        <ion-card-title>Your Input</ion-card-title>
+        <!-- <ion-button color="danger" size="small" (click)="undoInput()">
+          Undo Input
+        </ion-button> -->
+      </div>
+    </ion-card-header>
+    <ion-card-content>
+      <div class="input__item">
+        <ion-button color="danger" expand="block" (click)="setInput('R')">
+          <!-- <ion-button color="danger" expand="block" (click)="setInput('B')"> -->
+          BANKER
+        </ion-button>
+      </div>
+      <div class="input__item">
+        <ion-button color="tertiary" expand="block" (click)="setInput('B')">
+          <!-- <ion-button color="tertiary" expand="block" (click)="setInput('P')"> -->
+          PLAYER
+        </ion-button>
+      </div>
+      <div class="input__item">
+        <ion-button color="success" expand="block" (click)="houseWin()"
+          >TIE</ion-button
+        >
+      </div>
+    </ion-card-content>
+  </ion-card>
+
+  <ion-card mode="ios" class="history__card">
+    <ion-card-header>
+      <ion-card-title>History</ion-card-title>
+    </ion-card-header>
+    <!-- <ion-card-content>
+      <ion-badge
+        *ngFor="let item of displayOutcomes"
+        [color]="item === 'B' ? 'primary' : item === 'P' ? 'secondary' : 'medium'"
+      >
+        {{item}}
+      </ion-badge>
+    </ion-card-content> -->
+    <ion-card-content>
+      <div
+        class="history__output--wrapper"
+        *ngFor="let item of displayOutcomes"
+      >
+        <!-- <div class="history__output--wrapper" *ngFor="let item of actualOutcomes"> -->
+        <div
+          class="history__output"
+          [ngClass]="item === 'R' ? 'history__output--red' : item === 'B' ? 'history__output--black' : ''"
+        >
+          <!-- <div
+          class="history__output"
+          [ngClass]="item === 'B' ? 'history__output--red' : item === 'P' ? 'history__output--black' : ''"
+        > -->
+          <!-- {{item === 'B' ? 'B' : item === 'P' ? 'P' : 'T'}} -->
+          {{item === 'R' ? 'B' : item === 'B' ? 'P' : 'T'}}
+        </div>
+      </div>
+      <div
+        class="history__output--wrapper"
+        *ngFor="let item of [].constructor(100 - displayOutcomes.length)"
+      >
+        <div class="history__output history__output--empty"></div>
+      </div>
+    </ion-card-content>
+  </ion-card>
+
+  <ion-card mode="ios" class="instructions__card">
+    <ion-card-header>
+      <ion-card-title>AI-Assisted Baccarat: Quick Guide</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <p>
+        <strong></strong> Game On: Begin your Baccarat journey by selecting
+        "NEW."
+      </p>
+      <p>
+        <strong>AI Prediction:</strong>
+        The AI will predict outcomes like "Banker" or "Player." Trust these
+        predictions for your strategic decisions.
+      </p>
+      <p><strong>Bet Amount / Tokens:</strong></p>
+      <p>Bets are showcased in 'units.'</p>
+      <p>
+        Customize these units according to your currency (e.g., 1 unit = $10,
+        €10, £10, or 100 INR). Bet wisely within your comfort zone.
+      </p>
+      <p>
+        <strong>Place Your Bet:</strong>
+        Align your bet with the AI's prediction - whether it's for the "Banker"
+        or "Player." Let the AI guide your betting strategy.
+      </p>
+      <p>
+        <strong>Result Unveiled:</strong>
+        Win or lose, input the outcome. This helps refine the AI's predictions
+        for future rounds.
+      </p>
+      <p>
+        <strong>Next Round:</strong>
+        Ready for the next chapter? Hit "NEW" for the AI's fresh prediction.
+      </p>
+      <p>
+        Need Support?: Questions or need guidance?
+        <a href="https://t.me/Aicasinoguru" target="_blank"
+          >Contact on Telegram</a
+        >
+        for assistance regarding the game or AI predictions.
+      </p>
+    </ion-card-content>
+  </ion-card>
+</ion-content>
+
+<app-dashboard-footer></app-dashboard-footer>
+
+<!-- BEGINS: User Input Modal -->
+<ion-modal class="Ion_Modal" trigger="open-modal">
+  <ng-template>
+    <ion-toolbar color="primary">
+      <ion-title>Select Initial Input</ion-title>
+      <ion-buttons slot="end">
+        <ion-button color="secondary" (click)="dismiss()"> Close </ion-button>
+      </ion-buttons>
+    </ion-toolbar>
+    <ion-list>
+      <form>
+        <div>
+          <div id="prediction">
+            <div>
+              B
+              <input type="checkbox" (click)="onSelectInput('R')" />
+            </div>
+            <div>
+              P
+              <input type="checkbox" (click)="onSelectInput('B')" />
+            </div>
+          </div>
+
+          <div class="prediction__footer">
+            <ion-button
+              mode="ios"
+              slot="end"
+              id="present-alert"
+              color="secondary"
+              (click)="startGame()"
+              [disabled]="!userInput"
+            >
+              Submit
+            </ion-button>
+          </div>
+        </div>
+      </form>
+    </ion-list>
+  </ng-template>
+</ion-modal>
+<!-- ENDS: User Input Modal -->

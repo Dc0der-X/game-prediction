@@ -1,0 +1,223 @@
+<app-customer-header [game]="'Roulette'"></app-customer-header>
+<ion-content class="ion-padding">
+  <div class="start__btn">
+    <ion-button
+      mode="ios"
+      expand="block"
+      color="secondary"
+      fill="solid"
+      (click)="openModal()"
+      id="open-roulette-modal"
+    >
+      <ion-icon name="refresh-circle-outline"></ion-icon>
+      Start New
+    </ion-button>
+  </div>
+
+  <ion-card mode="ios" class="overview__card">
+    <ion-card-header>
+      <ion-card-title>Our Prediction</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <div class="overview__item overview__item--lg">
+        <div>Bet On:</div>
+        <div [ngClass]="nextOutcome === 'R' ? 'red' : 'blue'">
+          {{nextOutcome}}
+        </div>
+        <!-- <div>
+          {{nextOutcome}} {{nextOutcome === 'P' ? '(PLAYER)' : nextOutcome ===
+          'R' ? '(BANKER)' : ''}}
+        </div> -->
+      </div>
+      <div class="overview__item">
+        <div>Bet Amount:</div>
+        <div>{{token}}</div>
+      </div>
+      <div class="overview__item">
+        <div>Overall Win/Loss:</div>
+        <div>{{accumulatedWinLoss}}</div>
+      </div>
+
+      <!-- <div>
+        <p>Win Count: {{winCount}}</p>
+        <p>Loose Count: {{looseCount}}</p>
+      </div> -->
+    </ion-card-content>
+  </ion-card>
+
+  <ion-card mode="ios" class="input__card">
+    <ion-card-header>
+      <div>
+        <ion-card-title>Your Input</ion-card-title>
+        <!-- <ion-button color="danger" size="small" (click)="undoInput()">
+          Undo Input
+        </ion-button> -->
+      </div>
+    </ion-card-header>
+    <ion-card-content>
+      <div class="input__item">
+        <ion-button color="danger" expand="block" (click)="setInput('R')">
+          RED</ion-button
+        >
+      </div>
+      <div class="input__item">
+        <ion-button color="dark" expand="block" (click)="setInput('B')">
+          BLACK</ion-button
+        >
+      </div>
+      <div class="input__item">
+        <ion-button color="success" expand="block" (click)="houseWin()"
+          >00</ion-button
+        >
+      </div>
+    </ion-card-content>
+  </ion-card>
+
+  <ion-card mode="ios" class="history__card">
+    <ion-card-header>
+      <ion-card-title>History</ion-card-title>
+    </ion-card-header>
+    <!-- <ion-card-content>
+      <div class="history__grid">
+        <div
+          class="history__column"
+          *ngFor="let column of [].constructor(actualOutcomes.length%5); index as i"
+        >
+          <div
+            class="history__cell"
+            *ngFor="let cell of [].constructor(5); index as j"
+          >
+            {{i}},{{j}}
+            <div
+              class="history__output"
+              *ngFor="let item of actualOutcomes"
+              [ngClass]="item === 'R' ? 'history__output--red' : item === 'B' ? 'history__output--black' : ''"
+            >
+              {{item}}
+            </div>
+          </div>
+        </div>
+      </div>
+    </ion-card-content> -->
+    <ion-card-content>
+      <div
+        class="history__output--wrapper"
+        *ngFor="let item of displayOutcomes"
+      >
+        <!-- <div class="history__output--wrapper" *ngFor="let item of actualOutcomes"> -->
+        <div
+          class="history__output"
+          [ngClass]="item === 'R' ? 'history__output--red' : item === 'B' ? 'history__output--black' : ''"
+        >
+          <!-- {{item}} -->
+          {{item === 'R' ? 'R' : item === 'B' ? 'B' : '00'}}
+        </div>
+      </div>
+      <div
+        class="history__output--wrapper"
+        *ngFor="let item of [].constructor(100 - displayOutcomes.length)"
+      >
+        <div class="history__output history__output--empty"></div>
+      </div>
+    </ion-card-content>
+  </ion-card>
+
+  <ion-card mode="ios" class="instructions__card">
+    <ion-card-header>
+      <ion-card-title
+        >Important Notes for AI-Assisted Roulette (Red/Black
+        Predictions):</ion-card-title
+      >
+    </ion-card-header>
+    <ion-card-content>
+      <p>
+        <strong>Starting the Game with 'NEW':</strong>
+        Dive into your AI-enhanced Roulette experience by pressing the "NEW"
+        button.
+      </p>
+      <p>
+        <strong>AI Predictions for Red or Black:</strong>
+        Keep an eye on the AI's prediction, indicating either "Red" or "Black."
+        This guidance is based on sophisticated algorithmic analysis.
+      </p>
+      <p><strong> Understanding Bet Amount / Tokens:</strong></p>
+      <p>The bet amount is shown in 'units.'</p>
+      <p>
+        Key Note: These 'units' are a base value. You can scale them according
+        to your preference and currency. For example, 1 unit might equal $10,
+        €10, £10, or 100 INR, depending on your betting strategy and financial
+        comfort.
+      </p>
+      <p>
+        <strong>Place Your Bet as Advised by AI:</strong>
+        Follow the AI's red or black prediction. Place your bet by multiplying
+        your basic unit with the suggested units, aligning it with your
+        financial strategy.
+      </p>
+      <p>
+        <strong>Dealing with Zero:</strong>
+        If the ball lands on Zero, it's just a twist in the game. Keep your
+        spirits up and get ready for the next round of predictions.
+      </p>
+      <p>
+        <strong>Recording Results:</strong>
+        Celebrate your wins and learn from each outcome. Whether red or black,
+        inputting the result helps the AI to refine and improve its predictions.
+      </p>
+      <p>
+        <strong>Continuing Your Journey:</strong>
+        Click "NEW" for your next chance at Roulette success. Each prediction is
+        a step towards potentially winning outcomes.
+      </p>
+      <p>
+        Support and Assistance: Questions or need guidance? Our team is
+        available on Telegram for any assistance related to the AI predictions
+        or game strategies.
+        <a href="https://t.me/Aicasinoguru" target="_blank"
+          >Reach out on Telegram</a
+        >, and we'll be there to help!
+      </p>
+    </ion-card-content>
+  </ion-card>
+</ion-content>
+
+<app-dashboard-footer></app-dashboard-footer>
+
+<!-- BEGINS: User Input Modal -->
+<ion-modal class="Ion_Modal" trigger="open-roulette-modal">
+  <ng-template>
+    <ion-toolbar color="primary">
+      <ion-title>Select Initial Input</ion-title>
+      <ion-buttons slot="end">
+        <ion-button color="secondary" (click)="dismiss()"> Close </ion-button>
+      </ion-buttons>
+    </ion-toolbar>
+    <form>
+      <div class="prediction__wrapper">
+        <div id="prediction">
+          <div class="prediction__input">
+            R(Red)
+            <input type="checkbox" (click)="onSelectInput('R')" />
+          </div>
+          <div class="prediction__input">
+            B(Black)
+            <input type="checkbox" (click)="onSelectInput('B')" />
+          </div>
+        </div>
+
+        <div class="prediction__footer">
+          <ion-button
+            mode="ios"
+            slot="end"
+            id="present-alert"
+            color="secondary"
+            (click)="startGame()"
+          >
+            Submit
+          </ion-button>
+        </div>
+      </div>
+    </form>
+  </ng-template>
+</ion-modal>
+<!-- ENDS: User Input Modal -->

@@ -1,0 +1,7 @@
+{
+  "name": "game-prediction-app",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular"
+}

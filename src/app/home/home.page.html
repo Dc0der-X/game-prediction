@@ -1,0 +1,417 @@
+<ion-header slot="fixed" class="Navbar__Container">
+  <div class="ion-padding">
+    <div class="Navbar__Firstdiv">
+      <h1>AI Casino Predictor</h1>
+      <ion-icon
+        name="menu-outline"
+        slot="end"
+        class="Navbar__hamburger"
+        (click)="toggleMobileMenu()"
+      ></ion-icon>
+    </div>
+    <div [ngClass]="toggle ? 'Navbar__Seconddiv' : 'isMobileMenu'">
+      <a (click)="scrollToSection('home')">Home</a>
+      <a (click)="scrollToSection('about')">About</a>
+      <a (click)="scrollToSection('services')">Services</a>
+      <!-- <Link to="/blog">Blog</Link> -->
+      <a (click)="scrollToSection('contactus')">Contact us</a>
+
+      <ion-button
+        mode="ios"
+        expand="block"
+        color="secondary"
+        fill="solid"
+        routerLink="/login"
+      >
+        <ion-icon class="icon_btn" name="log-in-outline"></ion-icon>
+        Login
+      </ion-button>
+    </div>
+  </div>
+</ion-header>
+
+<ion-content>
+  <!-- Home Section -->
+  <div class="First__Container" id="home">
+    <div class="ion-padding">
+      <h1>Welcome to AI Casino Predictor</h1>
+      <h2>Your Gateway to Winning!</h2>
+      <p>
+        Prepare to embark on an exhilarating journey to unlock the secrets of
+        winning at the casino. AI Casino Predictor is your trusted companion,
+        offering expert predictions for popular games like Baccarat, Dragon
+        Tiger, Sicbo, and Roulette.
+      </p>
+      <ion-button
+        (click)="scrollToSection('contactus')"
+        shape="round"
+        mode="ios"
+        color="secondary"
+      >
+        Get 1 Free Trial
+      </ion-button>
+      <!-- <ion-button
+        href="https://forms.gle/M4UpU8seSGtPyTURA"
+        target="_blank"
+        shape="round"
+        mode="ios"
+        color="secondary"
+      >
+        Get 1 Free Trial
+      </ion-button> -->
+    </div>
+    <div id="img"><!-- <img src="img/Logo.webp" /> --></div>
+  </div>
+
+  <!-- About Section -->
+  <div class="Second__Container" id="about">
+    <div class="ion-padding">
+      <h1>Why Trust AI Casino Predictor?</h1>
+      <img src="assets/img/big-win.jpeg" alt="" />
+    </div>
+    <div id="Second__div" class="ion-padding">
+      <div>
+        <div class="icon">
+          <ion-icon name="shield-checkmark"></ion-icon>
+        </div>
+        <h2>Unparalleled Accuracy</h2>
+        <p>
+          Our state-of-the-art AI algorithms are designed to deliver spot-on
+          predictions. Bid farewell to uncertainty; it's time to embrace
+          consistent wins.
+        </p>
+      </div>
+      <div>
+        <div class="icon">
+          <ion-icon name="flame"></ion-icon>
+        </div>
+        <h2>Empowering Your Gameplay</h2>
+        <p>
+          We're committed to leveling the playing field. Whether you're a
+          seasoned player or just starting, our platform provides you with the
+          tools, knowledge, and strategies to enhance your game.
+        </p>
+      </div>
+      <div>
+        <div class="icon">
+          <ion-icon name="lock-closed"></ion-icon>
+        </div>
+        <h2>Trust and Security</h2>
+        <p>
+          Your security is paramount. We employ top-tier security measures to
+          safeguard your data and transactions. You can play with peace of mind.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Services Section -->
+  <div class="Section_heading service-heading">
+    <h1>Our AI Predictors</h1>
+  </div>
+  <div class="services__container" id="services">
+    <div class="services__contain">
+      <ion-card mode="ios" class="services_item">
+        <img src="assets/img/baccarat.jpeg" alt="" />
+        <div class="services_content">
+          <h1>Baccarat Predictor</h1>
+          <p>
+            Win upto $500 daily in Baccrat games with AI Casino Prediction.
+            Contact for free trial today!
+          </p>
+          <ion-button
+            color="danger"
+            size="small"
+            shape="round"
+            routerLink="/login"
+          >
+            Login
+          </ion-button>
+        </div>
+      </ion-card>
+      <ion-card mode="ios" class="services_item">
+        <img src="assets/img/dragon-tiger.webp" alt="" />
+        <div class="services_content">
+          <h1>Dragon Tiger Predictor</h1>
+          <p>
+            Win upto $500 daily in Dragon Tiger games with AI Casino Prediction.
+            Contact for free trial today!
+          </p>
+          <ion-button
+            color="danger"
+            size="small"
+            shape="round"
+            routerLink="/login"
+          >
+            Login
+          </ion-button>
+        </div>
+      </ion-card>
+    </div>
+    <div class="services__contain">
+      <ion-card mode="ios" class="services_item">
+        <img src="assets/img/sic-bo.jpeg" alt="" />
+        <div class="services_content">
+          <h1>Sicbo Predictor</h1>
+          <p>
+            Win upto $500 daily in Sicbo games with AI Casino Prediction.
+            Contact for free trial today!
+          </p>
+          <ion-button
+            color="danger"
+            size="small"
+            shape="round"
+            routerLink="/login"
+          >
+            Login
+          </ion-button>
+        </div>
+      </ion-card>
+      <ion-card mode="ios" class="services_item">
+        <img src="assets/img/roulette.png" alt="" />
+        <div class="services_content">
+          <h1>Roulette Predictor</h1>
+          <p>
+            Win upto $500 daily in Roulette games with AI Casino Prediction.
+            Contact for free trial today!
+          </p>
+          <ion-button
+            color="danger"
+            size="small"
+            shape="round"
+            routerLink="/login"
+          >
+            Login
+          </ion-button>
+        </div>
+      </ion-card>
+      <ion-card mode="ios" class="services_item">
+        <img src="assets/img/lucky-7.jpeg" alt="" />
+        <div class="services_content">
+          <h1>Lucky 7</h1>
+          <p>
+            Win upto $500 daily in Lucky 7 games with AI Casino Prediction.
+            Contact for free trial today!
+          </p>
+          <ion-button
+            color="danger"
+            size="small"
+            shape="round"
+            routerLink="/login"
+          >
+            Login
+          </ion-button>
+        </div>
+      </ion-card>
+    </div>
+  </div>
+
+  <!-- CTA Section -->
+  <div class="CTA__Container">
+    <div class="ion-padding">
+      <h1>Get Started for free Today!</h1>
+      <img src="assets/img/dice-coins.jpeg" alt="" />
+    </div>
+    <div id="CTA__div" class="ion-padding">
+      <div>
+        <h2>Stop leaving your casino wins to chance</h2>
+        <p>
+          Harness the power of AI and begin your journey to victory today.
+          Register now to discover a world of possibilities!
+        </p>
+        <p>
+          Remember, fortune favors the prepared. With AI Casino Predictor,
+          you're always ready to win. Join us and let's start winning together!
+        </p>
+        <h2>Your path to casino success starts right here.</h2>
+      </div>
+    </div>
+  </div>
+
+  <!-- Promotional Section -->
+  <div class="Promotional__Container">
+    <div class="ion-padding">
+      <div id="Promotional__div" class="ion-padding">
+        <img src="assets/img/promotional-flyer.png" alt="" />
+        <h2>Seize the Moment: Win Up to $500 Every Day in Casinos!</h2>
+        <p>
+          New to Baccarat? No problem! Unlock the Winning Secrets with Our
+          Predictions and Boost Your Winnings Every Time You Play. Try Our Free
+          Trial Today and Transform Your Game!
+        </p>
+        <ion-button color="danger" mode="ios" shape="round">
+          Get your free trial
+        </ion-button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Blogs Section -->
+  <div class="Section_heading">
+    <h1>RECENT BLOGS</h1>
+  </div>
+  <div class="Third__Container">
+    <div class="ion-padding">
+      <!-- <img
+        src="https://venngage.com/assets/img/homepage-v2/infographics.webp"
+        alt=""
+      /> -->
+      <h2>Seize the Moment: Win Up to $500 Every Day in Casinos!</h2>
+      <p>
+        New to Baccarat? No problem! Unlock the Winning Secrets with Our
+        Predictions and Boost Your Winnings Every Time You Play. Try Our Free
+        Trial Today and Transform Your Game!
+      </p>
+    </div>
+    <div class="ion-padding">
+      <!-- <img
+        src="https://venngage.com/assets/img/homepage-v2/infographics_steps.webp"
+        alt=""
+      /> -->
+      <h2>How to Make the right prediction using AI?</h2>
+      <p>
+        No more worries about making the incorrect decisisons. Unlock the
+        Winning Secrets with Our Predictions and Boost Your Winnings Every Time
+        You Play. Try Our Free Trial Today and Transform Your Game!
+      </p>
+    </div>
+    <div class="ion-padding">
+      <!-- <img
+        src="https://venngage.com/assets/img/homepage-v2/templates-blog.webp"
+        alt=""
+      /> -->
+      <h2>Improve your odds of winning today!</h2>
+      <p>
+        Looking to create the perfect wealth using AI, but not sure which tool
+        to use? AI Casino predictor the right option for you. Try Our Free Trial
+        Today and Transform Your Game!
+      </p>
+    </div>
+  </div>
+
+  <!-- Promotional Videos Section -->
+  <div class="Section_heading">
+    <h1>Join the AI Casino Predictor Community</h1>
+    <p>
+      AI Casino Predictor isn't just a website; it's a community of winners.
+      When you join us, you become part of a thriving network of players who
+      consistently enjoy success at the casino.
+    </p>
+  </div>
+  <div class="media__container">
+    <div class="media__item">
+      <iframe
+        src="https://www.youtube.com/embed/hsc-2ZmBC8k?si=qaZ9rcBS68vjSWRU"
+        title="YouTube video player"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      ></iframe>
+    </div>
+    <!-- <div class="media__item" *ngFor="let item of [].constructor(6)">
+      <iframe
+        src="https://youtu.be/hsc-2ZmBC8k?si=JgTrZTEKyRYrgNvT"
+        title="YouTube video player"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      ></iframe>
+    </div> -->
+  </div>
+
+  <!-- Contact Us Section -->
+  <div class="Fourth__Container" id="contactus">
+    <div class="ion-padding">
+      <h1>Contact Us</h1>
+      <h2>We are here to help!</h2>
+      <div>
+        <!-- <span>Email: aicasinopredictor@gmail.com</span>
+        <br />
+        <span>Email: support@aicasinopredictor.com</span>
+        <br /> -->
+        <span>
+          <a href="https://t.me/Aicasinoguru" target="_blank">
+            <img
+              class="telegram-logo"
+              src="../../assets/img/telegram-logo.png"
+              alt="Telegram Icon"
+            />
+            Join our Telegram Channel
+          </a>
+          <br />
+          <br />
+          <a href="https://www.youtube.com/@AiCasinoPredictor" target="_blank">
+            <img
+              class="telegram-logo"
+              src="../../assets/img/logo-youtube.svg"
+              alt="YouTube Icon"
+            />
+            Follow us on YouTube
+          </a>
+        </span>
+        <p>
+          Start your winning journey today!
+          <br />
+        </p>
+      </div>
+      <div style="width: 90%">
+        <img src="assets/img/contact-image.png" style="border-radius: 8px" />
+      </div>
+    </div>
+    <div class="form contact__form" id="contactus">
+      <form [formGroup]="contactFG">
+        {{currentTimestamp | date}}
+        <div class="contact__form--item">
+          <ion-label position="stacked">Name:</ion-label>
+          <ion-input type="text" formControlName="name" required></ion-input>
+        </div>
+        <div class="contact__form--item">
+          <ion-label position="stacked">Mobile:</ion-label>
+          <ion-input type="text" formControlName="number" required></ion-input>
+        </div>
+        <div class="contact__form--item">
+          <ion-label position="stacked">Email:</ion-label>
+          <ion-input type="email" formControlName="email" required></ion-input>
+        </div>
+        <div class="contact__form--item">
+          <ion-label position="stacked">Interested Game:</ion-label>
+          <ion-select
+            formControlName="interestedIn"
+            required
+            label="Select game"
+            mode="ios"
+          >
+            <ion-select-option value="Baccarat">Baccarat</ion-select-option>
+            <ion-select-option value="Roulette">Roulette</ion-select-option>
+            <ion-select-option value="Dragon Tiger"
+              >Dragon Tiger</ion-select-option
+            >
+            <ion-select-option value="Sicbo">Sicbo</ion-select-option>
+            <ion-select-option value="Lucky 7">Lucky 7</ion-select-option>
+          </ion-select>
+        </div>
+        <div class="contact__form--item">
+          <ion-label position="stacked"
+            >Enter your Telegram Username or WhatsApp Number:</ion-label
+          >
+          <ion-input type="text" formControlName="message" required></ion-input>
+          <!-- <ion-textarea formControlName="message" required></ion-textarea> -->
+        </div>
+        <ion-button type="submit" mode="ios" (click)="onSubmit()"
+          >Send</ion-button
+        >
+      </form>
+    </div>
+  </div>
+
+  <!-- Footer Section -->
+  <div class="footer__container">
+    <div>
+      <ion-toolbar color="light">
+        <ion-title slot="start">AI Casino Predictor</ion-title>
+      </ion-toolbar>
+    </div>
+    <div id="Menu">
+      <a (click)="scrollToSection('home')" id="footer-a">Home</a>
+      <a (click)="scrollToSection('about')" id="footer-a">About</a>
+      <a [routerLink]="['/terms']" id="footer-a">Terms</a>
+      <a (click)="scrollToSection('contactus')" id="footer-a">Contact us</a>
+    </div>
+  </div>
+</ion-content>

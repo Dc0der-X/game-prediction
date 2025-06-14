@@ -1,0 +1,39 @@
+<ion-header>
+  <ion-toolbar color="primary" mode="ios">
+    <ion-title>Contact Forms</ion-title>
+  </ion-toolbar>
+</ion-header>
+<ion-content>
+  <section>
+    <!-- <ion-searchbar
+      placeholder="Search"
+      class="ion-padding"
+      slot="fixed"
+      color="light"
+      (ionChange)="handleChange($event)"
+      (ionClear)="setSearchInput(null)"
+    ></ion-searchbar> -->
+  </section>
+
+  <section>
+    <ng-container *ngFor="let contactForm of contactForms">
+      <ion-card mode="ios">
+        <ion-card-content id="Customer__Cards" class="ion-padding">
+          <ion-avatar>
+            <ion-icon name="mail" item-start></ion-icon>
+          </ion-avatar>
+          <div>
+            <h1>Name: {{contactForm.name}}</h1>
+            <h2>Mobile: {{contactForm.number}}</h2>
+            <h2>Email: {{contactForm.email}}</h2>
+            <h2>Interested In: {{contactForm.interestedIn || '-'}}</h2>
+            <h2>Telegram/WhatsApp: {{contactForm.message}}</h2>
+            <h2>Submitted At: {{contactForm.createdAt | date: 'medium'}}</h2>
+          </div>
+        </ion-card-content>
+      </ion-card>
+    </ng-container>
+  </section>
+</ion-content>
+
+<app-dashboard-footer></app-dashboard-footer>

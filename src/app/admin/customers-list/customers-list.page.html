@@ -1,0 +1,193 @@
+<ion-header>
+  <ion-toolbar color="primary" mode="ios">
+    <ion-title>Customers List</ion-title>
+  </ion-toolbar>
+</ion-header>
+<ion-content>
+  <section>
+    <!-- <ion-searchbar
+      placeholder="Search"
+      class="ion-padding"
+      slot="fixed"
+      color="light"
+      (ionChange)="handleChange($event)"
+      (ionClear)="setSearchInput(null)"
+    ></ion-searchbar> -->
+  </section>
+
+  <section>
+    <ng-container *ngFor="let customer of customersData">
+      <ion-card
+        mode="ios"
+        *ngIf="customer.Role === 'Customer'"
+        [ngClass]="customer.experie < today ? 'expired-card' : ''"
+      >
+        <ion-card-content id="Customer__Cards" class="ion-padding">
+          <ion-avatar>
+            <ion-icon name="person-circle" item-start></ion-icon>
+          </ion-avatar>
+          <div>
+            <h1>
+              {{customer.name}}
+              <ion-chip color="danger" *ngIf="customer.experie < today"
+                >Login Expired</ion-chip
+              >
+            </h1>
+            <h2>Mobile: {{customer.number}}</h2>
+            <h2>Email: {{customer.email}}</h2>
+            <h2>Expires At: {{customer.experie | date: 'medium'}}</h2>
+            <h2>Enabled For: {{customer?.allowedGames}}</h2>
+          </div>
+          <div class="EditIcon_Container">
+            <ion-button
+              fill="solid"
+              color="secondary"
+              (click)="onEditCustomer(customer)"
+            >
+              <ion-icon
+                name="create-outline"
+                color="dark"
+                item-start
+              ></ion-icon>
+            </ion-button>
+            <ion-button
+              fill="outline"
+              color="danger"
+              (click)="onDeleteCustomer(customer)"
+            >
+              <ion-icon
+                name="trash-outline"
+                color="danger"
+                item-start
+              ></ion-icon>
+            </ion-button>
+          </div>
+        </ion-card-content>
+      </ion-card>
+    </ng-container>
+  </section>
+
+  <ion-fab class="ion-padding" horizontal="end">
+    <ion-fab-button
+      mode="ios"
+      color="secondary"
+      (click)="openAddCustomerModal()"
+    >
+      <ion-icon name="add"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
+</ion-content>
+
+<ion-modal
+  [isOpen]="isOpen"
+  class="modal__container"
+  (willDismiss)="onWillDismiss($event)"
+>
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Create Customer</ion-title>
+        <ion-buttons slot="end">
+          <ion-button color="secondary" (click)="dismiss()"> Close </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content class="ion-padding">
+      <form [formGroup]="customerFG">
+        <ion-item>
+          <ion-input
+            type="number"
+            label="Enter Number"
+            name="number"
+            formControlName="number"
+            [readonly]="isEdit"
+          ></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-input
+            type="email"
+            label="Enter Email"
+            name="email"
+            formControlName="email"
+            [readonly]="isEdit"
+          ></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-input
+            type="text"
+            label="Customer Name"
+            name="name"
+            formControlName="name"
+          ></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-input
+            type="datetime-local"
+            label="Enter Date"
+            id="Customer-Form-input"
+            name="experie"
+            formControlName="experie"
+          ></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-checkbox
+            (ionChange)="onSelectGames($event, 'BACCARAT')"
+            [checked]="customerFG.value.allowedGames.includes('BACCARAT')"
+            labelPlacement="start"
+            >Enable Baccarat</ion-checkbox
+          >
+        </ion-item>
+        <ion-item>
+          <ion-checkbox
+            [checked]="customerFG.value.allowedGames.includes('ROULETTE')"
+            (ionChange)="onSelectGames($event, 'ROULETTE')"
+            labelPlacement="start"
+            >Enable Roulette</ion-checkbox
+          >
+        </ion-item>
+        <ion-item>
+          <ion-checkbox
+            [checked]="customerFG.value.allowedGames.includes('DRAGON-TIGER')"
+            (ionChange)="onSelectGames($event, 'DRAGON-TIGER')"
+            labelPlacement="start"
+            >Enable Dragon Tiger</ion-checkbox
+          >
+        </ion-item>
+        <ion-item>
+          <ion-checkbox
+            [checked]="customerFG.value.allowedGames.includes('SICBO')"
+            (ionChange)="onSelectGames($event, 'SICBO')"
+            labelPlacement="start"
+            >Enable Sicbo</ion-checkbox
+          >
+        </ion-item>
+        <ion-item>
+          <ion-checkbox
+            [checked]="customerFG.value.allowedGames.includes('LUCKYSEVEN')"
+            (ionChange)="onSelectGames($event, 'LUCKYSEVEN')"
+            labelPlacement="start"
+            >Enable Lucky 7</ion-checkbox
+          >
+        </ion-item>
+        <div class="modal__footer" *ngIf="isEdit">
+          <ion-button
+            mode="ios"
+            color="secondary"
+            id="Form_Button"
+            (click)="updateCustomer()"
+          >
+            <!-- <ion-button mode="ios" id="Form_Button" (click)="updateCustomer(user.id)"> -->
+            Update
+          </ion-button>
+        </div>
+        <div class="modal__footer" *ngIf="!isEdit">
+          <ion-button mode="ios" (click)="addCustomer()" color="secondary"
+            >Save</ion-button
+          >
+        </div>
+      </form>
+    </ion-content>
+  </ng-template>
+</ion-modal>
+
+<app-dashboard-footer></app-dashboard-footer>

@@ -1,0 +1,79 @@
+<div class="footer__container">
+  <ng-container *ngIf="isAdmin">
+    <ion-button fill="clear" routerLink="/admin-home">
+      <ion-icon name="home-outline"></ion-icon>Home
+    </ion-button>
+    <ion-button fill="clear" routerLink="/customers-list">
+      <ion-icon name="list"></ion-icon>
+      Customers
+    </ion-button>
+    <ion-button fill="clear" routerLink="/contact-list">
+      <ion-icon name="mail-outline"></ion-icon>
+      Contact Forms
+    </ion-button>
+    <ion-button fill="clear" routerLink="/admin-profile">
+      <ion-icon name="person-outline"></ion-icon>
+      Profile
+    </ion-button>
+  </ng-container>
+
+  <ng-container *ngIf="!isAdmin">
+    <div class="footer__item" routerLink="/">
+      <ion-icon name="home-outline"></ion-icon>
+      Home
+    </div>
+    <div
+      class="footer__item"
+      routerLink="/customer-home"
+      routerLinkActive="active"
+      *ngIf="showBaccarat"
+    >
+      <ion-icon name="copy-outline"></ion-icon>
+      Baccarat
+    </div>
+    <div
+      class="footer__item"
+      routerLink="/customer-roulette"
+      routerLinkActive="active"
+      *ngIf="showRoulette"
+    >
+      <ion-icon name="bowling-ball-outline"></ion-icon>
+      Roulette
+    </div>
+    <div
+      class="footer__item"
+      routerLink="/customer-dragon-tiger"
+      routerLinkActive="active"
+      *ngIf="showDragon"
+    >
+      <ion-icon name="copy-outline"></ion-icon>
+      Dragon Tiger
+    </div>
+    <div
+      class="footer__item"
+      routerLinkActive="active"
+      routerLink="/customer-sicbo"
+      *ngIf="showSicbo"
+    >
+      <ion-icon name="dice-outline"></ion-icon>
+      Sicbo
+    </div>
+    <div
+      class="footer__item"
+      routerLinkActive="active"
+      routerLink="/customer-lucky-seven"
+      *ngIf="showLuckySeven"
+    >
+      <ion-icon name="dice-outline"></ion-icon>
+      Lucky 7
+    </div>
+    <div
+      class="footer__item"
+      routerLinkActive="active"
+      routerLink="/customer-profile"
+    >
+      <ion-icon name="person-outline"></ion-icon>
+      Profile
+    </div>
+  </ng-container>
+</div>
