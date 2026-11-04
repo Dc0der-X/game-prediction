@@ -1,65 +1,191 @@
-# 🎮 Game Prediction App
+# ♠ TableWise
 
-Welcome to the **Game Prediction App** – a powerful platform that offers expert-based predictions for the most popular casino-style games. Whether you're into strategy, luck, or fast-paced action, this app gives you smart predictions to improve your winning chances.
+**Practice casino tables free. Play real money with a coach that tells you what to bet, how much, and when to stop.**
 
----
-
-## 🎲 Supported Games
-
-- 🃏 **Baccarat**
-- 🐉 **Dragon Tiger**
-- 🎡 **Roulette**
-- 🎰 **Lucky 7**
-- 🎲 **Sic Bo**
+TableWise replaces the old "AI Casino Predictor". Casino results are random and every bet has a house edge,
+so the app no longer claims to predict anything. Instead it sells something it can actually deliver:
+fun, unlimited practice and a disciplined way to play for real that keeps losses small.
 
 ---
 
-## ✨ Features
+## What users get
 
-### 🧠 Accurate Game Predictions
-- Predictions are generated based on patterns, round history, and proven strategies.
-- Each prediction includes:
-  - 🔢 Expected outcome (e.g., Player/Banker, Dragon/Tiger, Number/Color)
-  - 📈 Confidence percentage (e.g., 85% chance)
-  - 🎯 Suggestion for next round
+| | Free | Pro (7-day free trial, then paid) |
+|---|---|---|
+| 5 practice tables (Baccarat, Roulette, Dragon Tiger, Sic Bo, Lucky 7) with play money | ✅ unlimited | ✅ |
+| Strategy tester on every table | ✅ | ✅ |
+| **Session Coach**: enter today's budget → "Bet 4 on Banker", stop-win, stop-loss, 10–20 min timer, one session a day | – | ✅ |
+| Works with any online casino (casino recorded per session) | – | ✅ |
+| History with honest running total, per-casino breakdown | – | ✅ |
+| Strategy Lab: run any betting system on 9,000 simulated sessions | – | ✅ |
+| Self-exclusion lock (24h – 6 months, can't be shortened) | ✅ | ✅ |
 
-### 📆 Live and Daily Updates
-- Fresh predictions updated in real-time.
-- Predictions are tailored for **each game type** individually.
-- Past predictions can be viewed for analysis and confidence.
+### The funnel (how it makes money)
 
-### 🆓 3-Hour Free Trial Access
-- Every new user gets **free access for 3 hours** after signup.
-- Explore all games and predictions with no limitations.
-- Trial starts immediately after registration — no delay!
+1. **Hook**: anyone can open `/lobby` and play practice tables with no sign-up.
+2. **Nudge**: after 10 practice rounds a card offers the free Pro trial.
+3. **Trial**: sign-up gives 7 days of Pro with no card.
+4. **Habit**: the coach is used daily (one session per day), and history builds up.
+5. **Paywall**: when the trial ends, `/coach`, `/lab` and `/history` redirect to `/pro`.
+6. **Pay**: PayPal subscription ($12/month, auto-renews) or crypto (1 month $12 / 12 months $99).
 
-### 🔐 Easy Signup
-- Register quickly with:
-  - 👤 Name
-  - 📧 Email
-  - 📞 Phone number (with country code)
-  - 📬 Telegram username
-- Smooth and secure login system.
+Prices live in `src/app/core/pricing.ts` and `payments-worker/wrangler.toml`. Keep them in sync with your PayPal plan.
 
-### 📩 Telegram-Based Login Info
-- As soon as you sign up, your **login ID and password are sent to your Telegram** automatically.
-- No email hassle. Instant delivery. Easy access.
+### The Table Rules (the method behind the coach)
 
-### 📱 Clean and Easy-to-Use Interface
-- Mobile-optimized design — perfect for use on the go.
-- Simple tabs for each game make switching and viewing predictions effortless.
+1. Only play with today's budget.
+2. Only the lowest-house-edge bet: Baccarat **Banker** (1.06%), Roulette even-money on a **European** wheel (2.70%),
+   Sic Bo **Small/Big** (2.78%), Dragon Tiger **Dragon/Tiger** (3.73%), Lucky 7 (7.69%, practice only advised).
+3. Flat stake of 2% of budget. Never raise it after a loss.
+4. Stop at +10% (stop-win), at −20% (stop-loss), or when the timer ends.
+5. One real-money session per day.
+
+These numbers live in `src/app/core/strategies.ts` (`SESSION_LIMITS`). Public pages describe the rules without the
+exact numbers; users see their own numbers inside the coach.
+
+**Why flat and not the old "recovery ladder"** (4-6-10-16-26-40-60): simulated on Baccarat Banker, $200 budget,
+$4 stake, 20 rounds, 9,000+ sessions:
+
+| System | Winning sessions | Real cost / session | Worst 1-in-10 session |
+|---|---|---|---|
+| **Flat + stops** | 47% | **−$0.80** | **−$21** |
+| Recovery ladder | 67% | −$1.08 | −$55 |
+| Martingale | 68% | −$0.96 | −$56 |
+
+Recovery systems win more often but stake more, so they cost more and have much worse bad days. Every game engine
+was checked over 1,000,000 rounds per game, and each bet's measured edge matches its published house edge.
 
 ---
 
-## 🎁 Why Use This App?
+## Free stack
 
-- 🎯 Increase your accuracy and confidence with data-backed predictions.
-- 💬 Get login credentials instantly via Telegram.
-- 🕒 Enjoy a **no-risk free trial** for 3 hours.
-- 🔒 Stay secure with reliable authentication and private access.
-- ⚡ Fast, lightweight app — works smoothly on mobile and desktop.
-- 🧠 Built for players who want a strategic edge, not just luck.
+| Piece | Service | Free tier |
+|---|---|---|
+| Hosting | Firebase Hosting | 10 GB storage, 360 MB/day transfer |
+| Login | Firebase Authentication (email + password) | 50,000 monthly active users |
+| Database | Cloud Firestore | 1 GB, 50k reads / 20k writes per day |
+| Payment verification | Cloudflare Workers (`payments-worker/`) | 100,000 requests/day |
+| Admin dashboard | Built into the app at `/admin` | – |
+
+All of this runs on the **free Firebase Spark plan**. No Cloud Functions are needed, so you never have to add a card
+to Firebase. Payment fees are charged only by PayPal / NOWPayments, per transaction.
+
+Everything is open source: Angular, Ionic, Firebase JS SDK, `jose`, `wrangler`.
 
 ---
 
-📣 _Ready to play smarter? Sign up now and get your 3-hour free prediction access!_
+## Setup
+
+### 1. Firebase (once)
+
+1. In the [Firebase console](https://console.firebase.google.com) open project `prediction-ai-a4dfe`.
+2. **Authentication → Sign-in method → Email/Password → Enable.**
+3. **Firestore Database → Create database** (production mode) if it doesn't exist.
+4. Deploy rules, indexes and the site:
+   ```bash
+   npm install
+   npx firebase login
+   npm run deploy
+   ```
+
+### 2. Keep your admin login (migrate old accounts)
+
+The old app stored every account, including the admin, in the `User` collection **with plaintext passwords**, and
+logged in by downloading the whole collection to the browser. Anyone could read every password. The new rules lock
+that collection.
+
+The migration script moves every old account to Firebase Authentication **with the same email and password**, so your
+admin credentials keep working. Customers' remaining paid time is kept.
+
+1. Firebase console → Project settings → Service accounts → **Generate new private key** → save it as
+   `scripts/service-account.json` (git-ignored, never commit it).
+2. Run:
+   ```bash
+   cd scripts && npm install
+   node migrate-legacy-users.mjs ./service-account.json            # dry run, shows what will happen
+   node migrate-legacy-users.mjs ./service-account.json --apply
+   node migrate-legacy-users.mjs ./service-account.json --apply --delete-legacy   # remove old plaintext passwords
+   ```
+3. Log in at `/login` with your usual admin email and password. The **Admin** badge links to `/admin`.
+
+To make another account an admin later: `node make-admin.mjs ./service-account.json someone@example.com`.
+
+### 3. Payments (free Cloudflare Worker)
+
+```bash
+cd payments-worker
+npm install
+npx wrangler login
+```
+
+**PayPal** (developer.paypal.com):
+1. Create a REST app. Copy its **Client ID** and **Secret**.
+2. Create a Product and a monthly **Billing Plan** at your price. Copy the plan id (`P-…`).
+3. Add a **Webhook** pointing to `https://<your-worker>.workers.dev/paypal/webhook` with events
+   `BILLING.SUBSCRIPTION.*` and `PAYMENT.SALE.COMPLETED`. Copy the webhook id.
+
+**Crypto** (nowpayments.io):
+1. Create an account and add your payout wallet.
+2. Copy the **API key** and set an **IPN secret**.
+
+Then:
+1. Fill in `PAYPAL_CLIENT_ID`, `PAYPAL_PLAN_ID`, `PAYPAL_WEBHOOK_ID`, `PAYPAL_ENV` (`sandbox` → `live`) and
+   `APP_URL` in `payments-worker/wrangler.toml`.
+2. Set the secrets:
+   ```bash
+   npx wrangler secret put PAYPAL_SECRET
+   npx wrangler secret put NOWPAYMENTS_API_KEY
+   npx wrangler secret put NOWPAYMENTS_IPN_SECRET
+   npx wrangler secret put GOOGLE_SERVICE_ACCOUNT   # paste the service-account JSON
+   npm test && npm run deploy
+   ```
+3. Put the worker URL, PayPal client id and plan id in `src/environments/environment.prod.ts` → `payments`, then
+   `npm run deploy` again from the project root.
+
+How it stays safe: the browser only starts a checkout. The worker checks every payment directly with PayPal or
+NOWPayments (signature check, amount check, duplicate check), then writes `planExpiresAt` with the service account.
+Firestore rules stop customers from ever writing their own plan, role or expiry date.
+
+---
+
+## Admin dashboard (`/admin`)
+
+- Registered users (today / 7 days / 30 days), trials, paying users, trial → paid conversion
+- Revenue (30 days and all time) and estimated monthly recurring revenue
+- Sign-ups per day chart
+- User list with search, CSV export and **+30 days / +1 year / Revoke** buttons (for manual payments)
+- Every PayPal / crypto payment
+- Live feed of coach sessions (game, casino, budget, result)
+- Contact-form messages
+
+For raw data you can also use the Firebase console (Authentication and Firestore tabs).
+
+---
+
+## Local development
+
+```bash
+npm install
+npm run emulators          # terminal 1: local Auth + Firestore (needs Java)
+npm run start:emulators    # terminal 2: app on http://localhost:4200 using the emulators
+```
+
+`npm start` runs against the real Firebase project.
+
+## Project map
+
+```
+src/app/core/        games.ts (engines + odds), strategies.ts (rules, coach plan, simulator),
+                     account / sessions / payments services, guards, pricing
+src/app/pages/       lobby, table, rules, auth, coach, history, lab, pro, account, admin
+src/app/home/        public landing page
+firestore.rules      security rules (who can read and write what)
+payments-worker/     Cloudflare Worker: PayPal + NOWPayments verification (+ tests)
+scripts/             one-time migration and make-admin scripts
+```
+
+## Responsible play
+
+18+. TableWise does not take bets, hold money or predict results. Help:
+[BeGambleAware](https://www.begambleaware.org) · [GamCare](https://www.gamcare.org.uk) ·
+[1-800-GAMBLER](https://www.ncpgambling.org/help-treatment/) · [Gamblers Anonymous](https://www.gamblersanonymous.org)

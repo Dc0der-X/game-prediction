@@ -1,0 +1,90 @@
+rules_version = '2';
+
+// TableWise security rules.
+// Customers can never grant themselves Pro: plan fields are written only by the
+// payments worker (service account, bypasses rules) or by an admin.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function changed() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // A self-exclusion lock can be set or extended, never shortened or removed early.
+    function validSelfExclusion() {
+      let next = request.resource.data.selfExcludedUntil;
+      return next is timestamp
+        && next > request.time
+        && (!('selfExcludedUntil' in resource.data)
+            || resource.data.selfExcludedUntil == null
+            || next >= resource.data.selfExcludedUntil);
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+
+      allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['name', 'email', 'phone', 'telegram', 'role', 'createdAt', 'ageConfirmed'])
+        && request.resource.data.role == 'customer'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.email == request.auth.token.email;
+
+      allow update: if
+        (isOwner(uid)
+          && changed().hasOnly(['name', 'phone', 'telegram', 'selfExcludedUntil'])
+          && (!changed().hasAny(['selfExcludedUntil']) || validSelfExclusion()))
+        || (isAdmin() && changed().hasOnly(['plan', 'planSource', 'planExpiresAt']));
+
+      allow delete: if false;
+
+      match /sessions/{sid} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if isOwner(uid)
+          && request.resource.data.net is number
+          && request.resource.data.rounds is list
+          && request.resource.data.rounds.size() <= 500;
+        allow update, delete: if false;
+      }
+    }
+
+    // Admin "Coach activity" feed (collection-group query).
+    match /{path=**}/sessions/{sid} {
+      allow read: if isAdmin();
+    }
+
+    // Written only by the payments worker.
+    match /payments/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Landing-page contact form.
+    match /Contact/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['name', 'email', 'number', 'message', 'createdAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 100
+        && request.resource.data.email is string && request.resource.data.email.size() <= 200
+        && request.resource.data.message is string && request.resource.data.message.size() <= 2000;
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // Legacy collection from the old app (contained plaintext passwords). Locked.
+    match /User/{id} {
+      allow read, write: if false;
+    }
+  }
+}

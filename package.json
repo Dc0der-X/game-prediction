@@ -1,5 +1,5 @@
 {
-  "name": "game-prediction-app",
+  "name": "tablewise",
   "version": "0.0.1",
   "author": "Ionic Framework",
   "homepage": "https://ionicframework.com/",
@@ -10,7 +10,9 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "lint": "ng lint",
-    "deploy": "ionic build && firebase deploy"
+    "deploy": "ng build && firebase deploy --only hosting,firestore",
+    "start:emulators": "ng serve --configuration emulators",
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-tablewise"
   },
   "private": true,
   "dependencies": {
@@ -68,5 +70,5 @@
     "ts-node": "^8.3.0",
     "typescript": "~5.0.2"
   },
-  "description": "An Ionic project"
+  "description": "TableWise \u2013 casino practice tables and a real-money session coach."
 }

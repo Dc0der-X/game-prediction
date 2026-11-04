@@ -1,0 +1,128 @@
+<app-topbar></app-topbar>
+<ion-content>
+  <div class="tw-page">
+    <div class="tw-row">
+      <div>
+        <p class="tw-eyebrow">Admin</p>
+        <h1 class="title">Dashboard</h1>
+      </div>
+      <span class="tw-spacer"></span>
+      <ion-button size="small" fill="outline" (click)="load()" [disabled]="loading">Refresh</ion-button>
+      <ion-button size="small" fill="outline" (click)="exportCsv()" [disabled]="loading">Export users CSV</ion-button>
+    </div>
+
+    <div class="tw-error" *ngIf="error">{{ error }}</div>
+    <div class="tw-card" *ngIf="loading"><ion-spinner></ion-spinner></div>
+
+    <ng-container *ngIf="!loading && !error">
+      <!-- KPIs -->
+      <div class="kpis">
+        <div class="tw-stat"><div class="label">Registered users</div><div class="value">{{ kpi.total }}</div>
+          <div class="sub">+{{ kpi.today }} today · +{{ kpi.week }} 7d · +{{ kpi.month }} 30d</div></div>
+        <div class="tw-stat"><div class="label">On free trial</div><div class="value">{{ kpi.trial }}</div></div>
+        <div class="tw-stat"><div class="label">Paying now</div><div class="value tw-pos">{{ kpi.paid }}</div>
+          <div class="sub">≈ ${{ kpi.mrr | number: '1.0-0' }}/mo</div></div>
+        <div class="tw-stat"><div class="label">Trial → paid</div><div class="value">{{ kpi.conversion | number: '1.0-1' }}%</div></div>
+        <div class="tw-stat"><div class="label">Revenue (30 days)</div><div class="value tw-gold">${{ kpi.revenue30 | number: '1.0-2' }}</div>
+          <div class="sub">${{ kpi.revenueAll | number: '1.0-2' }} all time</div></div>
+        <div class="tw-stat"><div class="label">Coach sessions today</div><div class="value">{{ kpi.sessionsToday }}</div></div>
+      </div>
+
+      <!-- Sign-ups chart -->
+      <div class="tw-card chart">
+        <p class="tw-eyebrow">Sign-ups · last 30 days</p>
+        <div class="bars">
+          <div class="bar-wrap" *ngFor="let b of signupBars" [title]="b.label + ': ' + b.count">
+            <div class="bar" [style.height.%]="(b.count / maxBar) * 100"></div>
+          </div>
+        </div>
+        <div class="axis tw-small tw-muted"><span>{{ signupBars[0].label }}</span><span>Today</span></div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button [class.on]="tab === 'users'" (click)="tab = 'users'">Users ({{ users.length }})</button>
+        <button [class.on]="tab === 'payments'" (click)="tab = 'payments'">Payments ({{ payments.length }})</button>
+        <button [class.on]="tab === 'activity'" (click)="tab = 'activity'">Coach activity</button>
+        <button [class.on]="tab === 'messages'" (click)="tab = 'messages'">Messages ({{ messages.length }})</button>
+      </div>
+
+      <!-- Users -->
+      <div class="tw-card" *ngIf="tab === 'users'">
+        <input class="tw-input" placeholder="Search name, email, phone, status…" [(ngModel)]="search" />
+        <div class="table">
+          <table>
+            <thead><tr><th>User</th><th>Contact</th><th>Joined</th><th>Status</th><th>Access until</th><th></th></tr></thead>
+            <tbody>
+              <tr *ngFor="let u of filteredUsers">
+                <td><strong>{{ u.name || '—' }}</strong><div class="tw-muted tw-small">{{ u.email }}</div></td>
+                <td class="tw-small">{{ u.phone || '' }}<div class="tw-muted">{{ u.telegram || '' }}</div></td>
+                <td class="tw-small">{{ u.joined | date: 'MMM d, y' }}</td>
+                <td><span class="tw-pill" [class.green]="u.status === 'Paid'" [class.gold]="u.status === 'Trial' || u.status === 'Admin'">{{ u.status }}</span>
+                  <div class="tw-muted tw-small" *ngIf="u.planSource">{{ u.planSource }}<span *ngIf="u.paypalStatus"> · {{ u.paypalStatus }}</span></div></td>
+                <td class="tw-small">{{ u.until ? (u.until | date: 'MMM d, y') : '—' }}</td>
+                <td class="actions" *ngIf="u.status !== 'Admin'">
+                  <button (click)="grant(u, 30)">+30d</button>
+                  <button (click)="grant(u, 365)">+1y</button>
+                  <button class="danger" *ngIf="u.status === 'Paid'" (click)="revoke(u)">Revoke</button>
+                </td>
+                <td *ngIf="u.status === 'Admin'"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Payments -->
+      <div class="tw-card" *ngIf="tab === 'payments'">
+        <p class="tw-muted tw-small" *ngIf="!payments.length">No payments yet. They appear here automatically when PayPal or crypto payments are confirmed.</p>
+        <div class="table" *ngIf="payments.length">
+          <table>
+            <thead><tr><th>Date</th><th>User</th><th>Method</th><th>Note</th><th class="r">Amount</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let p of payments">
+                <td class="tw-small">{{ p.createdAt?.toDate() | date: 'MMM d, y HH:mm' }}</td>
+                <td class="tw-small">{{ p.email || emailFor(p.uid) }}</td>
+                <td><span class="tw-pill">{{ p.provider }}</span></td>
+                <td class="tw-small tw-muted">{{ p.note }}</td>
+                <td class="r">${{ p.amountUsd | number: '1.2-2' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Activity -->
+      <div class="tw-card" *ngIf="tab === 'activity'">
+        <p class="tw-muted tw-small" *ngIf="!sessions.length">No coach sessions yet (or the Firestore index is still building – see README).</p>
+        <div class="table" *ngIf="sessions.length">
+          <table>
+            <thead><tr><th>When</th><th>User</th><th>Game</th><th>Casino</th><th>Budget</th><th>Rounds</th><th>Ended by</th><th class="r">Result</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let s of sessions">
+                <td class="tw-small">{{ s.startedAt?.toDate() | date: 'MMM d, HH:mm' }}</td>
+                <td class="tw-small">{{ emailFor(s.uid) }}</td>
+                <td class="tw-small">{{ gameName(s.gameId) }}</td>
+                <td class="tw-small">{{ s.casino || '—' }}</td>
+                <td class="tw-small">{{ s.bankroll | number: '1.0-0' }}</td>
+                <td class="tw-small">{{ s.rounds?.length }}</td>
+                <td class="tw-small tw-muted">{{ s.endReason }}</td>
+                <td class="r" [class.tw-pos]="s.net > 0" [class.tw-neg]="s.net < 0">{{ s.net | number: '1.0-2' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Messages -->
+      <div class="tw-card" *ngIf="tab === 'messages'">
+        <p class="tw-muted tw-small" *ngIf="!messages.length">No messages from the contact form yet.</p>
+        <div class="msg" *ngFor="let m of messages">
+          <div class="tw-row"><strong>{{ m.name }}</strong><span class="tw-muted tw-small">{{ m.email }} · {{ m.number }}</span>
+            <span class="tw-spacer"></span><span class="tw-muted tw-small">{{ m.createdAt | date: 'MMM d, y HH:mm' }}</span></div>
+          <p>{{ m.message }}</p>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+</ion-content>

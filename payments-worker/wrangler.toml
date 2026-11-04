@@ -1,0 +1,24 @@
+# Free Cloudflare Worker – see README "Payments".
+name = "tablewise-payments"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+[vars]
+FIREBASE_PROJECT_ID = "prediction-ai-a4dfe"
+# Where users return after crypto checkout.
+APP_URL = "https://aicasinopredictor.web.app"
+# Comma-separated list of sites allowed to call this worker.
+APP_ORIGINS = "https://aicasinopredictor.web.app,https://aicasinopredictor.firebaseapp.com,http://localhost:8100,http://localhost:4200"
+PRICE_MONTH_USD = "12"
+PRICE_YEAR_USD = "99"
+# "sandbox" while testing, "live" for real money.
+PAYPAL_ENV = "sandbox"
+PAYPAL_CLIENT_ID = ""
+PAYPAL_PLAN_ID = ""
+PAYPAL_WEBHOOK_ID = ""
+
+# Secrets – set with `npx wrangler secret put NAME` (never commit them):
+#   PAYPAL_SECRET            PayPal REST app secret
+#   NOWPAYMENTS_API_KEY      NOWPayments API key
+#   NOWPAYMENTS_IPN_SECRET   NOWPayments IPN secret
+#   GOOGLE_SERVICE_ACCOUNT   Firebase service-account JSON (whole file, one line)

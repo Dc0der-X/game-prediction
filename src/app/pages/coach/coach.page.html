@@ -1,0 +1,164 @@
+<app-topbar></app-topbar>
+<ion-content>
+  <div class="tw-page">
+    <p class="tw-eyebrow">Session Coach · real money</p>
+
+    <!-- Loading -->
+    <div *ngIf="stage === 'checking'" class="tw-card center"><ion-spinner></ion-spinner></div>
+
+    <!-- Self-excluded -->
+    <div *ngIf="stage === 'excluded'" class="tw-card center">
+      <h1>You're taking a break</h1>
+      <p class="tw-muted">Real-money sessions are locked until {{ excludedUntil | date: 'medium' }}.
+        Practice tables are still open if you want to play for fun.</p>
+      <ion-button routerLink="/lobby">Go to practice tables</ion-button>
+    </div>
+
+    <!-- Daily lock -->
+    <div *ngIf="stage === 'locked'" class="tw-card center">
+      <h1>That's today's session done</h1>
+      <p class="tw-muted">The Table Rules allow one real-money session per day. The coach opens again tomorrow.
+        Practice is unlimited.</p>
+      <div class="tw-row centered">
+        <ion-button routerLink="/lobby">Practice tables</ion-button>
+        <ion-button fill="outline" routerLink="/history">See my history</ion-button>
+      </div>
+    </div>
+
+    <!-- ===== Setup ===== -->
+    <ng-container *ngIf="stage === 'setup'">
+      <h1 class="title">Plan today's session</h1>
+      <div class="setup">
+        <div class="tw-card">
+          <h3>1 · Which game?</h3>
+          <div class="games">
+            <button *ngFor="let g of games" class="game" [class.on]="gameId === g.id" (click)="gameId = g.id">
+              <span>{{ g.name }}</span>
+            </button>
+          </div>
+
+          <h3>2 · Where are you playing?</h3>
+          <label class="tw-field">
+            <input class="tw-input" list="casinos" [(ngModel)]="casino" placeholder="Casino or table provider" maxlength="80" />
+            <datalist id="casinos"><option *ngFor="let c of casinoSuggestions" [value]="c"></option></datalist>
+          </label>
+          <p class="tw-muted tw-small" *ngIf="gameId === 'roulette'">Roulette: pick a <strong>European</strong> (single 0) wheel.
+            American wheels (0 and 00) double the house edge to 5.26%.</p>
+          <p class="tw-muted tw-small" *ngIf="gameId === 'baccarat'">Baccarat: on "no commission" tables, Banker winning with 6 pays half –
+            the plan still works, just tap Won/Lost/Tie as normal.</p>
+
+          <h3>3 · Today's budget</h3>
+          <p class="tw-muted tw-small">Money you are completely fine losing today. Not rent, not bills, not borrowed.</p>
+          <label class="tw-field">
+            <input class="tw-input money" type="number" inputmode="decimal" min="10" step="1" placeholder="e.g. 200"
+                   [(ngModel)]="bankroll" />
+          </label>
+
+          <h3>4 · How long?</h3>
+          <div class="games">
+            <button *ngFor="let m of [10, 15, 20]" class="game" [class.on]="minutes === m" (click)="minutes = m">{{ m }} min</button>
+          </div>
+        </div>
+
+        <div class="tw-card felt plan">
+          <h3>Your plan</h3>
+          <ng-container *ngIf="plan as p; else noPlan">
+            <div class="tw-stats">
+              <div class="tw-stat"><div class="label">Bet only</div><div class="value tw-gold">{{ p.betLabel }}</div></div>
+              <div class="tw-stat"><div class="label">Stake every round</div><div class="value">{{ p.unit | number: '1.0-2' }}</div></div>
+              <div class="tw-stat"><div class="label">Stop when up</div><div class="value tw-pos">+{{ p.stopWin | number: '1.0-2' }}</div></div>
+              <div class="tw-stat"><div class="label">Stop when down</div><div class="value tw-neg">-{{ p.stopLoss | number: '1.0-2' }}</div></div>
+              <div class="tw-stat"><div class="label">Time limit</div><div class="value">{{ p.minutes }} min</div></div>
+              <div class="tw-stat"><div class="label">Max rounds</div><div class="value">{{ p.maxRounds }}</div></div>
+            </div>
+            <p class="tw-small">
+              House edge on this bet: {{ pct(p.edge) }}. If you play all {{ p.maxRounds }} rounds, the average cost
+              is about <strong>{{ p.expectedLoss | number: '1.2-2' }}</strong>. Some days you'll be up, some down –
+              the stops keep both small.
+            </p>
+            <p class="tw-note" *ngIf="gameId === 'lucky7'">Lucky 7 has a 7.69% edge – nearly 8× Baccarat's. Consider practice only.</p>
+            <label class="tw-check"><input type="checkbox" [(ngModel)]="affordable" />
+              <span>This budget is money I can afford to lose.</span></label>
+            <label class="tw-check"><input type="checkbox" [(ngModel)]="promise" />
+              <span>I'll stop when the coach says stop, and I won't raise my stake after a loss.</span></label>
+            <ion-button expand="block" (click)="start()" [disabled]="!affordable || !promise">Start session</ion-button>
+          </ng-container>
+          <ng-template #noPlan>
+            <p class="tw-muted">Enter a budget of at least 10 to see your plan.</p>
+          </ng-template>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- ===== Live ===== -->
+    <ng-container *ngIf="stage === 'live' && live">
+      <div class="live">
+        <div class="tw-card felt main">
+          <div class="toprow">
+            <div>
+              <div class="tw-small">{{ liveGame.name }} · bet <strong>{{ live.plan.betLabel }}</strong></div>
+              <div class="clock" [class.low]="remaining < 120">{{ clock }}</div>
+            </div>
+            <div class="pnl">
+              <div class="tw-small">Session result</div>
+              <div class="big" [class.tw-pos]="net > 0" [class.tw-neg]="net < 0">{{ net > 0 ? '+' : '' }}{{ net | number: '1.0-2' }}</div>
+            </div>
+          </div>
+
+          <div class="meter" aria-hidden="true">
+            <div class="zero" [style.left.%]="zeroAt"></div>
+            <div class="needle" [style.left.%]="meter"></div>
+          </div>
+          <div class="meter-labels tw-small">
+            <span class="tw-neg">Stop -{{ live.plan.stopLoss | number: '1.0-2' }}</span>
+            <span>Round {{ live.rounds.length }} / {{ live.plan.maxRounds }}</span>
+            <span class="tw-pos">Stop +{{ live.plan.stopWin | number: '1.0-2' }}</span>
+          </div>
+
+          <div class="instruction" aria-live="polite">
+            <span class="tw-eyebrow">Do this now · {{ live.casino }}</span>
+            <div class="do">{{ instruction.title }}</div>
+            <p class="tw-small">{{ instruction.detail }}</p>
+          </div>
+
+          <p class="tw-small">What happened?</p>
+          <div class="result-btns">
+            <button class="won" (click)="record(winMultiplier)">Won</button>
+            <button class="tie" *ngIf="tieMultiplier !== null" (click)="record(tieMultiplier!)">Tie</button>
+            <button class="lost" (click)="record(-1)">Lost</button>
+          </div>
+          <div class="tw-row">
+            <ion-button fill="clear" size="small" (click)="undo()" [disabled]="!live.rounds.length">Undo last</ion-button>
+            <span class="tw-spacer"></span>
+            <ion-button fill="outline" size="small" (click)="finish('manual')">End session now</ion-button>
+          </div>
+        </div>
+
+        <div class="tw-card">
+          <p class="tw-eyebrow">Rounds</p>
+          <div class="log">
+            <span *ngFor="let r of live.rounds; let i = index" class="tw-pill" [class.green]="r.net > 0" [class.red]="r.net < 0">
+              {{ i + 1 }}: {{ r.net > 0 ? '+' : '' }}{{ r.net | number: '1.0-2' }}</span>
+            <span class="tw-muted tw-small" *ngIf="!live.rounds.length">No rounds yet.</span>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- ===== Done ===== -->
+    <ng-container *ngIf="stage === 'done' && live">
+      <div class="tw-card felt center done">
+        <h1>{{ endTitle }}</h1>
+        <div class="big" [class.tw-pos]="net > 0" [class.tw-neg]="net < 0">{{ net > 0 ? '+' : '' }}{{ net | number: '1.0-2' }}</div>
+        <p>{{ live.rounds.length }} rounds · {{ liveGame.name }} {{ live.plan.betLabel }} · {{ live.casino }}</p>
+        <p class="tw-muted">Close the casino tab now – don't switch tables, don't start again. The coach locks until tomorrow;
+          practice tables are always open.</p>
+        <p class="tw-error" *ngIf="saveError">{{ saveError }}</p>
+        <div class="tw-row centered">
+          <ion-button routerLink="/history">See history</ion-button>
+          <ion-button fill="outline" routerLink="/lobby">Practice tables</ion-button>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+</ion-content>

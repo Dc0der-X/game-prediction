@@ -1,4 +1,6 @@
 export const environment = {
+  /** Connect to local Firebase emulators (see README → Local development). */
+  useEmulators: false,
   production: true,
   firebase: {
     projectId: 'prediction-ai-a4dfe',
@@ -8,5 +10,22 @@ export const environment = {
     authDomain: 'prediction-ai-a4dfe.firebaseapp.com',
     messagingSenderId: '953556292443',
     measurementId: 'G-83HW25W4QB',
+  },
+  /**
+   * Public payment settings (safe to ship to the browser).
+   * Secrets live only in Cloud Functions – see README "Payments".
+   */
+  payments: {
+    /** PayPal REST app client id. Leave empty to hide the PayPal button. */
+    paypalClientId: '',
+    /** PayPal billing plan id (P-XXXX) for the monthly subscription. */
+    paypalPlanId: '',
+    /** Crypto checkout (NOWPayments) is handled by the payments worker; set false to hide it. */
+    cryptoEnabled: true,
+    /**
+     * URL of the free Cloudflare Worker in /payments-worker that verifies payments,
+     * e.g. 'https://tablewise-payments.<your-subdomain>.workers.dev'. Empty = checkout hidden.
+     */
+    apiUrl: '',
   },
 };

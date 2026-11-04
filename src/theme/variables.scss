@@ -1,36 +1,68 @@
+// TableWise theme – dark casino felt with a gold accent.
 :root {
-  /** primary **/
+  /* Brand tokens */
+  --tw-bg: #0a1310;
+  --tw-bg-2: #0e1b16;
+  --tw-card: #12221b;
+  --tw-card-2: #172b22;
+  --tw-felt: #0f4a34;
+  --tw-felt-2: #13603f;
+  --tw-line: rgba(255, 255, 255, 0.08);
+  --tw-line-strong: rgba(255, 255, 255, 0.16);
+  --tw-text: #f2eee3;
+  --tw-muted: #9fb0a5;
+  --tw-gold: #e8c26a;
+  --tw-gold-2: #f5d98f;
+  --tw-red: #e05252;
+  --tw-blue: #4a88e8;
+  --tw-green: #34b578;
+  --tw-black: #24262b;
+  --tw-radius: 16px;
+  --tw-font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --tw-display: 'Fraunces', Georgia, serif;
 
-  --ion-color-primary: #000044;
-  --ion-color-primary-rgb: 0, 0, 68;
-  --ion-color-primary-contrast: #ffffff;
-  --ion-color-primary-contrast-rgb: 255, 255, 255;
-  --ion-color-primary-shade: #00003c;
-  --ion-color-primary-tint: #1a1a57;
+  /* Ionic base */
+  --ion-font-family: var(--tw-font);
+  --ion-background-color: var(--tw-bg);
+  --ion-background-color-rgb: 10, 19, 16;
+  --ion-text-color: var(--tw-text);
+  --ion-text-color-rgb: 242, 238, 227;
+  --ion-toolbar-background: var(--tw-bg);
+  --ion-item-background: var(--tw-card);
+  --ion-border-color: var(--tw-line);
+  --ion-placeholder-color: #6f7f75;
 
-  /** secondary **/
-  --ion-color-secondary: #ffd626;
-  --ion-color-secondary-rgb: 255, 214, 38;
-  --ion-color-secondary-contrast: #000000;
-  --ion-color-secondary-contrast-rgb: 0, 0, 0;
-  --ion-color-secondary-shade: #e0bc21;
-  --ion-color-secondary-tint: #ffda3c;
+  /** primary – gold **/
+  --ion-color-primary: #e8c26a;
+  --ion-color-primary-rgb: 232, 194, 106;
+  --ion-color-primary-contrast: #1b1405;
+  --ion-color-primary-contrast-rgb: 27, 20, 5;
+  --ion-color-primary-shade: #ccab5d;
+  --ion-color-primary-tint: #eac879;
+
+  /** secondary – felt green **/
+  --ion-color-secondary: #13603f;
+  --ion-color-secondary-rgb: 19, 96, 63;
+  --ion-color-secondary-contrast: #ffffff;
+  --ion-color-secondary-contrast-rgb: 255, 255, 255;
+  --ion-color-secondary-shade: #115437;
+  --ion-color-secondary-tint: #2b7052;
 
   /** tertiary **/
-  --ion-color-tertiary: #006fe6;
-  --ion-color-tertiary-rgb: 0, 111, 230;
+  --ion-color-tertiary: #4a88e8;
+  --ion-color-tertiary-rgb: 74, 136, 232;
   --ion-color-tertiary-contrast: #ffffff;
   --ion-color-tertiary-contrast-rgb: 255, 255, 255;
-  --ion-color-tertiary-shade: #0062ca;
-  --ion-color-tertiary-tint: #1a7de9;
+  --ion-color-tertiary-shade: #4178cc;
+  --ion-color-tertiary-tint: #5c94ea;
 
   /** success **/
-  --ion-color-success: #2dd36f;
-  --ion-color-success-rgb: 45, 211, 111;
+  --ion-color-success: #34b578;
+  --ion-color-success-rgb: 52, 181, 120;
   --ion-color-success-contrast: #ffffff;
   --ion-color-success-contrast-rgb: 255, 255, 255;
-  --ion-color-success-shade: #28ba62;
-  --ion-color-success-tint: #42d77d;
+  --ion-color-success-shade: #2e9f6a;
+  --ion-color-success-tint: #48bc86;
 
   /** warning **/
   --ion-color-warning: #ffc409;
@@ -41,12 +73,12 @@
   --ion-color-warning-tint: #ffca22;
 
   /** danger **/
-  --ion-color-danger: #ff4961;
-  --ion-color-danger-rgb: 255, 73, 97;
+  --ion-color-danger: #e05252;
+  --ion-color-danger-rgb: 224, 82, 82;
   --ion-color-danger-contrast: #ffffff;
   --ion-color-danger-contrast-rgb: 255, 255, 255;
-  --ion-color-danger-shade: #e04055;
-  --ion-color-danger-tint: #ff5b71;
+  --ion-color-danger-shade: #c54848;
+  --ion-color-danger-tint: #e36363;
 
   /** dark **/
   --ion-color-dark: #222428;
@@ -57,12 +89,12 @@
   --ion-color-dark-tint: #383a3e;
 
   /** medium **/
-  --ion-color-medium: #92949c;
-  --ion-color-medium-rgb: 146, 148, 156;
-  --ion-color-medium-contrast: #ffffff;
-  --ion-color-medium-contrast-rgb: 255, 255, 255;
-  --ion-color-medium-shade: #808289;
-  --ion-color-medium-tint: #9d9fa6;
+  --ion-color-medium: #9fb0a5;
+  --ion-color-medium-rgb: 159, 176, 165;
+  --ion-color-medium-contrast: #000000;
+  --ion-color-medium-contrast-rgb: 0, 0, 0;
+  --ion-color-medium-shade: #8c9b91;
+  --ion-color-medium-tint: #a9b8ae;
 
   /** light **/
   --ion-color-light: #f4f5f8;

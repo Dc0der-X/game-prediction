@@ -5,30 +5,29 @@ import { IonicModule, IonicRouteStrategy } from '@ionic/angular';
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
 import { environment } from '../environments/environment';
-import { provideAuth, getAuth } from '@angular/fire/auth';
-import { AngularFireModule } from '@angular/fire/compat';
 import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
-import { provideFirestore, getFirestore } from '@angular/fire/firestore';
-import { NgHttpLoaderModule } from 'ng-http-loader';
+import { provideAuth, getAuth, connectAuthEmulator } from '@angular/fire/auth';
+import { provideFirestore, getFirestore, connectFirestoreEmulator } from '@angular/fire/firestore';
 
 @NgModule({
   declarations: [AppComponent],
   imports: [
     BrowserModule,
-    IonicModule.forRoot(),
+    IonicModule.forRoot({ mode: 'ios' }),
     AppRoutingModule,
-    AngularFireModule.initializeApp(environment.firebase),
     provideFirebaseApp(() => initializeApp(environment.firebase)),
-    provideFirestore(() => getFirestore()),
-    NgHttpLoaderModule.forRoot(),
-
-    // AngularFireModule.initializeApp(environment.firebase),
-    // AngularFireAuthModule,
-    // provideFirebaseApp(() => initializeApp(environment.firebase)),
-    // provideFirestore(() => getFirestore()),
+    provideAuth(() => {
+      const auth = getAuth();
+      if (environment.useEmulators) connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+      return auth;
+    }),
+    provideFirestore(() => {
+      const db = getFirestore();
+      if (environment.useEmulators) connectFirestoreEmulator(db, '127.0.0.1', 8080);
+      return db;
+    }),
   ],
   providers: [{ provide: RouteReuseStrategy, useClass: IonicRouteStrategy }],
   bootstrap: [AppComponent],
-  exports: [],
 })
 export class AppModule {}

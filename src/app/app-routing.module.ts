@@ -1,100 +1,47 @@
 import { NgModule } from '@angular/core';
 import { PreloadAllModules, RouterModule, Routes } from '@angular/router';
+import { adminGuard, authGuard, proGuard } from './core/guards';
 
 const routes: Routes = [
-  {
-    path: 'home',
-    loadChildren: () =>
-      import('./home/home.module').then((m) => m.HomePageModule),
-  },
-  {
-    path: '',
-    redirectTo: 'home',
-    pathMatch: 'full',
-  },
-  {
-    path: 'customer-home',
-    loadChildren: () =>
-      import('./customer/customer-home/customer-home.module').then(
-        (m) => m.CustomerHomePageModule
-      ),
-  },
-  {
-    path: 'customer-profile',
-    loadChildren: () =>
-      import('./customer/customer-profile/customer-profile.module').then(
-        (m) => m.CustomerProfilePageModule
-      ),
-  },
-  {
-    path: 'admin-profile',
-    loadChildren: () =>
-      import('./admin/admin-profile/admin-profile.module').then(
-        (m) => m.AdminProfilePageModule
-      ),
-  },
-  {
-    path: 'admin-home',
-    loadChildren: () =>
-      import('./admin/admin-home/admin-home.module').then(
-        (m) => m.AdminHomePageModule
-      ),
-  },
-  {
-    path: 'login',
-    loadChildren: () =>
-      import('./login/login.module').then((m) => m.LoginPageModule),
-  },
-  {
-    path: 'customers-list',
-    loadChildren: () =>
-      import('./admin/customers-list/customers-list.module').then(
-        (m) => m.CustomersListPageModule
-      ),
-  },
-  {
-    path: 'terms',
-    loadChildren: () =>
-      import('./terms/terms.module').then((m) => m.TermsPageModule),
-  },
-  {
-    path: 'customer-roulette',
-    loadChildren: () =>
-      import('./customer/customer-roulette/customer-roulette.module').then(
-        (m) => m.CustomerRoulettePageModule
-      ),
-  },
-  {
-    path: 'customer-dragon-tiger',
-    loadChildren: () =>
-      import(
-        './customer/customer-dragon-tiger/customer-dragon-tiger.module'
-      ).then((m) => m.CustomerDragonTigerPageModule),
-  },
-  {
-    path: 'customer-sicbo',
-    loadChildren: () =>
-      import('./customer/customer-sicbo/customer-sicbo.module').then(
-        (m) => m.CustomerSicboPageModule
-      ),
-  },
-  {
-    path: 'contact-list',
-    loadChildren: () =>
-      import('./admin/contact-list/contact-list.module').then(
-        (m) => m.ContactListPageModule
-      ),
-  },
-  {
-    path: 'customer-lucky-seven',
-    loadChildren: () => import('./customer/customer-lucky-seven/customer-lucky-seven.module').then( m => m.CustomerLuckySevenPageModule)
-  },
+  { path: '', redirectTo: 'home', pathMatch: 'full' },
+  { path: 'home', loadChildren: () => import('./home/home.module').then((m) => m.HomePageModule) },
+  { path: 'terms', loadChildren: () => import('./terms/terms.module').then((m) => m.TermsPageModule) },
+
+  // Open to everyone – practice is the hook.
+  { path: 'lobby', loadComponent: () => import('./pages/lobby/lobby.page').then((m) => m.LobbyPage) },
+  { path: 'table/:game', loadComponent: () => import('./pages/table/table.page').then((m) => m.TablePage) },
+  { path: 'rules', loadComponent: () => import('./pages/rules/rules.page').then((m) => m.RulesPage) },
+
+  // Accounts
+  { path: 'login', loadComponent: () => import('./pages/auth/login.page').then((m) => m.LoginPage) },
+  { path: 'signup', loadComponent: () => import('./pages/auth/signup.page').then((m) => m.SignupPage) },
+  { path: 'account', canActivate: [authGuard], loadComponent: () => import('./pages/account/account.page').then((m) => m.AccountPage) },
+  { path: 'pro', canActivate: [authGuard], loadComponent: () => import('./pages/pro/pro.page').then((m) => m.ProPage) },
+
+  // Pro (trial or paid)
+  { path: 'coach', canActivate: [proGuard], loadComponent: () => import('./pages/coach/coach.page').then((m) => m.CoachPage) },
+  { path: 'history', canActivate: [proGuard], loadComponent: () => import('./pages/history/history.page').then((m) => m.HistoryPage) },
+  { path: 'lab', canActivate: [proGuard], loadComponent: () => import('./pages/lab/lab.page').then((m) => m.LabPage) },
+
+  // Admin
+  { path: 'admin', canActivate: [adminGuard], loadComponent: () => import('./pages/admin/admin.page').then((m) => m.AdminPage) },
+
+  // Old links from the previous version of the app.
+  { path: 'customer-home', redirectTo: 'table/baccarat' },
+  { path: 'customer-roulette', redirectTo: 'table/roulette' },
+  { path: 'customer-dragon-tiger', redirectTo: 'table/dragon-tiger' },
+  { path: 'customer-sicbo', redirectTo: 'table/sicbo' },
+  { path: 'customer-lucky-seven', redirectTo: 'table/lucky7' },
+  { path: 'customer-profile', redirectTo: 'account' },
+  { path: 'admin-home', redirectTo: 'admin' },
+  { path: 'admin-profile', redirectTo: 'admin' },
+  { path: 'customers-list', redirectTo: 'admin' },
+  { path: 'contact-list', redirectTo: 'admin' },
+  { path: '**', redirectTo: 'home' },
 ];
 
 @NgModule({
-  imports: [
-    RouterModule.forRoot(routes, { preloadingStrategy: PreloadAllModules }),
-  ],
+  imports: [RouterModule.forRoot(routes, { preloadingStrategy: PreloadAllModules })],
   exports: [RouterModule],
 })
 export class AppRoutingModule {}

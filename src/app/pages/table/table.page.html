@@ -1,0 +1,185 @@
+<app-topbar></app-topbar>
+<ion-content>
+  <div class="tw-page" *ngIf="game">
+    <!-- Table header -->
+    <div class="head">
+      <div>
+        <p class="tw-eyebrow">Practice table · play money</p>
+        <h1>{{ game.name }}</h1>
+      </div>
+      <div class="balance">
+        <span class="tw-muted tw-small">Balance</span>
+        <strong>{{ balance | number: '1.0-2' }}</strong>
+        <button class="link" (click)="resetBalance()">Reset to 1,000</button>
+      </div>
+    </div>
+
+    <div class="layout">
+      <!-- ====== Felt ====== -->
+      <section class="felt tw-card felt">
+        <div class="stage" [ngSwitch]="game.id">
+          <div class="dealing" *ngIf="dealing">
+            {{ game.id === 'roulette' ? 'Spinning…' : game.id === 'sicbo' ? 'Rolling…' : 'Dealing…' }}
+          </div>
+
+          <ng-container *ngIf="!dealing && !outcome">
+            <p class="placeholder">Choose a chip, tap a bet, then press
+              <strong>{{ game.id === 'roulette' ? 'Spin' : game.id === 'sicbo' ? 'Roll' : 'Deal' }}</strong>.</p>
+          </ng-container>
+
+          <ng-container *ngIf="!dealing && outcome">
+            <!-- Baccarat -->
+            <div *ngSwitchCase="'baccarat'" class="hands">
+              <div class="hand" [class.win]="outcome.data.winner === 'P'">
+                <span class="who blue">Player · {{ outcome.data.pt }}</span>
+                <div class="cards">
+                  <div *ngFor="let c of outcome.data.player; let i = index" class="tw-cardface"
+                       [class.red]="isRed(c)" [style.animation-delay.ms]="i * 120">
+                    {{ RANKS[c.rank] }}<span class="suit">{{ SUITS[c.suit] }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="hand" [class.win]="outcome.data.winner === 'B'">
+                <span class="who red">Banker · {{ outcome.data.bt }}</span>
+                <div class="cards">
+                  <div *ngFor="let c of outcome.data.banker; let i = index" class="tw-cardface"
+                       [class.red]="isRed(c)" [style.animation-delay.ms]="i * 120 + 60">
+                    {{ RANKS[c.rank] }}<span class="suit">{{ SUITS[c.suit] }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Roulette -->
+            <div *ngSwitchCase="'roulette'" class="wheel">
+              <div class="ball" [ngClass]="numberTone(outcome.data.n)">{{ outcome.data.n }}</div>
+            </div>
+
+            <!-- Dragon Tiger -->
+            <div *ngSwitchCase="'dragon-tiger'" class="hands">
+              <div class="hand" [class.win]="outcome.data.winner === 'D'">
+                <span class="who red">Dragon</span>
+                <div class="cards"><div class="tw-cardface big" [class.red]="isRed(outcome.data.dragon)">
+                  {{ RANKS[outcome.data.dragon.rank] }}<span class="suit">{{ SUITS[outcome.data.dragon.suit] }}</span></div></div>
+              </div>
+              <div class="hand" [class.win]="outcome.data.winner === 'T'">
+                <span class="who blue">Tiger</span>
+                <div class="cards"><div class="tw-cardface big" [class.red]="isRed(outcome.data.tiger)" style="animation-delay: 120ms">
+                  {{ RANKS[outcome.data.tiger.rank] }}<span class="suit">{{ SUITS[outcome.data.tiger.suit] }}</span></div></div>
+              </div>
+            </div>
+
+            <!-- Sic Bo -->
+            <div *ngSwitchCase="'sicbo'" class="dice">
+              <div *ngFor="let d of outcome.data.dice; let i = index" class="tw-die" [style.animation-delay.ms]="i * 90">{{ d }}</div>
+            </div>
+
+            <!-- Lucky 7 -->
+            <div *ngSwitchCase="'lucky7'" class="hands">
+              <div class="hand win">
+                <div class="cards"><div class="tw-cardface big" [class.red]="isRed(outcome.data.card)">
+                  {{ RANKS[outcome.data.card.rank] }}<span class="suit">{{ SUITS[outcome.data.card.suit] }}</span></div></div>
+              </div>
+            </div>
+
+            <div class="verdict">
+              <div class="text">{{ outcome.text }}</div>
+              <div class="net" *ngIf="settled.length" [class.tw-pos]="roundNet > 0" [class.tw-neg]="roundNet < 0">
+                {{ roundNet > 0 ? 'You won +' + (roundNet | number: '1.0-2') : roundNet < 0 ? 'You lost ' + (roundNet | number: '1.0-2') : 'Push – stake returned' }}
+              </div>
+            </div>
+          </ng-container>
+        </div>
+
+        <!-- Result road -->
+        <div class="road" aria-label="Recent results">
+          <span *ngFor="let h of history" class="dot" [ngClass]="'tone-' + h.tone">{{ h.tag }}</span>
+          <span class="tw-muted tw-small" *ngIf="!history.length">Results appear here. Past results never change the next one.</span>
+        </div>
+
+        <!-- Bet spots -->
+        <div class="spots">
+          <button *ngFor="let b of game.bets" class="spot" [class.best]="b.id === game.bestBet"
+                  [ngClass]="betTone(b.id) ? 'edge-' + betTone(b.id) : ''" (click)="place(b.id)" [disabled]="dealing">
+            <span class="best-tag" *ngIf="b.id === game.bestBet">Best bet</span>
+            <span class="lbl">{{ b.label }}</span>
+            <span class="pays">{{ b.pays }}</span>
+            <span class="edge">{{ pct(b.edge) }} edge</span>
+            <span class="stake" *ngIf="bets[b.id]">{{ bets[b.id] }}</span>
+          </button>
+        </div>
+
+        <!-- Roulette numbers -->
+        <ng-container *ngIf="game.id === 'roulette'">
+          <button class="link" (click)="showNumbers = !showNumbers">{{ showNumbers ? 'Hide' : 'Show' }} single numbers (35:1)</button>
+          <div class="numbers" *ngIf="showNumbers">
+            <button class="num tone-green" (click)="place('n0')">0<span class="stake" *ngIf="bets['n0']">{{ bets['n0'] }}</span></button>
+            <button *ngFor="let n of numbers" class="num" [ngClass]="numberTone(n)" (click)="place('n' + n)">
+              {{ n }}<span class="stake" *ngIf="bets['n' + n]">{{ bets['n' + n] }}</span>
+            </button>
+          </div>
+        </ng-container>
+
+        <!-- Chips + actions -->
+        <div class="rack">
+          <div class="chips" role="radiogroup" aria-label="Chip value">
+            <button *ngFor="let c of chips" class="chip" [class.on]="chip === c" (click)="chip = c"
+                    [attr.aria-checked]="chip === c" role="radio">{{ c }}</button>
+          </div>
+          <div class="actions">
+            <ion-button fill="clear" size="small" (click)="clearBets()" [disabled]="!totalBet || dealing">Clear</ion-button>
+            <ion-button fill="outline" size="small" (click)="rebet()" [disabled]="dealing">Rebet</ion-button>
+            <ion-button (click)="deal()" [disabled]="!totalBet || dealing">
+              {{ game.id === 'roulette' ? 'Spin' : game.id === 'sicbo' ? 'Roll' : 'Deal' }}
+              <span *ngIf="totalBet">&nbsp;· {{ totalBet }}</span>
+            </ion-button>
+          </div>
+        </div>
+        <p class="tw-error" *ngIf="balance < chips[0]">Out of chips. Reset your balance to keep practising.</p>
+      </section>
+
+      <!-- ====== Side panel ====== -->
+      <aside class="side">
+        <div class="tw-card">
+          <p class="tw-eyebrow">This visit</p>
+          <div class="tw-stats">
+            <div class="tw-stat"><div class="label">Rounds</div><div class="value">{{ rounds }}</div></div>
+            <div class="tw-stat"><div class="label">Wagered</div><div class="value">{{ wagered | number: '1.0-0' }}</div></div>
+            <div class="tw-stat"><div class="label">Your result</div>
+              <div class="value" [class.tw-pos]="net > 0" [class.tw-neg]="net < 0">{{ net > 0 ? '+' : '' }}{{ net | number: '1.0-2' }}</div></div>
+            <div class="tw-stat"><div class="label">House expects</div>
+              <div class="value tw-neg">-{{ expectedLoss | number: '1.0-2' }}</div></div>
+          </div>
+          <p class="tw-muted tw-small">
+            "House expects" is the long-run cost of your bets. The more you wager, the closer your result gets to it.
+          </p>
+        </div>
+
+        <div class="tw-card">
+          <p class="tw-eyebrow">Strategy tester</p>
+          <p class="tw-small tw-muted">Auto-plays the best bet ({{ bestBet.label }}) with the chosen system, starting at a stake of {{ chip }}.</p>
+          <select class="tw-select" [(ngModel)]="strategy">
+            <option *ngFor="let s of strategies" [value]="s.id">{{ s.name }}</option>
+          </select>
+          <div class="tw-row" style="margin-top: 10px">
+            <ion-button size="small" fill="outline" (click)="autoPlay(10)" [disabled]="dealing || balance < chip">Auto ×10</ion-button>
+            <ion-button size="small" fill="outline" (click)="autoPlay(50)" [disabled]="dealing || balance < chip">Auto ×50</ion-button>
+          </div>
+          <div class="tw-note" *ngIf="autoResult">
+            {{ autoResult.rounds }} rounds:
+            <strong [class.tw-pos]="autoResult.net > 0" [class.tw-neg]="autoResult.net < 0">
+              {{ autoResult.net > 0 ? '+' : '' }}{{ autoResult.net | number: '1.0-2' }}</strong>
+            · biggest stake {{ autoResult.maxStake | number: '1.0-0' }}
+          </div>
+          <a class="tw-small" routerLink="/lab">Test it on 9,000 sessions in the Strategy Lab →</a>
+        </div>
+
+        <div class="tw-card upsell" *ngIf="(access$ | async)?.hasPro !== true && rounds >= 10">
+          <p class="tw-eyebrow">Playing for real later?</p>
+          <p class="tw-small">The Session Coach turns your budget into a plan – stake size, stop-win, stop-loss and a timer – and keeps you to it.</p>
+          <ion-button size="small" [routerLink]="(access$ | async)?.signedIn ? '/pro' : '/signup'">Try Pro free for 7 days</ion-button>
+        </div>
+      </aside>
+    </div>
+  </div>
+</ion-content>

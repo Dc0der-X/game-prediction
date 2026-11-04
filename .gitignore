@@ -8,3 +8,13 @@ www/
 .idea/
 .vscode/
 *.log
+payments-worker/node_modules/
+payments-worker/.wrangler/
+payments-worker/.dev.vars
+payments-worker/dist/
+scripts/node_modules/
+scripts/service-account*.json
+firestore-debug.log
+*-debug.log
+.angular/
+.firebase/
