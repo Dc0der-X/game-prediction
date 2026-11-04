@@ -118,7 +118,7 @@ export class HistoryPage {
     this.total = round2(s.reduce((a, x) => a + x.net, 0));
     this.wagered = s.reduce((a, x) => a + x.rounds.reduce((b, r) => b + r.stake, 0), 0);
     this.winRate = (s.filter((x) => x.net > 0).length / s.length) * 100;
-    // "Stuck to the plan" = ended by a stop, the timer or the round limit rather than quitting midway.
+    // "Stuck to the plan" = ended by a stop, a check-in, the timer or the round limit rather than quitting midway.
     this.discipline = (s.filter((x) => x.endReason !== 'manual').length / s.length) * 100;
     const map = new Map<string, { name: string; count: number; net: number }>();
     for (const x of s) {
@@ -150,10 +150,11 @@ export class HistoryPage {
     return getGame(id)?.name ?? id;
   }
   betName(gameId: string, betId: string) {
+    if (betId === 'signals') return 'Signals';
     const g = getGame(gameId);
     return g ? getBet(g, betId)?.label ?? betId : betId;
   }
   reason(r: string) {
-    return ({ 'stop-win': 'Stop-win', 'stop-loss': 'Stop-loss', time: 'Timer', rounds: 'Round limit', manual: 'Ended early' } as Record<string, string>)[r] ?? r;
+    return ({ 'stop-win': 'Stop-win', 'stop-loss': 'Stop-loss', time: 'Timer', rounds: 'Round limit', checkin: 'Stopped at check-in', manual: 'Ended early' } as Record<string, string>)[r] ?? r;
   }
 }

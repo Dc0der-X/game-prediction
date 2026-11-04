@@ -91,3 +91,29 @@ h3:first-child { margin-top: 0; }
 
 .done h1 { margin-top: 0; }
 .done .big { font-size: 56px; margin: 8px 0; }
+
+.systems { display: grid; gap: 8px; }
+.system {
+  text-align: left;
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--tw-line-strong);
+  background: var(--tw-bg-2);
+  color: var(--tw-text);
+  font: inherit;
+  cursor: pointer;
+  span { font-size: 13px; color: var(--tw-muted); }
+  &.on { border-color: var(--tw-gold); box-shadow: inset 0 0 0 1px var(--tw-gold); }
+}
+.mode {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(74, 136, 232, 0.25);
+  color: #b9d3ff;
+  letter-spacing: 0.08em;
+  &.attack { background: rgba(52, 181, 120, 0.25); color: #9cf0c6; }
+}
+.tie { flex: 0.7 !important; }

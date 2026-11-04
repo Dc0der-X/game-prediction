@@ -19,18 +19,18 @@ export interface StrategyInfo {
 export const STRATEGIES: StrategyInfo[] = [
   {
     id: 'flat',
-    name: 'Flat (Table Rules)',
-    summary: 'Same stake every round. Smallest expected loss and the mildest bad days.',
+    name: 'Flat',
+    summary: 'Same stake every round, one side. The lowest-cost option and the mildest bad days.',
     realMoney: true,
   },
   {
     id: 'original',
-    name: 'Original S/O + Attack/Retrench (old app)',
+    name: 'TableWise Signals (S/O + Attack/Retrench)',
     summary:
       'The previous app\'s rule, ported exactly: picks the side with the Same/Opposite pattern ' +
       '(follow after the 1st loss, switch after the 2nd) and sizes stakes with Attack 4-2-3-4-5-6-8-10 after wins ' +
-      'and Retrench 4-6-10-16-26-40-60 after losses. Even-money bets only.',
-    realMoney: false,
+      'and Retrench 4-6-10-16-26-40-60 after losses. Even-money bets only. In real play every bet is capped at the loss limit.',
+    realMoney: true,
   },
   {
     id: 'ladder',
@@ -199,9 +199,13 @@ export class OriginalSystem implements Staker {
   record(_net: number, outcome?: Outcome) {
     if (!this.sides || !outcome) return;
     const s = sideOf(this.game, outcome);
-    if (s === null) return; // zero / tie: skipped like the old app
-    const happened = this.sides.indexOf(s);
-    const correct = happened === this.nextSide;
+    this.recordResult(s === null ? null : this.sides.indexOf(s) === this.nextSide);
+  }
+
+  /** true = the signalled side won, false = the other side won, null = zero / tie (skipped). */
+  recordResult(correct: boolean | null) {
+    if (!this.sides || correct === null) return;
+    const happened = correct ? this.nextSide : 1 - this.nextSide;
     const opposite = 1 - happened;
 
     // --- which side next ---
@@ -280,13 +284,15 @@ export class OriginalSystem implements Staker {
 
 export const TABLE_RULES = [
   { title: 'Bring a budget, not a target', text: 'Only play with money you are fine losing today. That amount is your bankroll.' },
-  { title: 'Only the best bet', text: 'Each game has one bet with the lowest house edge. Play that bet and nothing else.' },
-  { title: 'Small, flat stakes', text: 'The coach sizes your stake from your budget. It never goes up after a loss.' },
-  { title: 'Hard stops', text: 'The coach sets a profit target, a loss limit and a timer. Whichever comes first, you stop.' },
+  { title: 'Follow the signal', text: 'Every round the coach tells you exactly where to bet (e.g. Red or Black) and how much. Bet that and nothing else.' },
+  { title: 'Never past the limit', text: 'Stakes step up on winning runs and recover carefully after losses – but no bet can ever go past your loss limit.' },
+  { title: 'Obey the STOP sign', text: 'The coach sets a win target, a loss limit and a timer, and checks in every few minutes. When you see STOP, you stop.' },
   { title: 'One real session a day', text: 'After a real-money session the coach locks until tomorrow. Practice stays open.' },
-];
+]
 
 export const SESSION_LIMITS = {
+  /** A STOP check-in appears every this many minutes during a session. */
+  checkinMinutes: 5,
   unitPct: 0.02,
   stopWinUnits: 5, // +10% of bankroll
   stopLossUnits: 10, // -20% of bankroll
@@ -373,7 +379,8 @@ export function simulate(cfg: SimConfig): SimResult {
     tracker.reset();
     let bank = cfg.bankroll;
     for (let r = 0; r < cfg.rounds; r++) {
-      const stake = Math.min(tracker.next(), bank);
+      const room = cfg.stopLoss ? cfg.stopLoss + (bank - cfg.bankroll) : Infinity;
+      const stake = round2(Math.min(tracker.next(), bank, room));
       if (stake <= 0) break;
       wagered += stake;
       const betId = tracker.bet(cfg.betId);

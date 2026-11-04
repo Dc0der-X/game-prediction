@@ -224,3 +224,30 @@
 .actions { display: flex; align-items: center; gap: 4px; }
 
 .upsell { border-color: rgba(232, 194, 106, 0.45); }
+
+/* ---------- Signal mode ---------- */
+.mode-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: -4px 0 14px; }
+.toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 14px 6px 6px; border-radius: 999px;
+  border: 1px solid var(--tw-line-strong); background: var(--tw-card-2); color: var(--tw-muted);
+  font: inherit; font-weight: 700; font-size: 13px; cursor: pointer;
+  .knob { width: 34px; height: 20px; border-radius: 999px; background: #3a4a42; position: relative; transition: background .15s; }
+  .knob::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left .15s; }
+  &.on { color: var(--tw-gold-2); border-color: rgba(232, 194, 106, 0.5); }
+  &.on .knob { background: var(--tw-gold); }
+  &.on .knob::after { left: 16px; }
+}
+.signal {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  margin: 4px 0 14px; padding: 14px 16px; border-radius: 14px;
+  background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(232, 194, 106, 0.55);
+  .do { font-family: var(--tw-display); font-size: clamp(24px, 5vw, 32px); font-weight: 700; color: var(--tw-gold-2); }
+  .sig-meta { margin-top: 4px; color: rgba(255, 255, 255, 0.8); }
+}
+.mode {
+  margin-left: 6px; padding: 2px 8px; border-radius: 999px;
+  background: rgba(74, 136, 232, 0.25); color: #b9d3ff; letter-spacing: 0.08em;
+  &.attack { background: rgba(52, 181, 120, 0.25); color: #9cf0c6; }
+}
+.spot.signalled { border-color: var(--tw-gold); box-shadow: inset 0 0 0 2px var(--tw-gold); opacity: 1; }

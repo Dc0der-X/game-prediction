@@ -17,9 +17,9 @@ import { STRATEGIES, TABLE_RULES } from '../../core/strategies';
         <p class="tw-eyebrow">One rule set for every game</p>
         <h1 class="title">The Table Rules</h1>
         <p class="lead tw-muted">
-          Every casino game has a built-in house edge. No pattern, streak or betting system changes it – each
-          round is independent. What you <em>can</em> control is how much you risk, how long you play and when
-          you walk away. These five rules minimise your losses and keep the game fun.
+          Every casino game has a built-in house edge and each round is independent – no system changes that.
+          What you <em>can</em> control is how much you risk, how long you play and when you walk away. TableWise
+          Signals tell you where and how much to bet, and the STOP rules make sure you leave on time.
         </p>
 
         <ol class="rules">
@@ -29,10 +29,10 @@ import { STRATEGIES, TABLE_RULES } from '../../core/strategies';
           </li>
         </ol>
 
-        <h2>Best bet for each game</h2>
+        <h2>House edge by game</h2>
         <div class="tw-card table-wrap">
           <table>
-            <thead><tr><th>Game</th><th>Best bet</th><th>House edge</th><th>Avoid</th></tr></thead>
+            <thead><tr><th>Game</th><th>Lowest-edge bet</th><th>House edge</th><th>Avoid</th></tr></thead>
             <tbody>
               <tr *ngFor="let g of games">
                 <td>{{ g.name }}</td>
@@ -44,25 +44,24 @@ import { STRATEGIES, TABLE_RULES } from '../../core/strategies';
           </table>
         </div>
 
-        <h2>Why flat stakes beat "recovery" systems</h2>
+        <h2>What each system really costs</h2>
         <div class="tw-card">
           <p>
-            We tested every popular system on Baccarat Banker over 200,000 simulated 20-round sessions
-            ($200 budget, $4 stake). Systems that raise the stake after a loss – Martingale, Fibonacci and the
-            Recovery Ladder this app used to recommend – win <strong>more often</strong> but lose
-            <strong>more in total</strong>, and their bad days are much worse.
+            Baccarat Banker, 9,000+ simulated 20-round sessions with a $200 budget, $4 base stake and STOP at +$20 / -$40.
+            The STOP rules cap every system at the same worst session. Systems that step up after losses win
+            <strong>more often</strong> but stake more, so their average cost is a little higher.
           </p>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>System</th><th>Winning sessions</th><th>Average per session</th><th>Worst 1-in-10 session</th></tr></thead>
+              <thead><tr><th>System</th><th>Winning sessions</th><th>Average cost per session</th><th>Worst session</th></tr></thead>
               <tbody>
-                <tr class="good"><td>Flat + stops (Table Rules)</td><td>48%</td><td>-$0.82</td><td>-$21</td></tr>
-                <tr><td>Recovery Ladder</td><td>68%</td><td>-$1.39</td><td>-$33</td></tr>
-                <tr><td>Martingale</td><td>83%</td><td>-$1.47</td><td>-$41</td></tr>
+                <tr class="good"><td>TableWise Signals</td><td>64%</td><td>-$0.98</td><td>-$40 (STOP)</td></tr>
+                <tr><td>Flat</td><td>48%</td><td>-$0.80</td><td>-$40 (STOP)</td></tr>
+                <tr><td>Martingale</td><td>63%</td><td>-$0.92</td><td>-$40 (STOP)</td></tr>
               </tbody>
             </table>
           </div>
-          <p class="tw-muted tw-small">Run your own numbers in the <a routerLink="/lab">Strategy Lab</a>.</p>
+          <p class="tw-muted tw-small">No system changes the house edge. Run your own numbers in the <a routerLink="/lab">Strategy Lab</a>.</p>
         </div>
 
         <h2>Systems you can test with play money</h2>
@@ -71,7 +70,7 @@ import { STRATEGIES, TABLE_RULES } from '../../core/strategies';
             <h3>{{ s.name }}</h3>
             <p class="tw-muted tw-small">{{ s.summary }}</p>
             <span class="tw-pill" [class.green]="s.realMoney" [class.red]="!s.realMoney">
-              {{ s.realMoney ? 'Allowed for real money' : 'Practice only' }}</span>
+              {{ s.realMoney ? 'Used by the Session Coach' : 'Practice only' }}</span>
           </div>
         </div>
 

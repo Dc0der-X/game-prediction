@@ -109,7 +109,7 @@ export class LabPage {
   pct = pct;
   gameId = 'baccarat';
   betId = 'banker';
-  strategy: StrategyId = 'ladder';
+  strategy: StrategyId = 'original';
   bankroll = 200;
   unit = 4;
   stopWin = 20;

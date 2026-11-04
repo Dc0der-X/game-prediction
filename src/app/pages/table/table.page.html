@@ -14,6 +14,13 @@
       </div>
     </div>
 
+    <div class="mode-row">
+      <button class="toggle" [class.on]="signalsOn" (click)="toggleSignals()" role="switch" [attr.aria-checked]="signalsOn">
+        <span class="knob"></span> Signals {{ signalsOn ? 'ON' : 'OFF' }}
+      </button>
+      <span class="tw-muted tw-small">{{ signalsOn ? 'Follow the signal – same system and STOP rules as real play.' : 'Free betting – place any bets you like.' }}</span>
+    </div>
+
     <div class="layout">
       <!-- ====== Felt ====== -->
       <section class="felt tw-card felt">
@@ -97,11 +104,30 @@
           <span class="tw-muted tw-small" *ngIf="!history.length">Results appear here. Past results never change the next one.</span>
         </div>
 
+        <!-- Signal -->
+        <div class="signal" *ngIf="signalsOn && signal as sig">
+          <div class="sig-main">
+            <span class="tw-eyebrow">Signal <span class="mode" [class.attack]="sig.mode === 'ATTACK'">{{ sig.mode }}</span></span>
+            <div class="do">Bet {{ sig.stake | number: '1.0-2' }} on {{ sig.betLabel }}</div>
+            <div class="tw-small sig-meta">
+              Session <strong [class.tw-pos]="sigNet > 0" [class.tw-neg]="sigNet < 0">{{ sigNet > 0 ? '+' : '' }}{{ sigNet | number: '1.0-2' }}</strong>
+              · STOP at <span class="tw-pos">+{{ stopWin }}</span> / <span class="tw-neg">-{{ stopLoss }}</span>
+              · check-in in {{ checkinClock }}
+            </div>
+          </div>
+          <ion-button (click)="playSignal()" [disabled]="dealing || !!stopSign">
+            Place &amp; {{ game.id === 'roulette' ? 'spin' : game.id === 'sicbo' ? 'roll' : 'deal' }}
+          </ion-button>
+        </div>
+        <p class="tw-error" *ngIf="signalError">{{ signalError }}</p>
+
         <!-- Bet spots -->
         <div class="spots">
-          <button *ngFor="let b of game.bets" class="spot" [class.best]="b.id === game.bestBet"
-                  [ngClass]="betTone(b.id) ? 'edge-' + betTone(b.id) : ''" (click)="place(b.id)" [disabled]="dealing">
-            <span class="best-tag" *ngIf="b.id === game.bestBet">Best bet</span>
+          <button *ngFor="let b of game.bets" class="spot" [class.best]="!signalsOn && b.id === game.bestBet"
+                  [class.signalled]="signalsOn && signal?.betId === b.id"
+                  [ngClass]="betTone(b.id) ? 'edge-' + betTone(b.id) : ''" (click)="place(b.id)" [disabled]="dealing || signalsOn">
+            <span class="best-tag" *ngIf="!signalsOn && b.id === game.bestBet">Best bet</span>
+            <span class="best-tag" *ngIf="signalsOn && signal?.betId === b.id">Signal</span>
             <span class="lbl">{{ b.label }}</span>
             <span class="pays">{{ b.pays }}</span>
             <span class="edge">{{ pct(b.edge) }} edge</span>
@@ -110,7 +136,7 @@
         </div>
 
         <!-- Roulette numbers -->
-        <ng-container *ngIf="game.id === 'roulette'">
+        <ng-container *ngIf="game.id === 'roulette' && !signalsOn">
           <button class="link" (click)="showNumbers = !showNumbers">{{ showNumbers ? 'Hide' : 'Show' }} single numbers (35:1)</button>
           <div class="numbers" *ngIf="showNumbers">
             <button class="num tone-green" (click)="place('n0')">0<span class="stake" *ngIf="bets['n0']">{{ bets['n0'] }}</span></button>
@@ -122,11 +148,11 @@
 
         <!-- Chips + actions -->
         <div class="rack">
-          <div class="chips" role="radiogroup" aria-label="Chip value">
-            <button *ngFor="let c of chips" class="chip" [class.on]="chip === c" (click)="chip = c"
+          <div class="chips" role="radiogroup" [attr.aria-label]="signalsOn ? 'Signal base stake' : 'Chip value'">
+            <button *ngFor="let c of chips" class="chip" [class.on]="chip === c" (click)="setChip(c)"
                     [attr.aria-checked]="chip === c" role="radio">{{ c }}</button>
           </div>
-          <div class="actions">
+          <div class="actions" *ngIf="!signalsOn">
             <ion-button fill="clear" size="small" (click)="clearBets()" [disabled]="!totalBet || dealing">Clear</ion-button>
             <ion-button fill="outline" size="small" (click)="rebet()" [disabled]="dealing">Rebet</ion-button>
             <ion-button (click)="deal()" [disabled]="!totalBet || dealing">
@@ -184,3 +210,10 @@
     </div>
   </div>
 </ion-content>
+
+<app-stop-sign *ngIf="stopSign === 'final'" kind="final" [reason]="stopReason" [net]="sigNet"
+  hint="In real play this is where you leave the table. Here, you can start a fresh practice session."
+  stopLabel="Start a new practice session" (stop)="newSignalSession()"></app-stop-sign>
+<app-stop-sign *ngIf="stopSign === 'checkin'" kind="checkin" reason="Time check." [hint]="checkinHint" [net]="sigNet"
+  stopLabel="Stop – start a fresh session" continueLabel="Keep practising"
+  (stop)="newSignalSession()" (continue)="stopSign = null"></app-stop-sign>

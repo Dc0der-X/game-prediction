@@ -31,17 +31,23 @@ fun, unlimited practice and a disciplined way to play for real that keeps losses
 
 Prices live in `src/app/core/pricing.ts` and `payments-worker/wrangler.toml`. Keep them in sync with your PayPal plan.
 
-### The Table Rules (the method behind the coach)
+### TableWise Signals + STOP rules (the method behind the coach)
 
-1. Only play with today's budget.
-2. Only the lowest-house-edge bet: Baccarat **Banker** (1.06%), Roulette even-money on a **European** wheel (2.70%),
-   Sic Bo **Small/Big** (2.78%), Dragon Tiger **Dragon/Tiger** (3.73%), Lucky 7 (7.69%, practice only advised).
-3. Flat stake of 2% of budget. Never raise it after a loss.
-4. Stop at +10% (stop-win), at −20% (stop-loss), or when the timer ends.
-5. One real-money session per day.
+The coach and the practice tables both run **TableWise Signals**, the original app's rule:
+- **Side:** Same/Opposite pattern. Keep the winning pattern; follow the last result after the 1st loss and switch
+  after the 2nd.
+- **Stake:** Attack 4-2-3-4-5-6-8-10 after wins, Retrench 4-6-10-16-26-40-60 after losses (in units of base/4).
 
-These numbers live in `src/app/core/strategies.ts` (`SESSION_LIMITS`). Public pages describe the rules without the
-exact numbers; users see their own numbers inside the coach.
+Every round shows one instruction, e.g. **"Bet 6 on Red"**. The rules around it:
+1. Base stake = 2% of today's budget.
+2. **STOP when up** at +10% and **STOP when down** at −20%. Bets are capped so no session can go past the loss
+   limit, even in Retrench.
+3. 10–20 minute timer, plus a **"STOP PLAYING NOW?" check-in every 5 minutes** (`SESSION_LIMITS.checkinMinutes`).
+4. Hitting a limit or the timer shows the full-screen **STOP PLAYING NOW** sign and ends the session.
+5. One real-money session per day. Flat staking is still offered as the lowest-cost option.
+
+Code: `src/app/core/signals.ts` (engine), `src/app/core/strategies.ts` (`OriginalSystem`, `SESSION_LIMITS`),
+`src/app/shared/stop-sign.component.ts`.
 
 **Why flat and not the old "recovery ladder"** (4-6-10-16-26-40-60): simulated on Baccarat Banker, $200 budget,
 $4 stake, 20 rounds, 9,000+ sessions:

@@ -12,17 +12,21 @@ import {
   where,
 } from '@angular/fire/firestore';
 
-export type EndReason = 'stop-win' | 'stop-loss' | 'time' | 'rounds' | 'manual';
+export type EndReason = 'stop-win' | 'stop-loss' | 'time' | 'rounds' | 'checkin' | 'manual';
 
 export interface RoundEntry {
   stake: number;
   net: number;
+  betId?: string;
+  result?: 'won' | 'lost' | 'void';
 }
 
 export interface RealSession {
   id?: string;
   gameId: string;
   betId: string;
+  /** 'original' = TableWise Signals, 'flat' = flat stakes. */
+  system?: string;
   /** Which online casino / table provider the session was played at. */
   casino: string;
   bankroll: number;
