@@ -5,9 +5,9 @@
  * the house edge – they only change how wins and losses are spread out.
  * The Strategy Lab lets players prove this to themselves with play money.
  */
-import { GameDef, getBet } from './games';
+import { GameDef, Outcome, getBet, sideOf } from './games';
 
-export type StrategyId = 'flat' | 'ladder' | 'martingale' | 'fibonacci' | 'dalembert' | 'paroli';
+export type StrategyId = 'flat' | 'original' | 'ladder' | 'martingale' | 'fibonacci' | 'dalembert' | 'paroli';
 
 export interface StrategyInfo {
   id: StrategyId;
@@ -24,8 +24,17 @@ export const STRATEGIES: StrategyInfo[] = [
     realMoney: true,
   },
   {
+    id: 'original',
+    name: 'Original S/O + Attack/Retrench (old app)',
+    summary:
+      'The previous app\'s rule, ported exactly: picks the side with the Same/Opposite pattern ' +
+      '(follow after the 1st loss, switch after the 2nd) and sizes stakes with Attack 4-2-3-4-5-6-8-10 after wins ' +
+      'and Retrench 4-6-10-16-26-40-60 after losses. Even-money bets only.',
+    realMoney: false,
+  },
+  {
     id: 'ladder',
-    name: 'Recovery Ladder (old app rule)',
+    name: 'Recovery Ladder',
     summary: 'Steps 4-6-10-16-26-40-60 after each loss, back to 4 after a win. Many small wins, rare big losses.',
     realMoney: false,
   },
@@ -58,17 +67,35 @@ export const STRATEGIES: StrategyInfo[] = [
 const LADDER = [4, 6, 10, 16, 26, 40, 60];
 const FIB = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
 
+/** Anything that decides the next stake (and, optionally, which side to bet). */
+export interface Staker {
+  next(): number;
+  /** Which bet to place next; most systems always use the default bet. */
+  bet(defaultBet: string): string;
+  record(net: number, outcome?: Outcome): void;
+  reset(): void;
+}
+
+export function makeStaker(strategy: StrategyId, unit: number, game: GameDef): Staker {
+  return strategy === 'original' ? new OriginalSystem(unit, game) : new StakeTracker(strategy, unit);
+}
+
 /** Tracks the next stake for a strategy. */
-export class StakeTracker {
+export class StakeTracker implements Staker {
   private step = 0;
   private current: number;
   constructor(public strategy: StrategyId, public unit: number) {
     this.current = unit;
   }
 
+  bet(defaultBet: string): string {
+    return defaultBet;
+  }
+
   next(): number {
     switch (this.strategy) {
       case 'flat':
+      case 'original':
         return this.unit;
       case 'ladder':
         return round2((LADDER[Math.min(this.step, LADDER.length - 1)] / 4) * this.unit);
@@ -84,7 +111,7 @@ export class StakeTracker {
   }
 
   /** net = profit/loss of the round in money (0 means push). */
-  record(net: number) {
+  record(net: number, _outcome?: Outcome) {
     if (net === 0) return;
     const won = net > 0;
     switch (this.strategy) {
@@ -109,6 +136,141 @@ export class StakeTracker {
   reset() {
     this.step = 0;
     this.current = this.unit;
+  }
+}
+
+/**
+ * The previous app's rule, ported line-for-line from its prediction pages.
+ *
+ * Side ("S" = same as last result, "O" = opposite):
+ *   win  → keep the pattern that just won (S stays on the result, O flips again)
+ *   loss → 1st loss: follow the last result (S); 2nd loss: bet the opposite (O); then repeat
+ * Stake (in tokens of unit/4):
+ *   ATTACK   4-2-3-4-5-6-8-10, one step up per win; any loss → RETRENCH
+ *   RETRENCH 4-6-10-16-26-40-60, one step up per loss, one step down per win
+ *            (two steps after two wins in a row), back to ATTACK from the bottom;
+ *            resets to the first step when the running total is −150 tokens or worse.
+ * Zero / tie results are skipped, as in the old app.
+ */
+export class OriginalSystem implements Staker {
+  private static ATTACK = [4, 2, 3, 4, 5, 6, 8, 10];
+  private static RETRENCH = [4, 6, 10, 16, 26, 40, 60];
+
+  private sides: [string, string] | null;
+  private nextSide = 0; // index into sides
+  private lastPattern: 'S' | 'O' = 'S';
+  private looseCount = 0;
+  private mode: 'ATTACK' | 'RETRENCH' = 'ATTACK';
+  private idx = 0;
+  private token = 4;
+  private acc = 0;
+  private prevCorrect = false;
+  private consecutiveCorrects = true;
+
+  constructor(private unit: number, private game: GameDef) {
+    this.sides = game.sides ?? null;
+  }
+
+  reset() {
+    this.nextSide = 0;
+    this.lastPattern = 'S';
+    this.looseCount = 0;
+    this.mode = 'ATTACK';
+    this.idx = 0;
+    this.token = 4;
+    this.acc = 0;
+    this.prevCorrect = false;
+    this.consecutiveCorrects = true;
+  }
+
+  /** Current mode, for display. */
+  get state() {
+    return { mode: this.mode, token: this.token, pattern: this.lastPattern };
+  }
+
+  next(): number {
+    return round2((this.token / 4) * this.unit);
+  }
+
+  bet(defaultBet: string): string {
+    return this.sides ? this.sides[this.nextSide] : defaultBet;
+  }
+
+  record(_net: number, outcome?: Outcome) {
+    if (!this.sides || !outcome) return;
+    const s = sideOf(this.game, outcome);
+    if (s === null) return; // zero / tie: skipped like the old app
+    const happened = this.sides.indexOf(s);
+    const correct = happened === this.nextSide;
+    const opposite = 1 - happened;
+
+    // --- which side next ---
+    if (correct) {
+      this.looseCount = 0;
+      if (this.lastPattern === 'S') {
+        this.nextSide = happened;
+        this.lastPattern = 'S';
+      } else {
+        this.nextSide = opposite;
+        this.lastPattern = 'O';
+      }
+    } else {
+      this.looseCount++;
+      if (this.looseCount < 2) {
+        this.lastPattern = 'S';
+        this.nextSide = happened;
+      } else if (this.looseCount === 2) {
+        this.lastPattern = 'O';
+        this.nextSide = opposite;
+      } else {
+        this.lastPattern = 'S';
+        this.looseCount = 1;
+        this.nextSide = happened;
+      }
+    }
+
+    // --- how much next ---
+    const A = OriginalSystem.ATTACK;
+    const R = OriginalSystem.RETRENCH;
+    if (correct) {
+      this.acc += this.token;
+      if (this.mode === 'RETRENCH') {
+        if (this.idx === 0) {
+          this.mode = 'ATTACK';
+          this.idx = 0;
+          this.token = A[0];
+        } else if (this.prevCorrect && this.consecutiveCorrects) {
+          this.consecutiveCorrects = false;
+          if (this.idx > 1) {
+            this.idx -= 2;
+            this.token = R[this.idx];
+          } else {
+            this.mode = 'ATTACK';
+            this.idx = 0;
+            this.token = A[0];
+          }
+        } else {
+          this.consecutiveCorrects = true;
+          if (this.idx > 0) this.idx--;
+          this.token = R[this.idx];
+        }
+      } else {
+        if (this.idx < 7) this.idx++;
+        this.token = A[this.idx];
+      }
+    } else {
+      this.acc -= this.token;
+      if (this.mode === 'ATTACK') {
+        this.mode = 'RETRENCH';
+        this.idx = 0;
+        this.token = R[0];
+      } else {
+        if (this.acc <= -150 && this.idx > 5) this.idx = -1;
+        if (this.idx < 6) this.idx++;
+        this.token = R[this.idx];
+      }
+    }
+    this.prevCorrect = correct;
   }
 }
 
@@ -203,7 +365,7 @@ export interface SimResult {
 
 export function simulate(cfg: SimConfig): SimResult {
   const nets: number[] = [];
-  const tracker = new StakeTracker(cfg.strategy, cfg.unit);
+  const tracker = makeStaker(cfg.strategy, cfg.unit, cfg.game);
   let busts = 0;
   let wagered = 0;
   const edge = getBet(cfg.game, cfg.betId)?.edge ?? 0;
@@ -214,10 +376,11 @@ export function simulate(cfg: SimConfig): SimResult {
       const stake = Math.min(tracker.next(), bank);
       if (stake <= 0) break;
       wagered += stake;
+      const betId = tracker.bet(cfg.betId);
       const o = cfg.game.play();
-      const net = stake * cfg.game.settle(cfg.betId, o);
+      const net = stake * cfg.game.settle(betId, o);
       bank += net;
-      tracker.record(net);
+      tracker.record(net, o);
       const p = bank - cfg.bankroll;
       if (cfg.stopWin && p >= cfg.stopWin) break;
       if (cfg.stopLoss && p <= -cfg.stopLoss) break;

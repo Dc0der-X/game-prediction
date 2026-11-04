@@ -5,9 +5,9 @@ import { IonicModule, IonicRouteStrategy } from '@ionic/angular';
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
 import { environment } from '../environments/environment';
-import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
+import { getApp, initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { provideAuth, getAuth, connectAuthEmulator } from '@angular/fire/auth';
-import { provideFirestore, getFirestore, connectFirestoreEmulator } from '@angular/fire/firestore';
+import { provideFirestore, getFirestore, initializeFirestore } from '@angular/fire/firestore';
 
 @NgModule({
   declarations: [AppComponent],
@@ -16,16 +16,22 @@ import { provideFirestore, getFirestore, connectFirestoreEmulator } from '@angul
     IonicModule.forRoot({ mode: 'ios' }),
     AppRoutingModule,
     provideFirebaseApp(() => initializeApp(environment.firebase)),
+    // In emulator mode the dev server proxies the emulators on the app's own address
+    // (proxy.emulators.json), so it also works from a phone or a remote preview.
     provideAuth(() => {
       const auth = getAuth();
-      if (environment.useEmulators) connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+      if (environment.useEmulators) connectAuthEmulator(auth, location.origin, { disableWarnings: true });
       return auth;
     }),
-    provideFirestore(() => {
-      const db = getFirestore();
-      if (environment.useEmulators) connectFirestoreEmulator(db, '127.0.0.1', 8080);
-      return db;
-    }),
+    provideFirestore(() =>
+      environment.useEmulators
+        ? initializeFirestore(getApp(), {
+            host: location.host,
+            ssl: location.protocol === 'https:',
+            experimentalForceLongPolling: true,
+          })
+        : getFirestore()
+    ),
   ],
   providers: [{ provide: RouteReuseStrategy, useClass: IonicRouteStrategy }],
   bootstrap: [AppComponent],

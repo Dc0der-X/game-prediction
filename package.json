@@ -11,8 +11,9 @@
     "test": "ng test",
     "lint": "ng lint",
     "deploy": "ng build && firebase deploy --only hosting,firestore",
-    "start:emulators": "ng serve --configuration emulators",
-    "emulators": "firebase emulators:start --only auth,firestore --project demo-tablewise"
+    "start:emulators": "ng serve --configuration emulators --proxy-config proxy.emulators.json --host 0.0.0.0 --disable-host-check",
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-tablewise",
+    "seed:emulators": "node scripts/seed-emulators.mjs"
   },
   "private": true,
   "dependencies": {

@@ -43,6 +43,8 @@ export interface GameDef {
   bets: BetType[];
   /** Lowest-house-edge bet – the only bet the Table Rules allow for real money. */
   bestBet: string;
+  /** The two even-money sides used by side-picking systems (e.g. Red / Black). */
+  sides?: [string, string];
   play(): Outcome;
   /** Net result per 1 unit staked: +1 win, +0.95, 0 push, -0.5, -1 loss … */
   settle(betId: string, o: Outcome): number;
@@ -260,6 +262,7 @@ function settleLucky7(bet: string, o: Outcome): number {
 export const GAMES: GameDef[] = [
   {
     id: 'baccarat',
+    sides: ['banker', 'player'],
     name: 'Baccarat',
     image: 'assets/img/baccarat.jpeg',
     blurb: 'Lowest house edge in the casino. Banker is the best bet.',
@@ -282,6 +285,7 @@ export const GAMES: GameDef[] = [
   },
   {
     id: 'roulette',
+    sides: ['red', 'black'],
     name: 'Roulette',
     image: 'assets/img/roulette.png',
     blurb: 'European single-zero wheel. Every bet carries 2.70% edge.',
@@ -303,6 +307,7 @@ export const GAMES: GameDef[] = [
   },
   {
     id: 'dragon-tiger',
+    sides: ['dragon', 'tiger'],
     name: 'Dragon Tiger',
     image: 'assets/img/dragon-tiger.webp',
     blurb: 'One card each, high card wins. Fast – so keep sessions short.',
@@ -318,6 +323,7 @@ export const GAMES: GameDef[] = [
   },
   {
     id: 'sicbo',
+    sides: ['small', 'big'],
     name: 'Sic Bo',
     image: 'assets/img/sic-bo.jpeg',
     blurb: 'Three dice. Small or Big is the only bet worth making.',
@@ -339,6 +345,7 @@ export const GAMES: GameDef[] = [
   },
   {
     id: 'lucky7',
+    sides: ['low', 'high'],
     name: 'Lucky 7',
     image: 'assets/img/lucky-7.jpeg',
     blurb: 'Highest house edge of the five (7.69%). Practice only is wise.',
@@ -353,6 +360,19 @@ export const GAMES: GameDef[] = [
     settle: settleLucky7,
   },
 ];
+
+/** Which even-money side an outcome landed on, or null for zero / tie / triple / seven. */
+export function sideOf(game: GameDef, o: Outcome): string | null {
+  const d = o.data;
+  switch (game.id) {
+    case 'baccarat': return d.winner === 'B' ? 'banker' : d.winner === 'P' ? 'player' : null;
+    case 'roulette': return d.n === 0 ? null : RED_NUMBERS.has(d.n) ? 'red' : 'black';
+    case 'dragon-tiger': return d.winner === 'D' ? 'dragon' : d.winner === 'T' ? 'tiger' : null;
+    case 'sicbo': return d.triple ? null : d.total <= 10 ? 'small' : 'big';
+    case 'lucky7': return d.card.rank < 7 ? 'low' : d.card.rank > 7 ? 'high' : null;
+  }
+  return null;
+}
 
 export function getGame(id: string | null | undefined): GameDef | undefined {
   return GAMES.find((g) => g.id === id);

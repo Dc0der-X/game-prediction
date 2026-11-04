@@ -52,7 +52,21 @@ $4 stake, 20 rounds, 9,000+ sessions:
 | Recovery ladder | 67% | −$1.08 | −$55 |
 | Martingale | 68% | −$0.96 | −$56 |
 
-Recovery systems win more often but stake more, so they cost more and have much worse bad days. Every game engine
+Recovery systems win more often but stake more, so they cost more and have much worse bad days.
+
+**The original app's rule** is available in practice tables and the Strategy Lab as
+*Original S/O + Attack/Retrench*. It's ported line by line from the old prediction pages:
+- **Side (S/O):** keep the winning pattern; follow the last result after the 1st loss and switch after the 2nd.
+- **Stake:** Attack 4-2-3-4-5-6-8-10 after wins, Retrench 4-6-10-16-26-40-60 after losses.
+
+Averaged over 54,000 sessions each ($200, $4 base, +$20 / −$40 stops, 20 rounds):
+
+| Game | System | Winning sessions | Real cost / session | Worst 1-in-10 |
+|---|---|---|---|---|
+| Roulette | Flat | 39% | −$1.94 | −$24 |
+| Roulette | Original S/O | 65% | −$2.59 | −$54 |
+| Baccarat | Flat | 48% | −$0.80 | −$21 |
+| Baccarat | Original S/O | 68% | −$1.07 | −$54 | Every game engine
 was checked over 1,000,000 rounds per game, and each bet's measured edge matches its published house edge.
 
 ---
@@ -167,8 +181,12 @@ For raw data you can also use the Firebase console (Authentication and Firestore
 ```bash
 npm install
 npm run emulators          # terminal 1: local Auth + Firestore (needs Java)
+npm run seed:emulators     # terminal 2 (once): demo admin, demo player, sample customers and payments
 npm run start:emulators    # terminal 2: app on http://localhost:4200 using the emulators
 ```
+
+Demo logins (local emulators only): `admin@tablewise.test` / `admin123` and `demo@tablewise.test` / `demo1234`.
+The dev server proxies the emulators on the app's own address, so it also works from a phone on your network.
 
 `npm start` runs against the real Firebase project.
 

@@ -157,7 +157,8 @@
 
         <div class="tw-card">
           <p class="tw-eyebrow">Strategy tester</p>
-          <p class="tw-small tw-muted">Auto-plays the best bet ({{ bestBet.label }}) with the chosen system, starting at a stake of {{ chip }}.</p>
+          <p class="tw-small tw-muted">Auto-plays the chosen system starting at a stake of {{ chip }} – on {{ bestBet.label }},
+            or picking sides itself for the Original S/O system.</p>
           <select class="tw-select" [(ngModel)]="strategy">
             <option *ngFor="let s of strategies" [value]="s.id">{{ s.name }}</option>
           </select>

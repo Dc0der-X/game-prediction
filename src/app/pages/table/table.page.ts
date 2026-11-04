@@ -9,7 +9,7 @@ import { AccountService } from '../../core/account.service';
 import {
   BetType, Card, GameDef, Outcome, RANKS, RED_NUMBERS, SUITS, getBet, getGame, isRedSuit, pct,
 } from '../../core/games';
-import { STRATEGIES, StakeTracker, StrategyId, round2 } from '../../core/strategies';
+import { STRATEGIES, StrategyId, makeStaker, round2 } from '../../core/strategies';
 
 const START_BALANCE = 1000;
 const BALANCE_KEY = 'tw.practiceBalance';
@@ -144,7 +144,7 @@ export class TablePage implements OnDestroy {
 
   autoPlay(n: number) {
     if (this.dealing) return;
-    const tracker = new StakeTracker(this.strategy, this.chip);
+    const tracker = makeStaker(this.strategy, this.chip, this.game);
     let total = 0;
     let maxStake = 0;
     let played = 0;
@@ -154,10 +154,10 @@ export class TablePage implements OnDestroy {
       if (stake <= 0) break;
       maxStake = Math.max(maxStake, stake);
       const o = this.game.play();
-      const bets = { [this.game.bestBet]: stake };
+      const bets = { [tracker.bet(this.game.bestBet)]: stake };
       this.settleRound(o, bets);
       const net = this.roundNet;
-      tracker.record(net);
+      tracker.record(net, o);
       total += net;
       played++;
       last = o;
