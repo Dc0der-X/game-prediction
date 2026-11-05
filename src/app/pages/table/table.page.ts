@@ -31,8 +31,8 @@ export class TablePage implements OnDestroy {
   access$ = inject(AccountService).access$;
 
   game!: GameDef;
-  chips = [5, 10, 25, 100, 500];
-  chip = 10;
+  chips = [1, 5, 10, 25, 100];
+  chip = 1;
   balance = START_BALANCE;
   bets: Record<string, number> = {};
   lastBets: Record<string, number> = {};
@@ -98,9 +98,9 @@ export class TablePage implements OnDestroy {
     return this.engine ? this.engine.signal() : null;
   }
 
-  /** Practice amount = the whole ladder for this chip; target and safety limit as in real play. */
+  /** Practice amount = twice the ladder for this chip (as in real play); same target and safety limit. */
   get amount() {
-    return Math.round(this.chip * NEURAL_BANKROLL_UNITS);
+    return Math.round(this.chip * NEURAL_BANKROLL_UNITS * 2);
   }
 
   get stopLoss() {

@@ -66,17 +66,18 @@ Every player gets the same signals; there is no strategy to pick and nothing to 
    won. 1st miss → follow the side that just came (Same); 2nd miss → bet against it (Opposite – the table is
    swinging); 3rd miss → Same again. Result: **the signal never bets against a run** – once a side comes twice in a
    row, the signal is on it (checked on 18.9 million simulated bets, 0 exceptions). Zero / tie / bar don't change the side.
-2. **Amount – 8-step ladder** (multiples of the base): **1.5 · 2.5 · 4 · 6 · 10.5 · 15 · 22.5 · 30**. Up one step
-   after a miss; down one after a win, down two after two wins in a row or two of the last three. Every signal shows
-   the change from the last bet (▲ +3 / ▼ −2 / = same). Base = amount ÷ 92 (whole ladder fits in the amount).
-3. **Session rules (same for every game):** profit target **+20%** of the amount → cash out; once well up (60% of the
+2. **Amount – 8-step ladder, always exactly 1.5 · 2.5 · 4 · 6 · 10.5 · 15 · 22.5 · 30 chips.** The chip is picked
+   from the amount: $1 up to $919 (bets 1.5 · 2.5 · 4 · 6 · 10.5 · 15 · 22.5 · 30), $5 from $920 (7.5 · 12.5 · 20 · 30 ·
+   52.5 · 75 · 112.5 · 150), then $10, $25, $50, $100. Up one step after a miss; down one after a win, down two after
+   two wins in a row or two of the last three. Every signal shows the change from the last bet (▲ +1 / ▼ −1.5 / = same).
+3. **Session rules (same for every game):** profit target **+10%** of the amount → cash out; once well up (60% of the
    target), 2 misses in a row → cash out on top; **3 misses in a row → fresh table** (ladder back to step 1, totals
-   carry on); **safety limit 40%** of the amount – no bet can go past it. Check-in every 15 minutes, one session a day.
+   carry on); **safety limit 20%** of the amount – no bet can go past it. Check-in every 15 minutes, one session a day.
 
-Target and limit were chosen by simulation (20,000 sessions per game per setting, $200): +20% / 40% gave the highest
-share of winning sessions on every game – Baccarat 66%, Craps 67%, Sic Bo 63%, Roulette 63%, Dragon Tiger 59% –
-and the smallest average cost. Averages stay slightly negative (about −$4 to −$13 per $200 session), as with any
-system on a house-edge game. Code: `NeuralSystem` in `src/app/core/strategies.ts`, `SignalEngine` in
+Target and limit were chosen by simulation (8,000 sessions per game per setting, $200, $1 chip, 45 minutes):
++10% / 20% gave the highest share of winning sessions on every game – Baccarat 55%, Craps 55%, Dragon Tiger 53%,
+Sic Bo 51%, Roulette 49% – with the smallest average cost (about −$1 to −$4 per $200 session). Averages stay
+slightly negative, as with any system on a house-edge game. Code: `NeuralSystem` in `src/app/core/strategies.ts`, `SignalEngine` in
 `src/app/core/signals.ts`.
 
 ---

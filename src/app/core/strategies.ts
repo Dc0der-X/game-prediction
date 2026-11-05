@@ -98,9 +98,17 @@ export const NEURAL_SERIES = [1.5, 2.5, 4, 6, 10.5, 15, 22.5, 30];
 /** The whole ladder added up (92 units). */
 export const NEURAL_BANKROLL_UNITS = NEURAL_SERIES.reduce((a, b) => a + b, 0);
 
-/** Base unit for today's amount: the whole ladder always fits inside the amount. */
+/** Casino chip sizes the ladder is built on. */
+export const NEURAL_CHIPS = [1, 5, 10, 25, 50, 100];
+
+/**
+ * Chip for today's amount: the ladder is always exactly 1.5 2.5 4 6 10.5 15 22.5 30 chips.
+ * The biggest chip whose ladder fits in the amount twice over; a $1 chip up to $919.
+ */
 export function neuralBase(amount: number): number {
-  return amount >= NEURAL_BANKROLL_UNITS ? Math.floor(amount / NEURAL_BANKROLL_UNITS) : 0.5;
+  let chip = NEURAL_CHIPS[0];
+  for (const c of NEURAL_CHIPS) if (c * NEURAL_BANKROLL_UNITS * 2 <= amount) chip = c;
+  return chip;
 }
 
 /** Bet size for a ladder level (0–7). */
@@ -450,8 +458,8 @@ export const SESSION_LIMITS = {
   /** This many losses in a row: move to a fresh table. */
   changeTableLosses: 3,
   /** Neural Signals: profit target and safety limit as shares of today's amount. */
-  targetShare: 0.2,
-  safetyShare: 0.4,
+  targetShare: 0.1,
+  safetyShare: 0.2,
   unitPct: 0.02,
   stopWinUnits: 5, // +10% of bankroll
   stopLossUnits: 10, // -20% of bankroll
