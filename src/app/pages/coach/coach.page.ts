@@ -12,7 +12,7 @@ import { NeuralFieldComponent } from '../../shared/neural-field.component';
 import { AccountService } from '../../core/account.service';
 import { EndReason, SessionsService } from '../../core/sessions.service';
 import { GAMES, GameDef, getBet, getGame, pct } from '../../core/games';
-import { SESSION_LIMITS, SessionPlan, planSession, round2, simulate } from '../../core/strategies';
+import { NeuralMode, SESSION_LIMITS, SessionPlan, planNeural, planSession, round2, simulate } from '../../core/strategies';
 import { SYSTEMS, Signal, SignalEngine, SignalEvent, StopReason, SystemId, VOID_RESULT } from '../../core/signals';
 
 type Stage = 'checking' | 'locked' | 'excluded' | 'setup' | 'first' | 'live' | 'newtable' | 'done';
@@ -68,11 +68,13 @@ export class CoachPage implements OnDestroy {
   quickAmounts = [100, 200, 500, 1000];
 
   gameId = 'roulette';
-  system: SystemId = 'original';
+  system: SystemId = 'neural';
+  /** Neural Strategy settings: the book's, or a protected version with half the risk. */
+  mode: NeuralMode = 'book';
   casino = '';
   casinoSuggestions = ['Evolution live tables', 'Ezugi', 'Pragmatic Play Live', 'Playtech Live', 'Other online casino', 'Land-based casino'];
   bankroll: number | null = null;
-  minutes = SESSION_LIMITS.defaultMinutes;
+  minutes = 45;
   pledge = false;
   afford = false;
 
@@ -81,7 +83,9 @@ export class CoachPage implements OnDestroy {
   remaining = 0;
   endReason: EndReason | null = null;
   saveError = '';
-  stopSign: 'final' | 'checkin' | 'table' | null = null;
+  stopSign: 'final' | 'checkin' | 'table' | 'choppy' | null = null;
+  /** Short message while watching (e.g. a zero was ignored). */
+  watchNote = '';
   /** Short "+8" / "-4" pop after each round. */
   flash: { id: number; text: string; kind: 'won' | 'lost' | 'void' } | null = null;
   private flashTimer: any;
@@ -132,7 +136,7 @@ export class CoachPage implements OnDestroy {
     if (saved && saved.v === 2 && saved.uid === this.uid) {
       this.live = saved;
       this.engine = SignalEngine.replay(this.makeEngine(saved), saved.events);
-      this.stage = saved.events.length ? 'live' : 'first';
+      this.stage = this.engine.watching || !saved.events.length ? 'first' : 'live';
       this.countTo(this.engine.signal().stake);
       this.startTimer();
       return;
@@ -146,22 +150,32 @@ export class CoachPage implements OnDestroy {
     return getGame(this.gameId)!;
   }
 
+  get minuteOptions(): number[] {
+    return this.system === 'neural' ? [30, 45, 60] : [10, 15, 20];
+  }
+
+  setSystem(id: SystemId) {
+    this.system = id;
+    if (!this.minuteOptions.includes(this.minutes)) this.minutes = this.minuteOptions[1];
+  }
+
   get plan(): SessionPlan | null {
-    if (!this.bankroll || this.bankroll < 10) return null;
+    if (!this.bankroll || this.bankroll < 30) return null;
+    if (this.system === 'neural') return planNeural(this.game, this.bankroll, this.minutes, this.mode);
     return planSession(this.game, this.bankroll, this.minutes);
   }
 
   sidesLabel(g: GameDef): string {
-    if (this.system === 'original' && g.sides) return g.sides.map((id) => getBet(g, id)!.label).join(' or ');
+    if (this.system !== 'flat' && g.sides) return g.sides.map((id) => getBet(g, id)!.label).join(' or ');
     return getBet(g, g.bestBet)!.label;
   }
 
   expectedCost(p: SessionPlan): number {
-    const key = `${p.gameId}|${p.bankroll}|${p.minutes}|${this.system}`;
+    const key = `${p.gameId}|${p.bankroll}|${p.minutes}|${this.system}|${p.mode}`;
     if (!this.costCache.has(key)) {
       const r = simulate({
         game: this.game, betId: this.game.bestBet, strategy: this.system, bankroll: p.bankroll, unit: p.unit,
-        stopWin: p.stopWin, stopLoss: p.stopLoss, rounds: p.maxRounds, sessions: 3000,
+        stopWin: p.stopWin, stopLoss: p.stopLoss, rounds: Math.min(p.maxRounds, 120), sessions: 3000,
       });
       this.costCache.set(key, round2(r.expectedCost));
     }
@@ -177,7 +191,7 @@ export class CoachPage implements OnDestroy {
     } catch {}
     const now = Date.now();
     this.live = { v: 2, uid: this.uid, casino, system: this.system, plan, startedAt: now,
-      nextCheckinAt: now + SESSION_LIMITS.checkinMinutes * MIN, events: [] };
+      nextCheckinAt: now + (this.system === 'neural' ? 15 : SESSION_LIMITS.checkinMinutes) * MIN, events: [] };
     this.engine = this.makeEngine(this.live);
     this.endReason = null;
     this.stopSign = null;
@@ -204,9 +218,24 @@ export class CoachPage implements OnDestroy {
     return [sides[0], { id: null, label: v.label, tone: 'green' }, ...sides.slice(1)];
   }
 
-  /** First result at a (new) table: the pattern starts from it. */
+  /** First result(s) at a (new) table. The Neural Strategy watches two results before its first bet. */
   begin(side: string | null) {
     if (!this.live || !this.engine) return;
+    if (this.engine.system === 'neural' && this.stage === 'first') {
+      if (side === null) {
+        this.watchNote = `${this.voidLabel} doesn't count – tap the next result.`;
+        return;
+      }
+      this.watchNote = '';
+      this.live.events.push({ t: 'watch', side });
+      this.engine.observe(side);
+      this.persist();
+      if (this.engine.watching) return;
+      this.stage = 'live';
+      this.stopSign = null;
+      this.reveal();
+      return;
+    }
     const isNewTable = this.stage === 'newtable';
     this.live.events.push({ t: 'start', side });
     if (isNewTable) this.engine.changeTable(side);
@@ -239,12 +268,15 @@ export class CoachPage implements OnDestroy {
     this.live.events.push({ t: 'round', side });
     const r = this.engine.applySide(side);
     this.persist();
+    if (!r) return;
     this.pop(r.net > 0 ? `+${r.net}` : r.net < 0 ? `${r.net}` : 'Push', r.result === 'won' ? 'won' : r.net < 0 ? 'lost' : 'void');
     this.buzz(r.result === 'won' ? 20 : r.net < 0 ? [40, 60, 40] : 10);
 
     const hit = this.engine.check();
     if (hit === 'change-table') {
       this.stopSign = 'table';
+    } else if (hit === 'choppy') {
+      this.stopSign = 'choppy';
     } else if (hit) {
       this.finish(hit);
     } else if (this.roundsPlayed >= this.live.plan.maxRounds) {
@@ -353,6 +385,8 @@ export class CoachPage implements OnDestroy {
       if (e.t === 'start') {
         out.length = 0;
         if (e.side) out.push(this.bead(g, e.side, 'seed'));
+      } else if (e.t === 'watch') {
+        out.push(this.bead(g, e.side, 'seed'));
       } else {
         const r = this.engine.rounds[roundIdx++];
         out.push(this.bead(g, e.side, r ? r.result : 'void'));
@@ -411,6 +445,25 @@ export class CoachPage implements OnDestroy {
     return Array.from({ length: n }, (_, i) => i);
   }
 
+  /** Keeps lists stable between frames so their pop-in animations play once. */
+  trackIdx = (i: number) => i;
+
+  get voidLabel(): string {
+    return this.live ? VOID_RESULT[this.liveGame.id].label : 'Zero';
+  }
+
+  /** The Neural series with the current level marked, for the ladder. */
+  get ladder(): { amount: number; on: boolean; past: boolean }[] {
+    const series = this.live?.plan.series ?? [];
+    const lvl = (this.signal?.level ?? 1) - 1;
+    return series.map((amount, i) => ({ amount, on: i === lvl, past: i < lvl }));
+  }
+
+  /** Minutes between STOP check-ins: longer Neural sessions get fewer interruptions. */
+  get checkinEvery(): number {
+    return this.live?.system === 'neural' ? 15 : SESSION_LIMITS.checkinMinutes;
+  }
+
   get toneOfBet(): string {
     return SIDE_TONE[this.signal?.betId ?? ''] || 'gold';
   }
@@ -419,8 +472,15 @@ export class CoachPage implements OnDestroy {
     if (!this.live || !this.engine || !this.signal) return '';
     const p = this.live.plan;
     const left = p.maxRounds - this.roundsPlayed;
-    if (this.signal.capped) return `Bet capped at ${this.signal.stake} – that's all that's left before your maximum loss.`;
+    if (this.signal.capped) return `Bet capped at ${this.signal.stake} – that's all that's left before your loss limit.`;
     if (left <= 3) return `${left} round${left === 1 ? '' : 's'} left in this session.`;
+    if (this.signal.mode === 'NEURAL') {
+      if (this.signal.switched) return `Sides switched – ${this.signal.betLabel} is taking over this table.`;
+      if (this.net > 0) return `${this.targetPct}% of the way to your target. Stay with the series.`;
+      if (this.signal.level >= 5) return `Level ${this.signal.level} of 8. Stay calm and bet exactly this amount.`;
+      if (this.signal.pattern === 'alternating') return 'Alternating pattern – the bet follows the swing.';
+      return 'Repeating pattern – stay on this side.';
+    }
     if (this.inProfitMode && this.engine.streak === 1) return `Strong profit. Protect it – the coach is watching the next result.`;
     if (!this.inProfitMode && this.engine.streak === 2) return 'Stay calm. Follow the signal – the coach will tell you if this table turns cold.';
     if (this.signal.mode === 'RETRENCH') return 'Recovery in progress. Stick to the amount shown.';
@@ -440,7 +500,7 @@ export class CoachPage implements OnDestroy {
       if (this.remaining === 0) {
         this.finish('time');
       } else if (this.stage === 'live' && now >= this.live.nextCheckinAt && !this.stopSign) {
-        this.live.nextCheckinAt = now + SESSION_LIMITS.checkinMinutes * MIN;
+        this.live.nextCheckinAt = now + this.checkinEvery * MIN;
         this.persist();
         this.stopSign = 'checkin';
       }
@@ -479,7 +539,7 @@ export class CoachPage implements OnDestroy {
     switch (this.endReason) {
       case 'stop-win': return 'Profit target reached.';
       case 'profit-lock': return 'Two losses in a row after a profit.';
-      case 'stop-loss': return 'Maximum loss reached.';
+      case 'stop-loss': return 'Loss limit reached.';
       case 'change-table': return 'Three losses in a row.';
       case 'time': return 'Time is up.';
       case 'rounds': return 'Round limit reached.';

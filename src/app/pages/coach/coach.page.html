@@ -69,12 +69,20 @@
         <div class="step-body">
           <h3>How long?</h3>
           <div class="seg">
-            <button *ngFor="let m of [10, 15, 20]" [class.on]="minutes === m" (click)="minutes = m">{{ m }} min</button>
+            <button *ngFor="let m of minuteOptions" [class.on]="minutes === m" (click)="minutes = m">{{ m }} min</button>
+          </div>
+          <div class="modes" *ngIf="system === 'neural'">
+            <button class="mode-card" [class.on]="mode === 'book'" (click)="mode = 'book'">
+              <strong>Book settings</strong><span>Target +⅓ of your amount. The session ends if the amount is lost.</span>
+            </button>
+            <button class="mode-card" [class.on]="mode === 'protected'" (click)="mode = 'protected'">
+              <strong>Protected</strong><span>Target +⅙. Stops at half your amount – smaller wins, much smaller losses.</span>
+            </button>
           </div>
           <details class="style">
-            <summary>Coaching style: <strong>{{ system === 'original' ? 'TableWise Signals' : 'Flat' }}</strong></summary>
+            <summary>Coaching style: <strong>{{ system === 'neural' ? 'Neural Strategy' : system === 'original' ? 'Classic signals' : 'Flat' }}</strong></summary>
             <div class="systems">
-              <button *ngFor="let sy of systems" class="system" [class.on]="system === sy.id" (click)="system = sy.id">
+              <button *ngFor="let sy of systems" class="system" [class.on]="system === sy.id" (click)="setSystem(sy.id)">
                 <strong>{{ sy.name }}</strong><span>{{ sy.summary }}</span>
               </button>
             </div>
@@ -87,30 +95,47 @@
         <div class="rule-grid">
           <div class="r"><span>Signals on</span><strong>{{ sidesLabel(game) }}</strong></div>
           <div class="r"><span>First bet</span><strong>{{ p.unit | number: '1.0-2' }} <em>{{ (p.unit / p.bankroll) * 100 | number: '1.0-1' }}%</em></strong></div>
-          <div class="r good"><span>Profit target</span><strong>+{{ p.stopWin | number: '1.0-2' }} <em>+{{ (p.stopWin / p.bankroll) * 100 | number: '1.0-0' }}%</em></strong></div>
-          <div class="r bad"><span>Safety limit</span><strong>-{{ p.stopLoss | number: '1.0-2' }} <em>-{{ (p.stopLoss / p.bankroll) * 100 | number: '1.0-0' }}%</em></strong></div>
+          <div class="r good"><span>Target</span><strong>+{{ p.stopWin | number: '1.0-2' }} <em>+{{ (p.stopWin / p.bankroll) * 100 | number: '1.0-0' }}%</em></strong></div>
+          <div class="r bad"><span>Loss limit</span><strong>-{{ p.stopLoss | number: '1.0-2' }} <em>-{{ (p.stopLoss / p.bankroll) * 100 | number: '1.0-0' }}%</em></strong></div>
         </div>
-        <p class="tw-small sub">The coach watches every result. It tells you when to take your profit, when a table has gone cold, and when to stop.
+        <div class="series" *ngIf="p.series">
+          <span class="tw-small">Bet ladder</span>
+          <div class="steps"><i *ngFor="let a of p.series; let i = index" [style.--h.%]="20 + (i * 80) / 7">{{ a | number: '1.0-1' }}</i></div>
+        </div>
+        <p class="tw-small sub" *ngIf="system === 'neural'">The coach watches two results to read the pattern, then gives you every bet.
+          It moves up the ladder after a loss, down after a win, and switches sides when a pattern breaks.
+          Quit at your target – most sessions take {{ p.minutes }} minutes or less.</p>
+        <p class="tw-small sub" *ngIf="system !== 'neural'">The coach watches every result and tells you when to stop.
           {{ p.minutes }} minutes, with a check-in every {{ limits.checkinMinutes }}.</p>
+        <p class="tw-muted tw-small">Average cost of a full session with these settings: about {{ expectedCost(p) | number: '1.2-2' }}
+          (house edge {{ pct(p.edge) }}). Some sessions win, some lose.</p>
         <label class="tw-check"><input type="checkbox" [(ngModel)]="afford" /><span>This amount is money I can afford to lose.</span></label>
         <label class="tw-check"><input type="checkbox" [(ngModel)]="pledge" /><span>I'll bet only what the coach shows and stop when it says stop.</span></label>
         <button class="go" (click)="start()" [disabled]="!afford || !pledge">Enter the table</button>
       </section>
       <ng-template #needAmount>
-        <section class="rules-card muted"><p class="tw-muted">Enter an amount (10 or more) to see your rules.</p></section>
+        <section class="rules-card muted"><p class="tw-muted">Enter an amount (30 or more) to see your session.</p></section>
       </ng-template>
     </ng-container>
 
-    <!-- ================= FIRST RESULT (start or new table) ================= -->
+    <!-- ================= FIRST RESULT(S) ================= -->
     <ng-container *ngIf="(stage === 'first' || stage === 'newtable') && live">
       <section class="first">
         <p class="tw-eyebrow">{{ stage === 'newtable' ? 'Table ' + ((engine?.table ?? 1) + 1) : liveGame.name }} · {{ live.casino }}</p>
-        <h1>{{ stage === 'newtable' ? 'New table. What came last here?' : 'What came last at your table?' }}</h1>
-        <p class="tw-muted">Watch one round, then tap the result. Your first bet comes from it.</p>
+        <ng-container *ngIf="live.system === 'neural' && stage === 'first'; else oneResult">
+          <h1>Watch two results</h1>
+          <p class="tw-muted">Don't bet yet. Tap each result as it comes – the coach reads the pattern from them.</p>
+          <div class="watch-dots"><i [class.on]="(engine?.watched ?? 0) >= 1"></i><i [class.on]="(engine?.watched ?? 0) >= 2"></i></div>
+        </ng-container>
+        <ng-template #oneResult>
+          <h1>{{ stage === 'newtable' ? 'New table. What came last here?' : 'What came last at your table?' }}</h1>
+          <p class="tw-muted">Watch one round, then tap the result. Your first bet comes from it.</p>
+        </ng-template>
         <div class="choices big">
-          <button *ngFor="let c of choices" class="choice" [ngClass]="'tone-' + c.tone" (click)="begin(c.id)">{{ c.label }}</button>
+          <button *ngFor="let c of choices; trackBy: trackIdx" class="choice" [ngClass]="'tone-' + c.tone" (click)="begin(c.id)">{{ c.label }}</button>
         </div>
-        <button class="link" (click)="begin(null)">Skip – start right away</button>
+        <p class="tw-note" *ngIf="watchNote">{{ watchNote }}</p>
+        <button class="link" *ngIf="live.system !== 'neural' || stage === 'newtable'" (click)="begin(null)">Skip – start right away</button>
       </section>
     </ng-container>
 
@@ -140,7 +165,9 @@
             <div class="glow" [ngClass]="'glow-' + toneOfBet"></div>
             <div class="sig-top">
               <span class="tw-eyebrow">{{ thinking ? 'Reading the table' : 'Next bet' }}</span>
-              <span class="mode" *ngIf="!thinking && sig.mode !== 'FLAT'" [class.attack]="sig.mode === 'ATTACK'">{{ modeName(sig.mode) }}</span>
+              <span class="mode" *ngIf="!thinking && (sig.mode === 'ATTACK' || sig.mode === 'RETRENCH')" [class.attack]="sig.mode === 'ATTACK'">{{ modeName(sig.mode) }}</span>
+              <span class="mode attack" *ngIf="!thinking && sig.mode === 'NEURAL'">{{ sig.switched ? 'Switched' : (sig.pattern === 'alternating' ? 'Alternating' : 'Repeating') }}</span>
+              <span class="lvl" *ngIf="!thinking && sig.mode === 'NEURAL'">Level {{ sig.level }}/8</span>
             </div>
 
             <div class="scan" *ngIf="thinking" aria-live="polite">
@@ -153,7 +180,7 @@
                 <div class="disc" [ngClass]="'tone-' + toneOfBet">{{ sig.betLabel }}</div>
                 <div class="stake">
                   <div class="stack" aria-hidden="true">
-                    <i *ngFor="let c of chipStack; let i = index" [style.bottom.px]="i * 6" [style.animation-delay.ms]="i * 35"></i>
+                    <i *ngFor="let c of chipStack; let i = index; trackBy: trackIdx" [style.bottom.px]="i * 6" [style.animation-delay.ms]="i * 35"></i>
                   </div>
                   <div class="amt"><small>Bet</small>{{ shownStake | number: '1.0-2' }}<em>{{ betPct | number: '1.0-1' }}% of your amount</em></div>
                 </div>
@@ -168,7 +195,7 @@
           <section class="input-card">
             <p class="tw-eyebrow">What came?</p>
             <div class="choices">
-              <button *ngFor="let c of choices" class="choice" [ngClass]="'tone-' + c.tone" (click)="came(c.id)" [disabled]="thinking">{{ c.label }}</button>
+              <button *ngFor="let c of choices; trackBy: trackIdx" class="choice" [ngClass]="'tone-' + c.tone" (click)="came(c.id)" [disabled]="thinking">{{ c.label }}</button>
             </div>
             <div class="tw-row">
               <button class="link" (click)="undo()" [disabled]="!roundsPlayed">Undo last</button>
@@ -186,15 +213,19 @@
                 <small class="tw-muted">+{{ live.plan.stopWin | number: '1.0-2' }} ({{ pctOf(live.plan.stopWin) | number: '1.0-0' }}% of your amount)</small>
               </div>
               <div class="bar-row">
-                <div class="bar-label"><span>Safety limit used</span><strong class="tw-neg">{{ riskPct }}%</strong></div>
+                <div class="bar-label"><span>Loss limit used</span><strong class="tw-neg">{{ riskPct }}%</strong></div>
                 <div class="bar"><i class="bad" [style.width.%]="riskPct"></i></div>
                 <small class="tw-muted">-{{ live.plan.stopLoss | number: '1.0-2' }} ({{ pctOf(live.plan.stopLoss) | number: '1.0-0' }}% of your amount)</small>
               </div>
             </div>
+            <div class="ladder" *ngIf="live.system === 'neural'" aria-label="Bet ladder">
+              <i *ngFor="let l of ladder; trackBy: trackIdx" [class.on]="l.on" [class.past]="l.past">{{ l.amount | number: '1.0-1' }}</i>
+            </div>
             <div class="stats">
               <div><strong>{{ winRate }}%</strong><span>signals won</span></div>
               <div><strong>{{ roundsPlayed }}</strong><span>of {{ live.plan.maxRounds }} rounds</span></div>
-              <div class="lights-box"><span class="lights"><i *ngFor="let on of lights" [class.on]="on"></i></span><span>table heat</span></div>
+              <div class="lights-box" *ngIf="live.system !== 'neural'"><span class="lights"><i *ngFor="let on of lights; trackBy: trackIdx" [class.on]="on"></i></span><span>table heat</span></div>
+              <div *ngIf="live.system === 'neural'"><strong>{{ signal?.level || 1 }}/8</strong><span>ladder level</span></div>
             </div>
           </section>
 
@@ -202,8 +233,8 @@
           <section class="road-card">
             <p class="tw-eyebrow">Table {{ engine.table }} road</p>
             <div class="road" role="img" aria-label="Results at this table">
-              <div class="col" *ngFor="let col of road">
-                <ng-container *ngFor="let b of col">
+              <div class="col" *ngFor="let col of road; trackBy: trackIdx">
+                <ng-container *ngFor="let b of col; trackBy: trackIdx">
                   <span *ngIf="b; else slot" class="bead" [ngClass]="['tone-' + b.tone, 'mark-' + b.mark]">{{ b.label }}</span>
                   <ng-template #slot><span class="slot"></span></ng-template>
                 </ng-container>
@@ -250,6 +281,12 @@
   hint="Leave this table now and open another one. The signals start fresh there – your profit target and safety limit carry on."
   stopLabel="End today's session" continueLabel="I've switched tables"
   (stop)="finish('change-table')" (continue)="moveTable()"></app-stop-sign>
+
+<app-stop-sign *ngIf="stopSign === 'choppy'" kind="checkin" icon="switch" title="CHOPPY GAME"
+  reason="No clear pattern after 60 results." [net]="net"
+  hint="The book's advice: call a choppy game off, even with a small loss, and come back fresh. You can also keep going within your limits."
+  stopLabel="Keep going" continueLabel="Call it off now"
+  (stop)="continuePlaying()" (continue)="finish('manual')"></app-stop-sign>
 
 <app-stop-sign *ngIf="stopSign === 'final'" kind="final" [title]="finalTitle"
   [reason]="finalReason" [hint]="finalHint" [net]="net"

@@ -305,3 +305,28 @@
 @media (prefers-reduced-motion: reduce) {
   .orb i, .orb::after { animation: none; }
 }
+
+/* ===================== Neural Strategy ===================== */
+.modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; margin-top: 14px; }
+.mode-card { text-align: left; display: grid; gap: 4px; padding: 14px; border-radius: 14px; cursor: pointer; font: inherit;
+  border: 1px solid var(--tw-line-strong); background: var(--tw-bg-2); color: var(--tw-text);
+  span { font-size: 13px; color: var(--tw-muted); }
+  &.on { border-color: var(--tw-gold); box-shadow: inset 0 0 0 1px var(--tw-gold), 0 0 24px rgba(92, 225, 255, 0.18); } }
+.series { margin: 4px 0 10px; .tw-small { color: rgba(255,255,255,.75); } }
+.steps { display: flex; align-items: flex-end; gap: 6px; height: 74px; margin-top: 6px;
+  i { flex: 1; height: var(--h); min-height: 22px; border-radius: 8px 8px 4px 4px; display: grid; place-items: end center; padding-bottom: 4px;
+      font-style: normal; font-family: var(--tw-mono); font-size: 12px; font-weight: 700; color: #031019;
+      background: linear-gradient(180deg, var(--tw-gold-2), var(--tw-gold)); box-shadow: 0 0 12px rgba(92, 225, 255, .35); } }
+.watch-dots { display: flex; justify-content: center; gap: 14px; margin: 20px 0 4px;
+  i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--tw-gold); transition: background .2s ease, box-shadow .2s ease; }
+  i.on { background: var(--tw-gold); box-shadow: 0 0 16px var(--tw-gold); } }
+.lvl { font-family: var(--tw-mono); font-size: 12px; font-weight: 700; color: rgba(255,255,255,.75); margin-left: auto; }
+.ladder { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; margin-top: 16px;
+  i { font-style: normal; text-align: center; padding: 7px 0; border-radius: 8px; font-family: var(--tw-mono); font-size: 12px; font-weight: 700;
+      background: rgba(255,255,255,.05); color: var(--tw-muted); transition: all .25s ease; }
+  i.past { background: rgba(92, 225, 255, .12); color: var(--tw-gold-2); }
+  i.on { background: var(--tw-gold); color: #031019; box-shadow: 0 0 16px rgba(92, 225, 255, .6); transform: translateY(-2px); } }
+
+.bead.tone-black { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35); }
+.bead.tone-black.mark-won { box-shadow: inset 0 0 0 1px rgba(255,255,255,.35), 0 0 0 2px var(--tw-bg-2), 0 0 0 4px var(--tw-green), 0 0 12px rgba(47, 224, 143, 0.5); }
+.bead.tone-black.mark-lost { box-shadow: inset 0 0 0 1px rgba(255,255,255,.35), 0 0 0 2px var(--tw-bg-2), 0 0 0 4px var(--tw-red), 0 0 12px rgba(255, 77, 109, 0.45); }

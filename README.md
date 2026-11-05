@@ -31,23 +31,25 @@ fun, unlimited practice and a disciplined way to play for real that keeps losses
 
 Prices live in `src/app/core/pricing.ts` and `payments-worker/wrangler.toml`. Keep them in sync with your PayPal plan.
 
-### TableWise Signals + STOP rules (the method behind the coach)
+### The Neural Strategy (the method behind the coach)
 
-The coach and the practice tables both run **TableWise Signals**, the original app's rule:
-- **Side:** Same/Opposite pattern. Keep the winning pattern; follow the last result after the 1st loss and switch
-  after the 2nd.
-- **Stake:** Attack 4-2-3-4-5-6-8-10 after wins, Retrench 4-6-10-16-26-40-60 after losses (in units of base/4).
+The Signal Room implements the betting method from *The Neural Strategy*, checked bet by bet against the
+book's worked examples (Tables 2, 5 and 10):
 
-Every round shows one instruction, e.g. **"Bet 6 on Red"**. The rules around it:
-1. Base stake = 2% of today's budget.
-2. **STOP when up** at +10% and **STOP when down** at −20%. Bets are capped so no session can go past the loss
-   limit, even in Retrench.
-3. 10–20 minute timer, plus a **"STOP PLAYING NOW?" check-in every 5 minutes** (`SESSION_LIMITS.checkinMinutes`).
-4. Hitting a limit or the timer shows the full-screen **STOP PLAYING NOW** sign and ends the session.
-5. One real-money session per day. Flat staking is still offered as the lowest-cost option.
+1. **Watch two results.** Same twice → bet it to repeat. Different → bet the alternation; once an alternating bet
+   loses, bet only the opposite of the losing bet.
+2. **Bet ladder** (multiples of the base): 1 · 1.6 · 2.6 · 4 · 7 · 10 · 15 · 20, i.e. 5 8 13 20 35 50 75 100 for a 5 base.
+   Up one level after a loss, down one after a win, down two after two wins in a row or two of the last three.
+3. **Switch sides** when the level-5 bet loses. Bet the other side at level 6, with the book's step-down rules
+   (−2, −1, −2… after wins) until three wins.
+4. **Session:** the amount you enter is the session bankroll (base = amount ÷ 61). Quit at **+⅓**. The session ends
+   if the bankroll is lost. A game that's still choppy after about 60 results is better called off.
+5. **Protected mode** (optional): target +⅙, stop at half the amount.
 
-Code: `src/app/core/signals.ts` (engine), `src/app/core/strategies.ts` (`OriginalSystem`, `SESSION_LIMITS`),
-`src/app/shared/stop-sign.component.ts`.
+Simulated over 72,000 fair sessions ($300, $5 base): Baccarat wins about 70% of sessions (+$100) and loses about 30%
+(around −$273), for an average of about −$11 per session. The Protected settings average about −$5. These figures are
+lower than the 84% the book reports. Code: `NeuralSystem` in `src/app/core/strategies.ts`, `SignalEngine` in
+`src/app/core/signals.ts`.
 
 **Why flat and not the old "recovery ladder"** (4-6-10-16-26-40-60): simulated on Baccarat Banker, $200 budget,
 $4 stake, 20 rounds, 9,000+ sessions:

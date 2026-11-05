@@ -7,7 +7,7 @@
  */
 import { GameDef, Outcome, getBet, sideOf } from './games';
 
-export type StrategyId = 'flat' | 'original' | 'ladder' | 'martingale' | 'fibonacci' | 'dalembert' | 'paroli';
+export type StrategyId = 'neural' | 'flat' | 'original' | 'ladder' | 'martingale' | 'fibonacci' | 'dalembert' | 'paroli';
 
 export interface StrategyInfo {
   id: StrategyId;
@@ -17,6 +17,12 @@ export interface StrategyInfo {
 }
 
 export const STRATEGIES: StrategyInfo[] = [
+  {
+    id: 'neural',
+    name: 'Neural Strategy',
+    summary: 'Watches two results to find the pattern (repeating or alternating), bets it with the 8-level series 1-1.6-2.6-4-7-10-15-20, and switches sides after a level-5 loss.',
+    realMoney: true,
+  },
   {
     id: 'flat',
     name: 'Flat',
@@ -66,6 +72,10 @@ const FIB = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
 
 /** Anything that decides the next stake (and, optionally, which side to bet). */
 export interface Staker {
+  /** True while the system is watching results before it places a bet. */
+  readonly watching?: boolean;
+  /** Feed a result seen while watching (side id, or null for zero/tie). */
+  observe?(sideId: string | null): void;
   next(): number;
   /** Which bet to place next; most systems always use the default bet. */
   bet(defaultBet: string): string;
@@ -74,7 +84,163 @@ export interface Staker {
 }
 
 export function makeStaker(strategy: StrategyId, unit: number, game: GameDef): Staker {
-  return strategy === 'original' ? new OriginalSystem(unit, game) : new StakeTracker(strategy, unit);
+  if (strategy === 'neural' && game.sides) return new NeuralSystem(unit, game);
+  if (strategy === 'original') return new OriginalSystem(unit, game);
+  return new StakeTracker(strategy === 'neural' ? 'flat' : strategy, unit);
+}
+
+/* ------------------------------------------------------------------ */
+/* The Neural Strategy (from the book of the same name)                */
+/* ------------------------------------------------------------------ */
+
+/** Betting series as multiples of the base bet: 5 8 13 20 35 50 75 100 for a 5 base. */
+export const NEURAL_SERIES = [1, 1.6, 2.6, 4, 7, 10, 15, 20];
+/** Session bankroll = the sum of the series (306 for a 5 base, rounded to 300 in the book). */
+export const NEURAL_BANKROLL_UNITS = NEURAL_SERIES.reduce((a, b) => a + b, 0);
+
+/** Bet size for a level, rounded like casino chips (whole numbers from a base of 2 up). */
+export function neuralStake(base: number, level: number): number {
+  const raw = base * NEURAL_SERIES[Math.max(0, Math.min(7, level))];
+  return base >= 2 ? Math.round(raw) : Math.round(raw * 2) / 2;
+}
+
+/**
+ * The Neural Strategy:
+ *  1. Watch two results. Same twice → bet it to repeat. Different → bet the
+ *     alternation; after an alternating bet loses, bet only the opposite of
+ *     the losing bet (the side that is dominating).
+ *  2. Start at level 1. Loss → up one level. Win → down one level; two wins in
+ *     a row, or two of the last three, → down two levels.
+ *  3. Losing the level-5 bet → switch to the other side and bet level 6.
+ *     After a switch: a win drops two levels, the next consecutive win one
+ *     level, then two, and so on; a loss raises one level. After three wins
+ *     the normal rules apply again. Switch again on a level-5 loss once you
+ *     have won three times or made five bets since the last switch.
+ *  Ties (Baccarat) change nothing. Zero and other house results count as a loss.
+ */
+export class NeuralSystem implements Staker {
+  private sides: [string, string];
+  private seen: number[] = [];
+  private mode: 'observe' | 'repeat' | 'alternate' = 'observe';
+  private side = 0;
+  level = 0;
+  private recent: boolean[] = [];
+  switched = false;
+  private winsSinceSwitch = 0;
+  private betsSinceSwitch = 0;
+  private switchWinStreak = 0;
+  switches = 0;
+
+  constructor(private base: number, private game: GameDef) {
+    this.sides = game.sides!;
+  }
+
+  get watching(): boolean {
+    return this.mode === 'observe';
+  }
+
+  /** How many results have been watched so far (0–2). */
+  get watched(): number {
+    return this.seen.length;
+  }
+
+  get pattern(): 'watching' | 'repeating' | 'alternating' {
+    return this.mode === 'observe' ? 'watching' : this.mode === 'repeat' ? 'repeating' : 'alternating';
+  }
+
+  reset() {
+    this.seen = [];
+    this.mode = 'observe';
+    this.side = 0;
+    this.level = 0;
+    this.recent = [];
+    this.switched = false;
+    this.winsSinceSwitch = 0;
+    this.betsSinceSwitch = 0;
+    this.switchWinStreak = 0;
+    this.switches = 0;
+  }
+
+  observe(sideId: string | null) {
+    if (this.mode !== 'observe' || sideId === null) return;
+    const i = this.sides.indexOf(sideId);
+    if (i < 0) return;
+    this.seen.push(i);
+    if (this.seen.length === 2) {
+      const [a, b] = this.seen;
+      if (a === b) {
+        this.mode = 'repeat';
+        this.side = a;
+      } else {
+        this.mode = 'alternate';
+        this.side = 1 - b; // continue the alternation: p b → bet p
+      }
+    }
+  }
+
+  bet(defaultBet: string): string {
+    return this.mode === 'observe' ? defaultBet : this.sides[this.side];
+  }
+
+  next(): number {
+    return this.mode === 'observe' ? 0 : neuralStake(this.base, this.level);
+  }
+
+  record(net: number, outcome?: Outcome) {
+    if (this.mode === 'observe') {
+      if (outcome) this.observe(sideOf(this.game, outcome));
+      return;
+    }
+    this.recordResult(net > 0 ? true : net < 0 ? false : null);
+  }
+
+  /** true = bet won, false = bet lost (including zero), null = tie / push. */
+  recordResult(won: boolean | null) {
+    if (this.mode === 'observe' || won === null) return;
+    if (this.switched) this.betsSinceSwitch++;
+
+    if (won) {
+      if (this.mode === 'alternate') this.side = 1 - this.side;
+      if (this.switched) {
+        const drop = this.switchWinStreak % 2 === 0 ? 2 : 1;
+        this.switchWinStreak++;
+        this.winsSinceSwitch++;
+        this.level = Math.max(0, this.level - drop);
+        if (this.winsSinceSwitch >= 3) this.switched = false; // back to the general rules
+      } else {
+        const r = [...this.recent.slice(-2), true];
+        const twoInRow = r.length >= 2 && r[r.length - 2];
+        const twoOfThree = r.length >= 3 && r.filter((x) => x).length >= 2;
+        this.level = Math.max(0, this.level - (twoInRow || twoOfThree ? 2 : 1));
+      }
+      this.recent.push(true);
+      return;
+    }
+
+    // Lost
+    this.recent.push(false);
+    this.switchWinStreak = 0;
+    const lostLevel5 = this.level === 4;
+    const mayFlip = !this.switched || this.winsSinceSwitch >= 3 || this.betsSinceSwitch >= 5;
+    if (lostLevel5 && mayFlip) {
+      // Switch sides: bet the opposite of what we have been betting, at level 6.
+      const lostSide = this.side;
+      this.mode = 'repeat';
+      this.side = 1 - lostSide;
+      this.level = 5;
+      this.switched = true;
+      this.winsSinceSwitch = 0;
+      this.betsSinceSwitch = 0;
+      this.switches++;
+      return;
+    }
+    if (this.mode === 'alternate') {
+      // The alternation broke: bet only the opposite of the losing bet from now on.
+      this.mode = 'repeat';
+      this.side = 1 - this.side;
+    }
+    this.level = Math.min(7, this.level + 1);
+  }
 }
 
 /** Tracks the next stake for a strategy. */
@@ -93,6 +259,7 @@ export class StakeTracker implements Staker {
     switch (this.strategy) {
       case 'flat':
       case 'original':
+      case 'neural':
         return this.unit;
       case 'ladder':
         return round2((LADDER[Math.min(this.step, LADDER.length - 1)] / 4) * this.unit);
@@ -313,6 +480,10 @@ export const SESSION_LIMITS = {
 };
 
 export interface SessionPlan {
+  /** 'book' = Neural Strategy book settings, 'protected' = half the risk, '' = older plans. */
+  mode?: NeuralMode | '';
+  /** The 8 bet sizes of the Neural series for this session. */
+  series?: number[];
   gameId: string;
   betId: string;
   betLabel: string;
@@ -324,6 +495,39 @@ export interface SessionPlan {
   minutes: number;
   maxRounds: number;
   expectedLoss: number;
+}
+
+export type NeuralMode = 'book' | 'protected';
+
+/**
+ * Neural Strategy session (book rules): the amount is the session bankroll,
+ * the base bet is bankroll / 61.2 (the series total), the target is 1/3 of the
+ * bankroll and the session ends if the bankroll is lost. "Protected" halves
+ * the risk: target 1/6, stop at half the bankroll.
+ */
+export function planNeural(game: GameDef, amount: number, minutes: number, mode: NeuralMode): SessionPlan {
+  const raw = amount / NEURAL_BANKROLL_UNITS;
+  // Round like the book: a 300 bankroll gives a 5 base (series total 306, "rounded to 300").
+  const base = raw >= 2 ? Math.round(raw) : Math.max(0.5, Math.round(raw * 2) / 2);
+  const bet = getBet(game, game.bestBet)!;
+  const book = mode === 'book';
+  const stopWin = Math.round(amount / (book ? 3 : 6));
+  const stopLoss = book ? amount : Math.round(amount / 2);
+  return {
+    mode,
+    series: NEURAL_SERIES.map((_, i) => neuralStake(base, i)),
+    gameId: game.id,
+    betId: bet.id,
+    betLabel: bet.label,
+    edge: bet.edge,
+    bankroll: amount,
+    unit: base,
+    stopWin,
+    stopLoss,
+    minutes,
+    maxRounds: 150,
+    expectedLoss: 0,
+  };
 }
 
 export function planSession(game: GameDef, bankroll: number, minutes: number): SessionPlan {
@@ -383,14 +587,17 @@ export interface SimResult {
 
 export function simulate(cfg: SimConfig): SimResult {
   const nets: number[] = [];
-  const tracker = makeStaker(cfg.strategy, cfg.unit, cfg.game);
   let busts = 0;
   let wagered = 0;
   const edge = getBet(cfg.game, cfg.betId)?.edge ?? 0;
   for (let s = 0; s < cfg.sessions; s++) {
-    tracker.reset();
+    const tracker = makeStaker(cfg.strategy, cfg.unit, cfg.game);
     let bank = cfg.bankroll;
     for (let r = 0; r < cfg.rounds; r++) {
+      if (tracker.watching) {
+        tracker.observe?.(sideOf(cfg.game, cfg.game.play()));
+        continue;
+      }
       const room = cfg.stopLoss ? cfg.stopLoss + (bank - cfg.bankroll) : Infinity;
       const stake = round2(Math.min(tracker.next(), bank, room));
       if (stake <= 0) break;

@@ -107,17 +107,15 @@
         <!-- Signal -->
         <div class="signal" *ngIf="signalsOn && signal as sig">
           <div class="sig-main">
-            <span class="tw-eyebrow">Signal <span class="mode" [class.attack]="sig.mode === 'ATTACK'">{{ sig.mode }}</span></span>
-            <div class="do">Bet {{ sig.stake | number: '1.0-2' }} on {{ sig.betLabel }}</div>
+            <span class="tw-eyebrow">Neural signal <span class="mode attack">{{ levelLabel }}</span></span>
+            <div class="do">{{ sig.watching ? 'Watch – no bet yet' : 'Bet ' + (sig.stake | number: '1.0-2') + ' on ' + sig.betLabel }}</div>
             <div class="tw-small sig-meta">
               Session <strong [class.tw-pos]="sigNet > 0" [class.tw-neg]="sigNet < 0">{{ sigNet > 0 ? '+' : '' }}{{ sigNet | number: '1.0-2' }}</strong>
-              · STOP at <span class="tw-pos">+{{ stopWin }}</span> / <span class="tw-neg">-{{ stopLoss }}</span>
-              · check-in in {{ checkinClock }}
-              <span class="lights" title="Losses in a row"><i *ngFor="let on of streakLights" [class.on]="on"></i></span>
+              · target <span class="tw-pos">+{{ stopWin }}</span> · limit <span class="tw-neg">-{{ stopLoss }}</span>
             </div>
           </div>
           <ion-button (click)="playSignal()" [disabled]="dealing || !!stopSign">
-            Place &amp; {{ game.id === 'roulette' ? 'spin' : game.id === 'sicbo' ? 'roll' : 'deal' }}
+            {{ sig.watching ? 'Watch' : 'Place &amp;' }} {{ game.id === 'roulette' ? 'spin' : game.id === 'sicbo' ? 'roll' : 'deal' }}
           </ion-button>
         </div>
         <p class="tw-error" *ngIf="signalError">{{ signalError }}</p>
@@ -215,10 +213,10 @@
 <app-stop-sign *ngIf="stopSign === 'final'" kind="final" [reason]="stopReason" [net]="sigNet"
   hint="In real play this is where you leave the table. Here, you can start a fresh practice session."
   stopLabel="Start a new practice session" (stop)="newSignalSession()"></app-stop-sign>
-<app-stop-sign *ngIf="stopSign === 'table'" kind="checkin" title="STOP – CHANGE TABLE" reason="Three losses in a row. Change table." [net]="sigNet"
-  hint="In real play you would leave this table now. Practise moving on: switch table and the signals start fresh."
-  stopLabel="End and start a new practice session" continueLabel="Switch table"
-  (stop)="newSignalSession()" (continue)="switchTable()"></app-stop-sign>
+<app-stop-sign *ngIf="stopSign === 'table'" kind="checkin" icon="switch" title="CHOPPY GAME" reason="No clear pattern after 60 results." [net]="sigNet"
+  hint="The book's advice: call a choppy game off and start fresh. Or keep practising."
+  stopLabel="Start a new practice session" continueLabel="Keep practising"
+  (stop)="newSignalSession()" (continue)="stopSign = null"></app-stop-sign>
 <app-stop-sign *ngIf="stopSign === 'checkin'" kind="checkin" reason="Time check." [hint]="checkinHint" [net]="sigNet"
   stopLabel="Stop – start a fresh session" continueLabel="Keep practising"
   (stop)="newSignalSession()" (continue)="stopSign = null"></app-stop-sign>
