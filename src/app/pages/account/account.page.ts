@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { AsyncPipe, DatePipe, LowerCasePipe, NgIf } from '@angular/common';
+import { AsyncPipe, DatePipe, LowerCasePipe, NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
@@ -10,7 +10,7 @@ import { TopbarComponent } from '../../shared/topbar.component';
 @Component({
   selector: 'app-account',
   standalone: true,
-  imports: [IonicModule, FormsModule, RouterLink, NgIf, AsyncPipe, DatePipe, LowerCasePipe, TopbarComponent],
+  imports: [IonicModule, FormsModule, RouterLink, NgIf, NgFor, AsyncPipe, DatePipe, LowerCasePipe, TopbarComponent],
   template: `
     <app-topbar></app-topbar>
     <ion-content>
@@ -47,11 +47,15 @@ import { TopbarComponent } from '../../shared/topbar.component';
             <p class="tw-muted tw-small">
               Lock the Session Coach for a while. Once set, the lock cannot be removed early – not even by support.
             </p>
-            <div class="tw-row">
-              <ion-button size="small" fill="outline" color="danger" (click)="exclude(p.uid, 1)">24 hours</ion-button>
-              <ion-button size="small" fill="outline" color="danger" (click)="exclude(p.uid, 7)">7 days</ion-button>
-              <ion-button size="small" fill="outline" color="danger" (click)="exclude(p.uid, 30)">30 days</ion-button>
-              <ion-button size="small" fill="outline" color="danger" (click)="exclude(p.uid, 180)">6 months</ion-button>
+            <div class="tw-row" *ngIf="!pendingDays">
+              <ion-button *ngFor="let d of [1, 7, 30, 180]" size="small" fill="outline" color="danger" (click)="pendingDays = d">{{ lockLabel(d) }}</ion-button>
+            </div>
+            <div class="tw-note" *ngIf="pendingDays">
+              Lock real-money sessions for {{ lockLabel(pendingDays) }}? This cannot be undone.
+              <div class="tw-row" style="margin-top: 8px">
+                <ion-button size="small" color="danger" (click)="exclude(p.uid, pendingDays)">Yes, lock for {{ lockLabel(pendingDays) }}</ion-button>
+                <ion-button size="small" fill="clear" (click)="pendingDays = 0">Cancel</ion-button>
+              </div>
             </div>
           </ng-template>
         </div>
@@ -92,9 +96,16 @@ export class AccountPage {
     setTimeout(() => (this.saved = false), 2500);
   }
 
+  /** Days chosen, waiting for the confirm tap (browser dialogs are blocked in some apps). */
+  pendingDays = 0;
+
   async exclude(uid: string, days: number) {
-    const ok = confirm(`Lock real-money sessions for ${days === 1 ? '24 hours' : days + ' days'}? This cannot be undone.`);
-    if (ok) await this.account.selfExclude(uid, days);
+    await this.account.selfExclude(uid, days);
+    this.pendingDays = 0;
+  }
+
+  lockLabel(days: number) {
+    return days === 1 ? '24 hours' : days === 180 ? '6 months' : `${days} days`;
   }
 
   async logout() {

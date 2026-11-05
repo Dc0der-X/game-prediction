@@ -3,6 +3,7 @@ import { AsyncPipe, NgIf } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
 import { AccountService } from '../core/account.service';
+import { environment } from 'src/environments/environment';
 
 @Component({
   selector: 'app-topbar',
@@ -10,6 +11,7 @@ import { AccountService } from '../core/account.service';
   imports: [IonicModule, RouterLink, RouterLinkActive, NgIf, AsyncPipe],
   template: `
     <ion-header class="ion-no-border">
+      <div class="demo" *ngIf="demo">Demo · sample data, saved only in this browser · no real money or payments</div>
       <div class="bar">
         <a class="brand" routerLink="/lobby">
           <span class="mark">♠</span><span>TableWise</span>
@@ -40,6 +42,7 @@ import { AccountService } from '../core/account.service';
   styles: [
     `
       ion-header { background: var(--tw-bg); border-bottom: 1px solid var(--tw-line); }
+      .demo { background: var(--tw-gold); color: #1b1405; text-align: center; font-size: 12px; font-weight: 700; padding: 5px 12px; }
       .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px;
         max-width: 1080px; margin: 0 auto; padding: 12px 16px 6px; }
       .brand { display: flex; align-items: center; gap: 8px; color: var(--tw-text); text-decoration: none;
@@ -61,4 +64,5 @@ import { AccountService } from '../core/account.service';
 export class TopbarComponent {
   access$ = inject(AccountService).access$;
   router = inject(Router);
+  demo = environment.demoMode;
 }

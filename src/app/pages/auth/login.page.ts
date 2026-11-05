@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
 import { AccountService, authErrorMessage } from '../../core/account.service';
 import { TopbarComponent } from '../../shared/topbar.component';
+import { environment } from 'src/environments/environment';
 
 @Component({
   selector: 'app-login',
@@ -17,6 +18,8 @@ import { TopbarComponent } from '../../shared/topbar.component';
         <div class="tw-card">
           <p class="tw-eyebrow">Welcome back</p>
           <h1>Log in</h1>
+          <p class="tw-note" *ngIf="demo">Demo: any email and a 6+ character password work.
+            Use an email with <strong>admin</strong> in it (e.g. admin&#64;tablewise.test) to open the admin dashboard.</p>
           <form (ngSubmit)="submit()" #f="ngForm">
             <label class="tw-field"><span>Email</span>
               <input class="tw-input" type="email" name="email" [(ngModel)]="email" required autocomplete="email" /></label>
@@ -45,6 +48,7 @@ export class LoginPage {
   private account = inject(AccountService);
   private router = inject(Router);
   next = inject(ActivatedRoute).snapshot.queryParamMap.get('next') || '/lobby';
+  demo = environment.demoMode;
   email = '';
   password = '';
   busy = false;

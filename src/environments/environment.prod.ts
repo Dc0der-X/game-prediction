@@ -1,5 +1,7 @@
 export const environment = {
   /** Connect to local Firebase emulators (see README → Local development). */
+  /** Browser-only demo: no Firebase, sample data in localStorage (npm run build:demo). */
+  demoMode: false,
   useEmulators: false,
   production: true,
   firebase: {

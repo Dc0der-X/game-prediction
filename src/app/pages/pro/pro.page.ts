@@ -6,6 +6,7 @@ import { AccountService } from '../../core/account.service';
 import { PaymentsService } from '../../core/payments.service';
 import { FREE_FEATURES, PRICING, PRO_FEATURES } from '../../core/pricing';
 import { TopbarComponent } from '../../shared/topbar.component';
+import { environment } from 'src/environments/environment';
 
 @Component({
   selector: 'app-pro',
@@ -56,7 +57,11 @@ import { TopbarComponent } from '../../shared/topbar.component';
                   </div>
                 </ng-container>
 
-                <p class="tw-note" *ngIf="!payments.configured">
+                <p class="tw-note" *ngIf="demo">
+                  Checkout is switched off in this demo. In the live app this box shows the PayPal subscribe button and
+                  crypto checkout (1 month \${{ pricing.monthlyUsd }} / 12 months \${{ pricing.yearlyUsd }}).
+                </p>
+                <p class="tw-note" *ngIf="!payments.configured && !demo">
                   Checkout is not configured yet. Admin: set <code>payments.apiUrl</code> in the environment file
                   (see README → Payments).
                 </p>
@@ -94,6 +99,7 @@ export class ProPage implements AfterViewInit {
   access$ = this.account.access$;
   paidReturn = inject(ActivatedRoute).snapshot.queryParamMap.has('paid');
   pricing = PRICING;
+  demo = environment.demoMode;
   free = FREE_FEATURES;
   pro = PRO_FEATURES;
   yearlySaving = Math.round((1 - PRICING.yearlyUsd / (PRICING.monthlyUsd * 12)) * 100);

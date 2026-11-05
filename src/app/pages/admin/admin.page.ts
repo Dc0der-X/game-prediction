@@ -9,6 +9,8 @@ import { TopbarComponent } from '../../shared/topbar.component';
 import { Profile, computeAccess } from '../../core/account.service';
 import { PRICING } from '../../core/pricing';
 import { getGame } from '../../core/games';
+import { demoAdminData } from '../../core/demo-data';
+import { environment } from 'src/environments/environment';
 
 interface Row extends Profile {
   status: 'Admin' | 'Paid' | 'Trial' | 'Free';
@@ -36,7 +38,10 @@ const DAY = 86_400_000;
   styleUrls: ['./admin.page.scss'],
 })
 export class AdminPage {
-  private fs = inject(Firestore);
+  private fs = inject(Firestore, { optional: true }) as Firestore;
+  demo = environment.demoMode;
+  /** uid waiting for a second tap to confirm "Revoke" (dialogs are blocked in some browsers). */
+  confirmRevoke = '';
 
   loading = true;
   error = '';
@@ -65,6 +70,22 @@ export class AdminPage {
     this.loading = true;
     this.error = '';
     try {
+      if (this.demo) {
+        const d = demoAdminData();
+        let mine: any[] = [];
+        try {
+          mine = JSON.parse(localStorage.getItem('tw.demo.sessions') || '[]').map((x: any) => ({
+            ...x, startedAt: Timestamp.fromMillis(x.startedAt),
+          }));
+        } catch {}
+        this.users = d.users.map((p) => this.toRow(p));
+        this.users.sort((a, b) => (b.joined?.getTime() ?? 0) - (a.joined?.getTime() ?? 0));
+        this.payments = d.payments;
+        this.sessions = [...mine, ...d.sessions].sort((a, b) => b.startedAt.toMillis() - a.startedAt.toMillis());
+        this.messages = d.messages;
+        this.computeKpis();
+        return;
+      }
       const [u, p, s, m] = await Promise.all([
         getDocs(collection(this.fs, 'users')),
         getDocs(query(collection(this.fs, 'payments'), orderBy('createdAt', 'desc'), limit(300))).catch(() => null),
@@ -145,6 +166,7 @@ export class AdminPage {
   }
 
   emailFor(uid: string) {
+    if (uid?.startsWith('demo-')) return 'you (this demo)';
     return this.users.find((u) => u.uid === uid)?.email ?? uid;
   }
 
@@ -156,14 +178,18 @@ export class AdminPage {
   async grant(u: Row, days: number) {
     const base = Math.max(Date.now(), u.planExpiresAt?.toMillis() ?? 0);
     const planExpiresAt = Timestamp.fromMillis(base + days * DAY);
-    await updateDoc(doc(this.fs, 'users', u.uid), { plan: 'pro', planSource: 'admin', planExpiresAt });
+    if (!this.demo) await updateDoc(doc(this.fs, 'users', u.uid), { plan: 'pro', planSource: 'admin', planExpiresAt });
     Object.assign(u, this.toRow({ ...u, plan: 'pro', planSource: 'admin', planExpiresAt }));
     this.computeKpis();
   }
 
   async revoke(u: Row) {
-    if (!confirm(`Remove paid access for ${u.email}?`)) return;
-    await updateDoc(doc(this.fs, 'users', u.uid), { plan: null, planExpiresAt: null });
+    if (this.confirmRevoke !== u.uid) {
+      this.confirmRevoke = u.uid;
+      return;
+    }
+    this.confirmRevoke = '';
+    if (!this.demo) await updateDoc(doc(this.fs, 'users', u.uid), { plan: null, planExpiresAt: null });
     Object.assign(u, this.toRow({ ...u, plan: null, planExpiresAt: null }));
     this.computeKpis();
   }

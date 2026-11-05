@@ -8,9 +8,10 @@
       </div>
       <span class="tw-spacer"></span>
       <ion-button size="small" fill="outline" (click)="load()" [disabled]="loading">Refresh</ion-button>
-      <ion-button size="small" fill="outline" (click)="exportCsv()" [disabled]="loading">Export users CSV</ion-button>
+      <ion-button size="small" fill="outline" (click)="exportCsv()" [disabled]="loading" *ngIf="!demo">Export users CSV</ion-button>
     </div>
 
+    <div class="tw-note" *ngIf="demo">Demo dashboard: these customers, payments and messages are made-up samples. Your own coach sessions from this browser appear under Coach activity.</div>
     <div class="tw-error" *ngIf="error">{{ error }}</div>
     <div class="tw-card" *ngIf="loading"><ion-spinner></ion-spinner></div>
 
@@ -64,7 +65,7 @@
                 <td class="actions" *ngIf="u.status !== 'Admin'">
                   <button (click)="grant(u, 30)">+30d</button>
                   <button (click)="grant(u, 365)">+1y</button>
-                  <button class="danger" *ngIf="u.status === 'Paid'" (click)="revoke(u)">Revoke</button>
+                  <button class="danger" *ngIf="u.status === 'Paid'" (click)="revoke(u)">{{ confirmRevoke === u.uid ? 'Tap again to revoke' : 'Revoke' }}</button>
                 </td>
                 <td *ngIf="u.status === 'Admin'"></td>
               </tr>

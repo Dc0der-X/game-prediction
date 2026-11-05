@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { Firestore, addDoc, collection } from '@angular/fire/firestore';
 import { AccountService } from '../core/account.service';
+import { environment } from 'src/environments/environment';
 import { GAMES, getBet, pct } from '../core/games';
 import { FREE_FEATURES, PRICING, PRO_FEATURES } from '../core/pricing';
 import { TABLE_RULES } from '../core/strategies';
@@ -12,7 +13,7 @@ import { TABLE_RULES } from '../core/strategies';
   styleUrls: ['home.page.scss'],
 })
 export class HomePage {
-  private fs = inject(Firestore);
+  private fs = inject(Firestore, { optional: true }) as Firestore;
   private fb = inject(FormBuilder);
   access$ = inject(AccountService).access$;
 
@@ -74,6 +75,11 @@ export class HomePage {
     this.sending = true;
     try {
       const v = this.contactFG.value;
+      if (environment.demoMode) {
+        this.sent = true;
+        this.contactFG.reset();
+        return;
+      }
       await addDoc(collection(this.fs, 'Contact'), {
         name: (v.name || '').slice(0, 100),
         email: (v.email || '').slice(0, 200),

@@ -16,7 +16,7 @@ declare global {
  */
 @Injectable({ providedIn: 'root' })
 export class PaymentsService {
-  private auth = inject(Auth);
+  private auth = inject(Auth, { optional: true }) as Auth;
   private sdkPromise: Promise<any> | null = null;
   private cfg = environment.payments;
 
