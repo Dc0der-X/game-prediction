@@ -7,18 +7,19 @@ import { AccountService, authErrorMessage } from '../../core/account.service';
 import { PRICING, PRO_FEATURES } from '../../core/pricing';
 import { TopbarComponent } from '../../shared/topbar.component';
 import { safeNext } from './login.page';
+import { GoogleButtonComponent } from '../../shared/google-button.component';
 
 @Component({
   selector: 'app-signup',
   standalone: true,
-  imports: [IonicModule, FormsModule, RouterLink, NgIf, NgFor, TopbarComponent],
+  imports: [IonicModule, FormsModule, RouterLink, NgIf, NgFor, TopbarComponent, GoogleButtonComponent],
   template: `
     <app-topbar></app-topbar>
     <ion-content>
       <div class="tw-page wrap">
         <div class="pitch">
           <p class="tw-eyebrow">{{ trialHours }} hours of full access, free</p>
-          <h1>Play smarter. Lose less. Know when to stop.</h1>
+          <h1>Know your next bet. Know when to walk away.</h1>
           <ul>
             <li *ngFor="let f of features">{{ f }}</li>
           </ul>
@@ -27,6 +28,10 @@ import { safeNext } from './login.page';
 
         <div class="tw-card">
           <h2>Create your account</h2>
+          <app-google-button [busy]="gBusy" (pressed)="google()"></app-google-button>
+          <p class="tw-muted tw-small consent">By continuing you confirm you're 18+ and agree to the <a routerLink="/terms">terms</a>.
+            We only keep your name and email.</p>
+          <div class="or"><span>or with email</span></div>
           <form (ngSubmit)="submit()" #f="ngForm">
             <label class="tw-field"><span>Name</span>
               <input class="tw-input" name="name" [(ngModel)]="name" required autocomplete="name" /></label>
@@ -34,12 +39,6 @@ import { safeNext } from './login.page';
               <input class="tw-input" type="email" name="email" [(ngModel)]="email" required email autocomplete="email" /></label>
             <label class="tw-field"><span>Password (6+ characters)</span>
               <input class="tw-input" type="password" name="password" [(ngModel)]="password" required minlength="6" autocomplete="new-password" /></label>
-            <div class="two">
-              <label class="tw-field"><span>Phone (optional)</span>
-                <input class="tw-input" type="tel" name="phone" [(ngModel)]="phone" autocomplete="tel" /></label>
-              <label class="tw-field"><span>Telegram (optional)</span>
-                <input class="tw-input" name="telegram" [(ngModel)]="telegram" placeholder="@username" /></label>
-            </div>
             <label class="tw-check"><input type="checkbox" name="age" [(ngModel)]="age" required />
               <span>I am 18 or older and gambling is legal where I live.</span></label>
             <label class="tw-check"><input type="checkbox" name="terms" [(ngModel)]="terms" required />
@@ -59,6 +58,9 @@ import { safeNext } from './login.page';
     .pitch h1 { font-size: clamp(28px, 4vw, 40px); margin: 0 0 16px; }
     .pitch ul { padding-left: 18px; line-height: 1.7; }
     h2 { margin: 0 0 16px; }
+    .consent { margin: 10px 0 0; }
+    .or { display: flex; align-items: center; gap: 10px; margin: 18px 0 14px; color: var(--tw-muted); font-size: 13px; }
+    .or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--tw-line-strong); }
     .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     @media (max-width: 420px) { .two { grid-template-columns: 1fr; } }
   `],
@@ -77,7 +79,21 @@ export class SignupPage {
   age = false;
   terms = false;
   busy = false;
+  gBusy = false;
   error = '';
+
+  async google() {
+    this.gBusy = true;
+    this.error = '';
+    try {
+      await this.account.signInWithGoogle();
+      this.router.navigateByUrl(safeNext(this.next));
+    } catch (e) {
+      this.error = authErrorMessage(e);
+    } finally {
+      this.gBusy = false;
+    }
+  }
 
   async submit() {
     this.busy = true;

@@ -104,7 +104,7 @@
               ],
               "assets": [
                 {
-                  "glob": "{baccarat.jpeg,roulette.png,dragon-tiger.webp,sic-bo.jpeg,lucky-7.jpeg}",
+                  "glob": "{baccarat.jpeg,roulette.png,dragon-tiger.webp,sic-bo.jpeg,dice-coins.jpeg}",
                   "input": "src/assets/img",
                   "output": "assets/img"
                 },

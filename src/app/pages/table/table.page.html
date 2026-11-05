@@ -81,11 +81,13 @@
               <div *ngFor="let d of outcome.data.dice; let i = index" class="tw-die" [style.animation-delay.ms]="i * 90">{{ d }}</div>
             </div>
 
-            <!-- Lucky 7 -->
-            <div *ngSwitchCase="'lucky7'" class="hands">
-              <div class="hand win">
-                <div class="cards"><div class="tw-cardface big" [class.red]="isRed(outcome.data.card)">
-                  {{ RANKS[outcome.data.card.rank] }}<span class="suit">{{ SUITS[outcome.data.card.suit] }}</span></div></div>
+            <!-- Craps -->
+            <div *ngSwitchCase="'craps'" class="craps">
+              <span class="point" *ngIf="outcome.data.point">Point {{ outcome.data.point }}</span>
+              <div class="rolls">
+                <span class="pair" *ngFor="let r of outcome.data.rolls.slice(-6); let i = index" [style.animation-delay.ms]="i * 90">
+                  <i class="tw-die mini">{{ r[0] }}</i><i class="tw-die mini">{{ r[1] }}</i>
+                </span>
               </div>
             </div>
 

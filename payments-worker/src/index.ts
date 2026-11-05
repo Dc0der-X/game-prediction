@@ -6,6 +6,7 @@
  *   POST /paypal/capture    (signed-in user)  capture that order and unlock Pro
  *   POST /paypal/activate   (signed-in user)  verify a PayPal subscription (legacy monthly plan)
  *   POST /paypal/webhook    (PayPal)          captures, renewals, cancellations
+ *   POST /trial/claim       (signed-in user)  free-trial limit: max TRIAL_PER_IP accounts per network
  *   POST /crypto/invoice    (signed-in user)  create a NOWPayments hosted invoice
  *   POST /crypto/webhook    (NOWPayments)     IPN – unlock Pro when a payment is finished
  *
@@ -31,6 +32,10 @@ export interface Env {
   NOWPAYMENTS_API_KEY: string;
   NOWPAYMENTS_IPN_SECRET: string;
   GOOGLE_SERVICE_ACCOUNT: string;
+  /** Secret salt for hashing IP addresses (never stored in plain form). */
+  IP_SALT: string;
+  /** How many accounts on one network get the free trial (default 2). */
+  TRIAL_PER_IP?: string;
 }
 
 const DAY = 86_400_000;
@@ -60,6 +65,8 @@ export default {
           return json(await paypalActivate(req, env), 200, cors);
         case '/paypal/webhook':
           return json(await paypalWebhook(req, env), 200);
+        case '/trial/claim':
+          return json(await trialClaim(req, env), 200, cors);
         case '/crypto/invoice':
           return json(await cryptoInvoice(req, env), 200, cors);
         case '/crypto/webhook':
@@ -338,6 +345,39 @@ async function cryptoWebhook(req: Request, env: Env) {
   await grantPass(env, uid, plan, `np_${body.payment_id}`, 'crypto', paidUsd,
     `${PLAN_NAME[plan]} · ${body.pay_amount ?? ''} ${String(body.pay_currency || '').toUpperCase()}`);
   return { ok: true };
+}
+
+/* ------------------------------------------------------------------ */
+/* Free-trial limit per network                                        */
+/* ------------------------------------------------------------------ */
+
+/** One-way, salted hash of the caller's IP – the IP itself is never stored. */
+export async function ipHash(ip: string, salt: string): Promise<string> {
+  const data = new TextEncoder().encode(`${salt}|${ip}`);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function trialClaim(req: Request, env: Env) {
+  const { uid } = await requireUser(req, env);
+  const ip = req.headers.get('CF-Connecting-IP') || req.headers.get('X-Forwarded-For')?.split(',')[0].trim() || '';
+  if (!ip) throw new HttpError(400, 'Could not read your network address.');
+  const max = Math.max(1, Number(env.TRIAL_PER_IP || 2));
+  const fs = firestore(env);
+  const key = await ipHash(ip, env.IP_SALT);
+  const doc = await fs.get(`trialIps/${key}`);
+  const uids = String(doc?.uids || '').split(',').filter(Boolean);
+  let ok: boolean;
+  if (uids.includes(uid)) ok = true;
+  else if (uids.length < max) {
+    uids.push(uid);
+    ok = true;
+    if (doc) await fs.update(`trialIps/${key}`, { uids: uids.join(','), updatedAt: new Date() });
+    else await fs.create('trialIps', key, { uids: uids.join(','), updatedAt: new Date() });
+  } else ok = false;
+  const user = await fs.get(`users/${uid}`);
+  if (user && user.trialOk !== ok) await fs.update(`users/${uid}`, { trialOk: ok });
+  return { ok, limit: max };
 }
 
 /* ------------------------------------------------------------------ */

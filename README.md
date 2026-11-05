@@ -12,7 +12,7 @@ fun, unlimited practice and a disciplined way to play for real that keeps losses
 
 | | Free | Pro pass |
 |---|---|---|
-| Practice tables (Roulette, Baccarat, Dragon Tiger, Sic Bo, Lucky 7) with play money and signals | ✅ forever | ✅ |
+| Practice tables (Baccarat, Craps, Roulette, Sic Bo, Dragon Tiger) with play money and signals | ✅ forever | ✅ |
 | **Signal Room**: enter your amount, tap what came, get the side and the amount for every bet | first 3 hours | ✅ |
 | Live target and loss tracking, check-ins, STOP and cash-out signs | first 3 hours | ✅ |
 | History and the **winnings wall** | first 3 hours | ✅ |
@@ -31,6 +31,10 @@ fun, unlimited practice and a disciplined way to play for real that keeps losses
 Passes are one-time payments (PayPal, card or crypto). They never auto-renew and stack on any time left.
 Change prices in `src/app/core/pricing.ts` **and** `payments-worker/wrangler.toml` (`PRICE_DAY_USD`, `PRICE_MONTH_USD`,
 `PRICE_YEAR_USD`).
+
+Games: only the five with the fairest even-money bets, ranked by house edge – Baccarat Banker 1.06%, Craps Don't Pass
+1.36%, Roulette (single zero) 2.70%, Sic Bo Small/Big 2.78%, Dragon Tiger 3.73%. Lucky 7 (7.69%) was removed. Craps
+follows the book's own rule: start on Don't Pass, switch to Pass after a level-5 loss.
 
 ### Design and marketing
 
@@ -133,6 +137,16 @@ Everything is open source: Angular, Ionic, Firebase JS SDK, `jose`, `wrangler`.
    npx firebase login
    npm run deploy
    ```
+
+### 1b. Google sign-in, support chat and the free-trial limit
+
+1. Firebase console → Authentication → Sign-in method → **Google → Enable**. Add your domain under
+   Authentication → Settings → **Authorized domains**.
+2. Put your Telegram username and WhatsApp number in `src/environments/environment.prod.ts` → `support`.
+   The floating **Help** button opens them with the user's account email pre-filled.
+3. Free trial limit: the payment worker gives the 3 free hours to at most **2 accounts per network**
+   (`TRIAL_PER_IP` in `wrangler.toml`). It stores only a salted one-way hash of the IP. Set the salt once:
+   `npx wrangler secret put IP_SALT` (any long random string). Without the worker (local/demo) everyone gets the trial.
 
 ### 2. Keep your admin login (migrate old accounts)
 

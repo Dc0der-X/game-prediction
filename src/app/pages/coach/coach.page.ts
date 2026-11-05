@@ -41,7 +41,7 @@ const MIN = 60_000;
 /** Colour of each side's disc / bead. */
 export const SIDE_TONE: Record<string, string> = {
   red: 'red', black: 'black', banker: 'red', player: 'blue', dragon: 'red', tiger: 'blue',
-  small: 'blue', big: 'red', low: 'blue', high: 'red',
+  small: 'blue', big: 'red', low: 'blue', high: 'red', pass: 'blue', dontpass: 'red',
 };
 
 @Component({
@@ -140,7 +140,7 @@ export class CoachPage implements OnDestroy {
     if (saved && saved.v === 2 && saved.uid === this.uid) {
       this.live = saved;
       this.engine = SignalEngine.replay(this.makeEngine(saved), saved.events);
-      this.stage = this.engine.watching || !saved.events.length ? 'first' : 'live';
+      this.stage = this.engine.watching || (!saved.events.length && saved.system !== 'neural') ? 'first' : 'live';
       this.countTo(this.engine.signal().stake);
       this.startTimer();
       return;
@@ -207,7 +207,9 @@ export class CoachPage implements OnDestroy {
     this.endReason = null;
     this.stopSign = null;
     this.persist();
-    this.stage = 'first';
+    // Craps (book rule) needs no watching: straight to the first bet.
+    this.stage = this.system === 'neural' && !this.engine.watching ? 'live' : 'first';
+    if (this.stage === 'live') this.reveal();
     this.startTimer();
   }
 

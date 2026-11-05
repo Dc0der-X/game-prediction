@@ -133,6 +133,14 @@ export class NeuralSystem implements Staker {
 
   constructor(private base: number, private game: GameDef) {
     this.sides = game.sides!;
+    this.startCraps();
+  }
+
+  /** Book rule for craps: no watching – start on Don't Pass, switch to Pass after a level-5 loss. */
+  private startCraps() {
+    if (this.game.id !== 'craps') return;
+    this.mode = 'repeat';
+    this.side = 0;
   }
 
   get watching(): boolean {
@@ -159,6 +167,7 @@ export class NeuralSystem implements Staker {
     this.betsSinceSwitch = 0;
     this.switchWinStreak = 0;
     this.switches = 0;
+    this.startCraps();
   }
 
   observe(sideId: string | null) {

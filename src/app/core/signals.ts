@@ -41,7 +41,8 @@ export const VOID_RESULT: Record<GameId, { label: string; short: string; mult: n
   'dragon-tiger': { label: 'Tie', short: 'T', mult: -0.5 },
   roulette: { label: 'Zero', short: '0', mult: -1 },
   sicbo: { label: 'Triple', short: '★', mult: -1 },
-  lucky7: { label: 'Seven', short: '7', mult: -1 },
+  // Craps: a 12 on the come-out pushes Don't Pass (Pass loses – handled in applySide).
+  craps: { label: '12 (bar)', short: '12', mult: 0 },
 };
 
 export const SYSTEMS: { id: SystemId; name: string; summary: string }[] = [
@@ -173,7 +174,8 @@ export class SignalEngine {
     }
     const sig = this.signal();
     const result: RoundResult = came === null ? 'void' : came === sig.betId ? 'won' : 'lost';
-    const mult = result === 'won' ? this.winMultiplier(sig.betId) : result === 'lost' ? -1 : VOID_RESULT[this.game.id].mult;
+    const voidMult = this.game.id === 'craps' && sig.betId === 'pass' ? -1 : VOID_RESULT[this.game.id].mult;
+    const mult = result === 'won' ? this.winMultiplier(sig.betId) : result === 'lost' ? -1 : voidMult;
     return this.push({ betId: sig.betId, stake: sig.stake, net: round2(sig.stake * mult), result, came });
   }
 

@@ -12,6 +12,8 @@ APP_ORIGINS = "https://aicasinopredictor.web.app,https://aicasinopredictor.fireb
 PRICE_DAY_USD = "20"
 PRICE_MONTH_USD = "140"
 PRICE_YEAR_USD = "999"
+# Accounts per network that get the free trial.
+TRIAL_PER_IP = "2"
 # "sandbox" while testing, "live" for real money.
 PAYPAL_ENV = "sandbox"
 PAYPAL_CLIENT_ID = ""
@@ -24,3 +26,4 @@ PAYPAL_WEBHOOK_ID = ""
 #   NOWPAYMENTS_API_KEY      NOWPayments API key
 #   NOWPAYMENTS_IPN_SECRET   NOWPayments IPN secret
 #   GOOGLE_SERVICE_ACCOUNT   Firebase service-account JSON (whole file, one line)
+#   IP_SALT                  any long random string (hashes IPs for the free-trial limit)

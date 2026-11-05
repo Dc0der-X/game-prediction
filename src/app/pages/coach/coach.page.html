@@ -43,6 +43,7 @@
           </div>
           <input class="tw-input casino" list="casinos" [(ngModel)]="casino" placeholder="Casino or table provider (optional)" maxlength="80" />
           <datalist id="casinos"><option *ngFor="let c of casinoSuggestions" [value]="c"></option></datalist>
+          <p class="tw-muted tw-small" *ngIf="gameId === 'craps'">Craps: tap the result of each line decision (Pass or Don't Pass). The coach starts on Don't Pass.</p>
           <p class="tw-muted tw-small" *ngIf="gameId === 'roulette'">Choose a European wheel (one zero). American wheels (0 and 00) cost twice as much.</p>
         </div>
       </section>

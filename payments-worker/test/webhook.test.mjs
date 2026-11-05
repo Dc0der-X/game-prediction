@@ -3,6 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac, generateKeyPairSync } from 'node:crypto';
+import { SignJWT, exportJWK, generateKeyPair } from 'jose';
 
 const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
 const SA = JSON.stringify({
@@ -13,15 +14,22 @@ const env = {
   FIREBASE_PROJECT_ID: 'demo', APP_URL: 'https://app.test', APP_ORIGINS: 'https://app.test',
   PRICE_DAY_USD: '20', PRICE_MONTH_USD: '140', PRICE_YEAR_USD: '999', PAYPAL_ENV: 'sandbox', PAYPAL_CLIENT_ID: '', PAYPAL_PLAN_ID: 'P-1',
   PAYPAL_WEBHOOK_ID: '', PAYPAL_SECRET: '', NOWPAYMENTS_API_KEY: 'k', NOWPAYMENTS_IPN_SECRET: 'ipn-secret',
-  GOOGLE_SERVICE_ACCOUNT: SA,
+  GOOGLE_SERVICE_ACCOUNT: SA, IP_SALT: 'salt', TRIAL_PER_IP: '2',
 };
 
 // In-memory Firestore behind a fake fetch.
 const docs = new Map();
 const base = 'https://firestore.googleapis.com/v1/projects/demo/databases/(default)/documents/';
+// Fake Firebase Auth signing key, served where the worker looks up Google's public keys.
+const authKeys = await generateKeyPair('RS256');
+const authJwk = { ...(await exportJWK(authKeys.publicKey)), kid: 'k1', alg: 'RS256', use: 'sig' };
+const idToken = (uid) => new SignJWT({ email: `${uid}@x.y` }).setProtectedHeader({ alg: 'RS256', kid: 'k1' })
+  .setIssuer('https://securetoken.google.com/demo').setAudience('demo').setSubject(uid).setIssuedAt().setExpirationTime('1h').sign(authKeys.privateKey);
+
 globalThis.fetch = async (input, init = {}) => {
   const url = typeof input === 'string' ? input : input.url;
   const method = init.method || 'GET';
+  if (url.startsWith('https://www.googleapis.com/service_accounts/')) return Response.json({ keys: [authJwk] });
   if (url === 'https://oauth2.googleapis.com/token')
     return Response.json({ access_token: 'tok', expires_in: 3600 });
   if (url.startsWith(base)) {
@@ -115,4 +123,24 @@ test('non-finished statuses are ignored', async () => {
 test('invoice endpoint requires login', async () => {
   const res = await worker.fetch(new Request('https://w.test/crypto/invoice', { method: 'POST', body: '{}' }), env);
   assert.equal(res.status, 401);
+});
+
+
+test('free trial: only 2 accounts per network, IP never stored', async () => {
+  const claim = async (uid, ip) => {
+    docs.set(`users/${uid}`, docs.get(`users/${uid}`) || { email: { stringValue: `${uid}@x.y` } });
+    const res = await worker.fetch(new Request('https://w.test/trial/claim', {
+      method: 'POST', headers: { Authorization: `Bearer ${await idToken(uid)}`, 'CF-Connecting-IP': ip, 'content-type': 'application/json' }, body: '{}',
+    }), env);
+    return (await res.json()).ok;
+  };
+  assert.equal(await claim('t1', '1.2.3.4'), true);
+  assert.equal(await claim('t2', '1.2.3.4'), true);
+  assert.equal(await claim('t3', '1.2.3.4'), false);
+  assert.equal(await claim('t1', '1.2.3.4'), true, 'same account again is still fine');
+  assert.equal(await claim('t4', '5.6.7.8'), true, 'another network gets its own 2');
+  assert.equal(docs.get('users/t3').trialOk.booleanValue, false);
+  assert.equal(docs.get('users/t2').trialOk.booleanValue, true);
+  const stored = JSON.stringify([...docs.entries()].filter(([k]) => k.startsWith('trialIps/')));
+  assert.ok(!stored.includes('1.2.3.4') && !stored.includes('5.6.7.8'), 'raw IPs must not be stored');
 });

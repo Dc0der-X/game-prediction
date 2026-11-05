@@ -21,7 +21,10 @@ import { environment } from 'src/environments/environment';
             <p class="tw-eyebrow">TableWise Pro</p>
             <h1 *ngIf="a.isPaid">You're on Pro until {{ a.paidUntil | date: 'MMM d, h:mm a' }}</h1>
             <h1 *ngIf="!a.isPaid && a.onTrial">Keep your signals going</h1>
-            <h1 *ngIf="!a.isPaid && !a.onTrial">Your free hours are up. Pick your pass.</h1>
+            <h1 *ngIf="!a.isPaid && !a.onTrial && !a.trialBlocked">Your free hours are up. Pick your pass.</h1>
+            <h1 *ngIf="!a.isPaid && a.trialBlocked">Pick your pass to start</h1>
+            <p class="tw-note" *ngIf="!a.isPaid && a.trialBlocked">Free hours are limited to 2 accounts per network, and this network has
+              already used them. A pass unlocks everything straight away.</p>
             <p class="tw-muted lead">Every pass unlocks live signals, your session plan, the STOP alerts and your winnings wall.
               Buy once – no auto-renewal, no surprises.</p>
           </header>

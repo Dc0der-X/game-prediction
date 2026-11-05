@@ -46,7 +46,7 @@ export class HomePage {
     },
     {
       q: 'Which games does it work with?',
-      a: 'Roulette (red/black), Baccarat (player/banker), Dragon Tiger, Sic Bo (small/big) and Lucky 7 – at any online or land-based casino.',
+      a: 'Roulette (red/black), Baccarat (player/banker), Dragon Tiger, Sic Bo (small/big) and Craps (pass/don\'t pass) – at any online or land-based casino.',
     },
     {
       q: 'Does it guarantee wins?',

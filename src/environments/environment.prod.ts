@@ -17,6 +17,14 @@ export const environment = {
    * Public payment settings (safe to ship to the browser).
    * Secrets live only in Cloud Functions – see README "Payments".
    */
+  /**
+   * Chat support. Telegram username without @ (e.g. 'TableWiseHelpBot') and WhatsApp number in
+   * international format, digits only (e.g. '15551234567'). Empty = that option shows as "not connected".
+   */
+  support: {
+    telegram: '',
+    whatsapp: '',
+  },
   payments: {
     /** PayPal REST app client id. Leave empty to hide the PayPal button. */
     paypalClientId: '',

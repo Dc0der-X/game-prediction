@@ -6,7 +6,7 @@
  * exactly what they would see at a real table over time.
  */
 
-export type GameId = 'baccarat' | 'roulette' | 'dragon-tiger' | 'sicbo' | 'lucky7';
+export type GameId = 'baccarat' | 'craps' | 'roulette' | 'dragon-tiger' | 'sicbo';
 
 export interface Card {
   rank: number; // 1 (Ace) .. 13 (King)
@@ -231,27 +231,47 @@ function settleSicBo(bet: string, o: Outcome): number {
 }
 
 /* ------------------------------------------------------------------ */
-/* Lucky 7 (single card from 8 decks)                                  */
+/* Craps (pass / don't pass line decisions)                            */
 /* ------------------------------------------------------------------ */
 
-const l7Shoe = new Shoe(8);
+const roll = (): [number, number] => [randInt(6) + 1, randInt(6) + 1];
 
-function playLucky7(): Outcome {
-  const c = l7Shoe.draw();
-  const tag = c.rank < 7 ? 'L' : c.rank > 7 ? 'H' : '7';
+/** One full line decision: the come-out roll, then rolls until the point or a seven. */
+function playCraps(): Outcome {
+  const rolls: [number, number][] = [roll()];
+  const first = rolls[0][0] + rolls[0][1];
+  let winner: 'pass' | 'dontpass' | 'bar';
+  let point = 0;
+  if (first === 7 || first === 11) winner = 'pass';
+  else if (first === 2 || first === 3) winner = 'dontpass';
+  else if (first === 12) winner = 'bar';
+  else {
+    point = first;
+    for (;;) {
+      const r = roll();
+      rolls.push(r);
+      const t = r[0] + r[1];
+      if (t === point) { winner = 'pass'; break; }
+      if (t === 7) { winner = 'dontpass'; break; }
+    }
+  }
+  const text =
+    winner === 'bar' ? '12 on the come-out – Pass loses, Don\'t Pass pushes'
+    : point === 0 ? `Come-out ${first} – ${winner === 'pass' ? 'Pass' : 'Don\'t Pass'} wins`
+    : winner === 'pass' ? `Point ${point} made – Pass wins`
+    : `Seven out on point ${point} – Don't Pass wins`;
   return {
-    tag,
-    tone: c.rank === 7 ? 'gold' : isRedSuit(c.suit) ? 'red' : 'black',
-    text: `${RANKS[c.rank]}${SUITS[c.suit]} – ${c.rank < 7 ? 'Low' : c.rank > 7 ? 'High' : 'Lucky 7!'}`,
-    data: { card: c },
+    tag: winner === 'bar' ? '12' : winner === 'pass' ? 'P' : 'D',
+    tone: winner === 'pass' ? 'blue' : winner === 'dontpass' ? 'red' : 'green',
+    text,
+    data: { rolls, point, winner },
   };
 }
 
-function settleLucky7(bet: string, o: Outcome): number {
-  const r = o.data.card.rank;
-  if (bet === 'low') return r < 7 ? 1 : -1;
-  if (bet === 'high') return r > 7 ? 1 : -1;
-  if (bet === 'seven') return r === 7 ? 11 : -1;
+function settleCraps(bet: string, o: Outcome): number {
+  const w = o.data.winner;
+  if (bet === 'pass') return w === 'pass' ? 1 : -1;
+  if (bet === 'dontpass') return w === 'dontpass' ? 1 : w === 'bar' ? 0 : -1;
   return -1;
 }
 
@@ -344,21 +364,21 @@ export const GAMES: GameDef[] = [
     settle: settleSicBo,
   },
   {
-    id: 'lucky7',
-    sides: ['low', 'high'],
-    name: 'Lucky 7',
-    image: 'assets/img/lucky-7.jpeg',
-    blurb: 'Highest house edge of the five (7.69%). Practice only is wise.',
-    roundsPerHour: 100,
-    bestBet: 'low',
+    id: 'craps',
+    sides: ['dontpass', 'pass'],
+    name: 'Craps',
+    image: 'assets/img/dice-coins.jpeg',
+    blurb: 'Pass and Don\'t Pass are two of the fairest bets in any casino.',
+    roundsPerHour: 60,
+    bestBet: 'dontpass',
     bets: [
-      { id: 'low', label: 'Low A–6', pays: '1 : 1', edge: 1 / 13, hint: 'Loses on 7' },
-      { id: 'high', label: 'High 8–K', pays: '1 : 1', edge: 1 / 13, hint: 'Loses on 7' },
-      { id: 'seven', label: 'Lucky 7', pays: '11 : 1', edge: 1 / 13 },
+      { id: 'dontpass', label: "Don't Pass", pays: '1 : 1', edge: 0.0136, hint: '12 on the come-out is a push' },
+      { id: 'pass', label: 'Pass Line', pays: '1 : 1', edge: 0.0141 },
     ],
-    play: playLucky7,
-    settle: settleLucky7,
+    play: playCraps,
+    settle: settleCraps,
   },
+
 ];
 
 /** Which even-money side an outcome landed on, or null for zero / tie / triple / seven. */
@@ -369,7 +389,7 @@ export function sideOf(game: GameDef, o: Outcome): string | null {
     case 'roulette': return d.n === 0 ? null : RED_NUMBERS.has(d.n) ? 'red' : 'black';
     case 'dragon-tiger': return d.winner === 'D' ? 'dragon' : d.winner === 'T' ? 'tiger' : null;
     case 'sicbo': return d.triple ? null : d.total <= 10 ? 'small' : 'big';
-    case 'lucky7': return d.card.rank < 7 ? 'low' : d.card.rank > 7 ? 'high' : null;
+    case 'craps': return d.winner === 'bar' ? null : d.winner;
   }
   return null;
 }

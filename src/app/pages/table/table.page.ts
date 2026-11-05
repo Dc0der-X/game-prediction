@@ -361,7 +361,7 @@ export class TablePage implements OnDestroy {
   betTone(id: string) {
     const map: Record<string, string> = {
       player: 'blue', banker: 'red', tie: 'green', dragon: 'red', tiger: 'blue',
-      red: 'red', black: 'black', small: 'blue', big: 'red', seven: 'gold',
+      red: 'red', black: 'black', small: 'blue', big: 'red', pass: 'blue', dontpass: 'red',
     };
     return map[id] || '';
   }

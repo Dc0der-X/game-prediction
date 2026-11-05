@@ -1,7 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import {
   Auth,
+  GoogleAuthProvider,
   createUserWithEmailAndPassword,
+  signInWithPopup,
   onAuthStateChanged,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
@@ -36,6 +38,8 @@ export interface Profile {
   plan?: 'pro' | null;
   planSource?: 'paypal' | 'crypto' | 'admin';
   planName?: 'day' | 'month' | 'year';
+  /** Set by the payments worker: true = this account gets the free hours (max 2 per network). */
+  trialOk?: boolean;
   planExpiresAt?: Timestamp | null;
   paypalStatus?: string;
   selfExcludedUntil?: Timestamp | null;
@@ -52,6 +56,8 @@ export interface Access {
   daysLeft: number;
   /** Milliseconds of free trial left (0 when not on trial). */
   trialMsLeft: number;
+  /** The free hours were refused because this network already used them. */
+  trialBlocked: boolean;
   selfExcludedUntil: Date | null;
 }
 
@@ -61,7 +67,7 @@ export function computeAccess(p: Profile | null | undefined): Access {
   if (!p) {
     return {
       signedIn: false, isAdmin: false, onTrial: false, isPaid: false, hasPro: false,
-      trialEndsAt: null, paidUntil: null, daysLeft: 0, trialMsLeft: 0, selfExcludedUntil: null,
+      trialEndsAt: null, paidUntil: null, daysLeft: 0, trialMsLeft: 0, trialBlocked: false, selfExcludedUntil: null,
     };
   }
   const now = Date.now();
@@ -71,7 +77,10 @@ export function computeAccess(p: Profile | null | undefined): Access {
   const paidUntil = p.planExpiresAt ? p.planExpiresAt.toMillis() : 0;
   const isAdmin = p.role === 'admin';
   const isPaid = paidUntil > now;
-  const onTrial = !isPaid && trialEnds > now;
+  // The free hours need the worker's OK (2 accounts per network). Without a worker (demo / local) everyone gets them.
+  const limiterOn = !!environment.payments.apiUrl && !environment.demoMode;
+  const trialAllowed = p.trialOk === true || (!limiterOn && p.trialOk !== false);
+  const onTrial = !isPaid && trialAllowed && trialEnds > now;
   const end = Math.max(trialEnds, paidUntil);
   const excl = p.selfExcludedUntil ? p.selfExcludedUntil.toDate() : null;
   return {
@@ -84,6 +93,7 @@ export function computeAccess(p: Profile | null | undefined): Access {
     paidUntil: paidUntil ? new Date(paidUntil) : null,
     daysLeft: Math.max(0, Math.ceil((end - now) / DAY)),
     trialMsLeft: onTrial ? trialEnds - now : 0,
+    trialBlocked: p.trialOk === false,
     selfExcludedUntil: excl && excl.getTime() > now ? excl : null,
   };
 }
@@ -143,6 +153,34 @@ export class AccountService {
       ageConfirmed: true, createdAt: Timestamp.now(), selfExcludedUntil: null };
   }
 
+  /** Asks the worker whether this account gets the free hours (2 accounts per network). Best effort. */
+  async claimTrial() {
+    const user = this.auth?.currentUser;
+    if (this.demo || !user || !environment.payments.apiUrl) return;
+    try {
+      const token = await user.getIdToken();
+      await fetch(environment.payments.apiUrl.replace(/\/$/, '') + '/trial/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: '{}',
+      });
+    } catch {}
+  }
+
+  /** One-tap Google sign-in. Creates the profile on first use; we keep only name and email. */
+  async signInWithGoogle() {
+    if (this.demo) {
+      const p = this.demoProfile('you@gmail.com', 'Google user');
+      this.setDemo(p);
+      return { uid: p.uid, email: p.email } as User;
+    }
+    const cred = await signInWithPopup(this.auth, new GoogleAuthProvider());
+    const snap = await getDoc(doc(this.fs, 'users', cred.user.uid));
+    if (!snap.exists()) await this.createProfile(cred.user, { name: cred.user.displayName || '' });
+    if (!snap.exists() || snap.data()?.['trialOk'] === undefined) await this.claimTrial();
+    return cred.user;
+  }
+
   async signUp(data: { name: string; email: string; password: string; phone?: string; telegram?: string }) {
     if (this.demo) {
       const p = { ...this.demoProfile(data.email, data.name), phone: data.phone || '', telegram: data.telegram || '' };
@@ -152,6 +190,7 @@ export class AccountService {
     const cred = await createUserWithEmailAndPassword(this.auth, data.email.trim(), data.password);
     await updateProfile(cred.user, { displayName: data.name });
     await this.createProfile(cred.user, data);
+    await this.claimTrial();
     return cred.user;
   }
 
@@ -165,6 +204,7 @@ export class AccountService {
     const cred = await signInWithEmailAndPassword(this.auth, email.trim(), password);
     const snap = await getDoc(doc(this.fs, 'users', cred.user.uid));
     if (!snap.exists()) await this.createProfile(cred.user, { name: cred.user.displayName || '' });
+    if (!snap.exists() || snap.data()?.['trialOk'] === undefined) await this.claimTrial();
     return cred.user;
   }
 
@@ -228,6 +268,8 @@ export function authErrorMessage(e: any): string {
   if (code.includes('weak-password')) return 'Use a password with at least 6 characters.';
   if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found'))
     return 'Email or password is incorrect.';
+  if (code.includes('popup-closed') || code.includes('cancelled-popup')) return 'Google sign-in was closed before it finished.';
+  if (code.includes('popup-blocked')) return 'Your browser blocked the Google window. Allow pop-ups for this site and try again.';
   if (code.includes('too-many-requests')) return 'Too many attempts. Please wait a minute and try again.';
   return e?.message || 'Something went wrong. Please try again.';
 }

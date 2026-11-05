@@ -9,7 +9,7 @@ const routes: Routes = [
   { path: 'terms', data: { title: 'Terms of Use', description: 'TableWise terms of use, payments and responsible play.' }, loadChildren: () => import('./terms/terms.module').then((m) => m.TermsPageModule) },
 
   // Open to everyone – practice is the hook.
-  { path: 'lobby', data: { title: 'Free practice tables', description: 'Play Roulette, Baccarat, Dragon Tiger, Sic Bo and Lucky 7 free with play money and see live signals.' }, loadComponent: () => import('./pages/lobby/lobby.page').then((m) => m.LobbyPage) },
+  { path: 'lobby', data: { title: 'Free practice tables', description: 'Play Roulette, Baccarat, Craps, Dragon Tiger and Sic Bo free with play money and see live signals.' }, loadComponent: () => import('./pages/lobby/lobby.page').then((m) => m.LobbyPage) },
   { path: 'table/:game', data: { title: 'Practice table', description: 'Free play-money casino table with live signals.' }, loadComponent: () => import('./pages/table/table.page').then((m) => m.TablePage) },
   { path: 'rules', data: { title: 'How TableWise works', description: 'House edge by game, session limits and responsible play.' }, loadComponent: () => import('./pages/rules/rules.page').then((m) => m.RulesPage) },
 
@@ -32,7 +32,7 @@ const routes: Routes = [
   { path: 'customer-roulette', redirectTo: 'table/roulette' },
   { path: 'customer-dragon-tiger', redirectTo: 'table/dragon-tiger' },
   { path: 'customer-sicbo', redirectTo: 'table/sicbo' },
-  { path: 'customer-lucky-seven', redirectTo: 'table/lucky7' },
+  { path: 'customer-lucky-seven', redirectTo: 'lobby' },
   { path: 'customer-profile', redirectTo: 'account' },
   { path: 'admin-home', redirectTo: 'admin' },
   { path: 'admin-profile', redirectTo: 'admin' },
