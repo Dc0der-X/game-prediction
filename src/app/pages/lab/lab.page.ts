@@ -95,7 +95,7 @@ import { STRATEGIES, SimResult, StrategyId, simulate } from '../../core/strategi
     h3 { margin-top: 0; }
     .tw-stat { background: rgba(0,0,0,.22); }
     .tw-stat .value { font-size: 19px; }
-    .tw-stat.key { border-color: rgba(92,225,255,.6); }
+    .tw-stat.key { border-color: rgba(var(--tw-accent-rgb), .6); }
     .hist-title { margin-top: 18px; }
     .hist { display: flex; align-items: flex-end; gap: 3px; height: 120px; }
     .bar { flex: 1; background: var(--tw-green); border-radius: 4px 4px 0 0; min-height: 2px; }

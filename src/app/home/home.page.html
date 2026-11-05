@@ -4,7 +4,7 @@
     <button class="burger" (click)="menuOpen = !menuOpen" aria-label="Menu"><ion-icon name="menu-outline"></ion-icon></button>
     <div class="links" [class.open]="menuOpen">
       <a (click)="scrollTo('how')">How it works</a>
-      <a (click)="scrollTo('rules')">The Rules</a>
+      <a (click)="scrollTo('results')">Live results</a>
       <a (click)="scrollTo('pricing')">Pricing</a>
       <a (click)="scrollTo('faq')">FAQ</a>
       <ng-container *ngIf="access$ | async as a">
@@ -23,17 +23,23 @@
     <div class="hero-in">
       <div class="copy">
         <p class="tw-eyebrow">Neural Signals · for live tables</p>
-        <h1>Tell it what came.<br /><span>It tells you the next bet.</span></h1>
+        <h1>Know your next bet.<br /><span>Know when to walk away.</span></h1>
         <p class="lead">
-          Enter how much you're playing with. Tap the last result at your table – Red or Black, Player or Banker,
-          Dragon or Tiger. TableWise shows where to bet and how much, every round, and tells you exactly when to stop:
-          at your profit target, after 2 losses once you're up, or after 3 losses in a row.
+          Bring your amount. Tap what came at your table – Red or Black, Player or Banker, Dragon or Tiger.
+          TableWise shows the side and the exact amount for every bet, tracks your target live, and tells you
+          the moment to cash out.
         </p>
         <div class="cta">
-          <ion-button routerLink="/coach">Open the Signal Room</ion-button>
-          <ion-button fill="outline" routerLink="/lobby">Practise free</ion-button>
+          <ion-button routerLink="/signup">Start free – {{ pricing.trialHours }} hours</ion-button>
+          <ion-button fill="outline" routerLink="/lobby">Try a practice table</ion-button>
         </div>
-        <p class="tw-small tw-muted">{{ pricing.trialDays }} days free · No card · 18+ · Signals follow a fixed system; no system changes the house edge.</p>
+        <p class="tw-small tw-muted">No card needed · Works beside any live casino · 18+</p>
+        <div class="vibes" aria-label="Choose your colour theme">
+          <span class="tw-small tw-muted">Make it yours:</span>
+          <button *ngFor="let t of themes" [class.on]="theme.current === t.id" (click)="theme.set(t.id)" [attr.aria-label]="t.name + ' theme – ' + t.feel" [title]="t.name + ' · ' + t.feel">
+            <i [style.background]="'linear-gradient(135deg,' + t.swatch[0] + ' 50%,' + t.swatch[1] + ' 50%)'"></i>
+          </button>
+        </div>
       </div>
       <div class="felt-art" aria-hidden="true">
         <div class="sig-demo">
@@ -52,8 +58,8 @@
   <section class="strip">
     <div class="strip-in">
       <div><strong>1 tap</strong><span>per round – just tell it what came</span></div>
-      <div><strong>3 losses</strong><span>in a row = change table</span></div>
-      <div><strong>5 min</strong><span>STOP check-ins while you play</span></div>
+      <div><strong>{{ hitRate === null ? '–' : hitRate + '%' }}</strong><span>of recent sessions hit their target{{ demo ? ' (sample)' : '' }}</span></div>
+      <div><strong>~40 min</strong><span>typical session, then you cash out</span></div>
       <div><strong>5 games</strong><span>Roulette, Baccarat, Dragon Tiger, Sic Bo, Lucky 7</span></div>
     </div>
   </section>
@@ -61,14 +67,14 @@
   <!-- How it works -->
   <section class="block" id="how">
     <p class="tw-eyebrow">How it works</p>
-    <h2>Three taps to your next bet</h2>
+    <h2>Three steps. Zero guesswork.</h2>
     <div class="steps">
-      <div class="tw-card"><span class="n">1</span><h3>Enter your amount</h3>
-        <p class="tw-muted">Tell it how much you're playing with. It sets your starting bet, your profit target and your maximum loss.</p></div>
+      <div class="tw-card"><span class="n">1</span><h3>Bring your amount</h3>
+        <p class="tw-muted">Tell it what you're playing with today. It builds your session: first bet, target and limit.</p></div>
       <div class="tw-card"><span class="n">2</span><h3>Tap what came</h3>
-        <p class="tw-muted">Red or Black, Player or Banker, Dragon or Tiger. Every tap shows where to bet next and how much.</p></div>
-      <div class="tw-card"><span class="n">3</span><h3>Stop on the STOP sign</h3>
-        <p class="tw-muted">Profit target hit, 2 losses after a profit, 3 losses in a row or time up – the big red sign tells you to stop.</p></div>
+        <p class="tw-muted">Each tap gives you the next signal – the side and the exact amount. No charts, no maths, no second-guessing.</p></div>
+      <div class="tw-card"><span class="n">3</span><h3>Cash out on cue</h3>
+        <p class="tw-muted">Watch your target fill up live. When it's hit, the big sign tells you to cash out – and keep it.</p></div>
     </div>
   </section>
 
@@ -89,40 +95,38 @@
   </section>
 
   <!-- Rules -->
-  <section class="block" id="rules">
-    <p class="tw-eyebrow">The Table Rules</p>
-    <h2>One discipline for every game</h2>
-    <p class="tw-muted narrow">
-      Patterns and "recovery" systems don't change the odds – they just trade many small wins for a few big losses.
-      These five rules do the one thing that works: keep the cost of playing small.
-    </p>
-    <ol class="rules">
-      <li *ngFor="let r of rules; let i = index"><span class="n">{{ i + 1 }}</span>
-        <div><strong>{{ r.title }}</strong><p class="tw-muted">{{ r.text }}</p></div></li>
-    </ol>
-    <ion-button fill="clear" routerLink="/rules">See the numbers behind the rules →</ion-button>
+  <section class="block" id="results">
+    <p class="tw-eyebrow">Live results</p>
+    <h2>Sessions finishing right now</h2>
+    <p class="tw-muted narrow">Real, anonymous results from TableWise players{{ demo ? ' – sample data in this demo' : '' }}.
+      No names, no bets, just how sessions ended.</p>
+    <div class="feed" *ngIf="feed.length; else noFeed">
+      <div class="item" *ngFor="let f of feed" [class.win]="f.net > 0" [class.loss]="f.net < 0">
+        <span class="g">{{ gameName(f.game) }}</span>
+        <span class="r">{{ f.net > 0 ? '+' : '' }}{{ f.pct | number: '1.0-0' }}%</span>
+        <span class="tag">{{ f.endReason === 'stop-win' ? 'Target hit' : f.net > 0 ? 'Cashed out' : 'Session closed' }}</span>
+        <span class="m tw-muted">{{ f.minutes }} min · {{ ago(f.createdAt) }}</span>
+      </div>
+    </div>
+    <ng-template #noFeed><p class="tw-muted">Results appear here as players finish sessions.</p></ng-template>
   </section>
 
   <!-- Pricing -->
   <section class="block" id="pricing">
     <p class="tw-eyebrow">Pricing</p>
-    <h2>Free to practice. Pro when you play for real.</h2>
+    <h2>Start free. Then pick your pass.</h2>
+    <p class="tw-muted narrow">{{ pricing.trialHours }} hours of full access when you sign up – no card. After that, choose the pass that fits how often you play.</p>
     <div class="plans">
-      <div class="tw-card">
-        <h3>Free</h3>
-        <div class="price">$0</div>
-        <ul><li *ngFor="let f of free">{{ f }}</li></ul>
-        <ion-button fill="outline" routerLink="/lobby">Play free</ion-button>
-      </div>
-      <div class="tw-card felt">
-        <span class="tw-pill gold">{{ pricing.trialDays }} days free</span>
-        <h3>Pro</h3>
-        <div class="price">${{ pricing.monthlyUsd }}<span>/month</span></div>
-        <p class="tw-small">or ${{ pricing.yearlyUsd }}/year · PayPal or crypto</p>
-        <ul><li *ngFor="let f of pro">{{ f }}</li></ul>
-        <ion-button routerLink="/signup">Start free trial</ion-button>
+      <div class="tw-card plan" *ngFor="let p of plans" [class.featured]="p.id === 'month'">
+        <span class="tw-pill gold" *ngIf="p.badge">{{ p.badge }}</span>
+        <h3>{{ p.name }}</h3>
+        <div class="price">${{ p.usd }}<span>/{{ p.per }}</span></div>
+        <p class="tw-small per">${{ perDay(p) | number: '1.2-2' }} a day<b *ngIf="savingVsDay(p) > 0"> · save {{ savingVsDay(p) }}%</b></p>
+        <p class="tw-muted tw-small">{{ p.blurb }}</p>
       </div>
     </div>
+    <ul class="incl"><li *ngFor="let f of pro">{{ f }}</li></ul>
+    <ion-button routerLink="/signup">Start my {{ pricing.trialHours }} free hours</ion-button>
   </section>
 
   <!-- FAQ -->
@@ -134,6 +138,15 @@
         <summary>{{ f.q }}</summary>
         <p class="tw-muted">{{ f.a }}</p>
       </details>
+    </div>
+  </section>
+
+  <!-- Final call to action -->
+  <section class="block final">
+    <div class="final-in tw-card felt">
+      <h2>Your next session, planned in 30 seconds.</h2>
+      <p>Free for {{ pricing.trialHours }} hours. No card. Cancel nothing – passes never auto-renew.</p>
+      <ion-button routerLink="/signup">Start free now</ion-button>
     </div>
   </section>
 

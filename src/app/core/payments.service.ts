@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { environment } from 'src/environments/environment';
+import { PlanId } from './pricing';
 
 declare global {
   interface Window {
@@ -25,7 +26,7 @@ export class PaymentsService {
   }
 
   get paypalEnabled() {
-    return this.configured && !!(this.cfg.paypalClientId && this.cfg.paypalPlanId);
+    return this.configured && !!this.cfg.paypalClientId;
   }
 
   get cryptoEnabled() {
@@ -55,7 +56,7 @@ export class PaymentsService {
         s.src =
           'https://www.paypal.com/sdk/js?client-id=' +
           encodeURIComponent(this.cfg.paypalClientId) +
-          '&vault=true&intent=subscription';
+          '&currency=USD&intent=capture';
         s.onload = () => resolve(window.paypal);
         s.onerror = () => {
           this.sdkPromise = null;
@@ -67,23 +68,20 @@ export class PaymentsService {
     return this.sdkPromise;
   }
 
-  /** Renders the PayPal subscribe button into `el`. */
-  async renderPayPal(el: HTMLElement, uid: string, onDone: () => void, onError: (msg: string) => void) {
+  /** Renders PayPal (and card) buttons that buy one pass. */
+  async renderPayPal(el: HTMLElement, plan: PlanId, onDone: () => void, onError: (msg: string) => void) {
     const paypal = await this.loadPayPal();
     el.innerHTML = '';
     await paypal
       .Buttons({
-        style: { shape: 'pill', color: 'gold', layout: 'vertical', label: 'subscribe' },
-        createSubscription: (_data: any, actions: any) =>
-          actions.subscription.create({ plan_id: this.cfg.paypalPlanId, custom_id: uid }),
+        style: { shape: 'pill', color: 'gold', layout: 'vertical', label: 'pay' },
+        createOrder: async () => (await this.call<{ id: string }>('/paypal/order', { plan })).id,
         onApprove: async (data: any) => {
           try {
-            await this.call('/paypal/activate', { subscriptionId: data.subscriptionID });
+            await this.call('/paypal/capture', { orderId: data.orderID });
             onDone();
           } catch {
-            onError(
-              'Payment received, but activation is still processing. It usually completes within a minute – refresh this page shortly.'
-            );
+            onError('Payment received, but activation is still processing. It usually completes within a minute – refresh this page shortly.');
           }
         },
         onError: () => onError('PayPal could not complete the payment. You have not been charged.'),
@@ -92,8 +90,8 @@ export class PaymentsService {
   }
 
   /** Creates a crypto invoice and returns the hosted checkout URL. */
-  async cryptoCheckout(months: 1 | 12): Promise<string> {
-    const res = await this.call<{ url: string }>('/crypto/invoice', { months });
+  async cryptoCheckout(plan: PlanId): Promise<string> {
+    const res = await this.call<{ url: string }>('/crypto/invoice', { plan });
     return res.url;
   }
 }

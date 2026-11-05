@@ -26,8 +26,8 @@
     <!-- ================= SETUP ================= -->
     <ng-container *ngIf="stage === 'setup'">
       <header class="setup-head">
-        <p class="tw-eyebrow">Neural Signals</p>
-        <h1>Set up today's table</h1>
+        <p class="tw-eyebrow">{{ greeting }}</p>
+        <h1>Let's set up your table</h1>
         <p class="tw-muted">Three things and you're in. The signals do the rest – where to bet, how much, and when to walk away.</p>
       </header>
 
@@ -98,13 +98,8 @@
           <div class="r good"><span>Target</span><strong>+{{ p.stopWin | number: '1.0-2' }} <em>+{{ (p.stopWin / p.bankroll) * 100 | number: '1.0-0' }}%</em></strong></div>
           <div class="r bad"><span>Loss limit</span><strong>-{{ p.stopLoss | number: '1.0-2' }} <em>-{{ (p.stopLoss / p.bankroll) * 100 | number: '1.0-0' }}%</em></strong></div>
         </div>
-        <div class="series" *ngIf="p.series">
-          <span class="tw-small">Bet ladder</span>
-          <div class="steps"><i *ngFor="let a of p.series; let i = index" [style.--h.%]="20 + (i * 80) / 7">{{ a | number: '1.0-1' }}</i></div>
-        </div>
-        <p class="tw-small sub" *ngIf="system === 'neural'">The coach watches two results to read the pattern, then gives you every bet.
-          It moves up the ladder after a loss, down after a win, and switches sides when a pattern breaks.
-          Quit at your target – most sessions take {{ p.minutes }} minutes or less.</p>
+        <p class="tw-small sub" *ngIf="system === 'neural'">The coach reads the table from your first two taps, then gives you every bet –
+          side and amount. Cash out at your target; most sessions take {{ p.minutes }} minutes or less.</p>
         <p class="tw-small sub" *ngIf="system !== 'neural'">The coach watches every result and tells you when to stop.
           {{ p.minutes }} minutes, with a check-in every {{ limits.checkinMinutes }}.</p>
         <p class="tw-muted tw-small">Average cost of a full session with these settings: about {{ expectedCost(p) | number: '1.2-2' }}

@@ -17,12 +17,12 @@ import { safeNext } from './login.page';
     <ion-content>
       <div class="tw-page wrap">
         <div class="pitch">
-          <p class="tw-eyebrow">{{ trialDays }} days of Pro, free</p>
+          <p class="tw-eyebrow">{{ trialHours }} hours of full access, free</p>
           <h1>Play smarter. Lose less. Know when to stop.</h1>
           <ul>
             <li *ngFor="let f of features">{{ f }}</li>
           </ul>
-          <p class="tw-muted tw-small">No card needed for the trial. Practice tables stay free forever.</p>
+          <p class="tw-muted tw-small">No card needed. Practice tables stay free forever.</p>
         </div>
 
         <div class="tw-card">
@@ -67,7 +67,7 @@ export class SignupPage {
   private account = inject(AccountService);
   private router = inject(Router);
   next = inject(ActivatedRoute).snapshot.queryParamMap.get('next') || '/lobby';
-  trialDays = PRICING.trialDays;
+  trialHours = PRICING.trialHours;
   features = PRO_FEATURES;
   name = '';
   email = '';

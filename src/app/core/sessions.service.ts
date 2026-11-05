@@ -53,12 +53,24 @@ function demoLoad(): any[] {
   }
 }
 
+/** One anonymous line in the public "recent results" feed. No names, no bets, no method. */
+export interface FeedItem {
+  game: string;
+  net: number;
+  /** Result as % of the session amount. */
+  pct: number;
+  minutes: number;
+  endReason: string;
+  createdAt: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class SessionsService {
   private fs = inject(Firestore, { optional: true }) as Firestore;
   private demo = environment.demoMode;
 
   save(uid: string, s: RealSession) {
+    this.publish(s);
     if (this.demo) {
       const all = demoLoad();
       all.push({ ...s, uid, id: 'd' + Date.now(), startedAt: s.startedAt.toMillis(), endedAt: s.endedAt.toMillis() });
@@ -71,6 +83,31 @@ export class SessionsService {
       ...s,
       savedAt: serverTimestamp(),
     });
+  }
+
+  /** Adds the anonymous result to the public feed (best effort). */
+  private publish(s: RealSession) {
+    if (this.demo || !s.rounds.length) return;
+    const minutes = Math.max(1, Math.round((s.endedAt.toMillis() - s.startedAt.toMillis()) / 60000));
+    addDoc(collection(this.fs, 'feed'), {
+      game: s.gameId,
+      net: Math.round(s.net * 100) / 100,
+      pct: Math.round((s.net / (s.bankroll || 1)) * 1000) / 10,
+      minutes: Math.min(minutes, 600),
+      endReason: s.endReason,
+      createdAt: Date.now(),
+    }).catch(() => {});
+  }
+
+  /** Latest anonymous results from all players (public). */
+  async feed(max = 30): Promise<FeedItem[]> {
+    if (this.demo) return demoFeed();
+    try {
+      const snap = await getDocs(query(collection(this.fs, 'feed'), orderBy('createdAt', 'desc'), limit(max)));
+      return snap.docs.map((d) => d.data() as FeedItem);
+    } catch {
+      return [];
+    }
   }
 
   async list(uid: string, max = 200): Promise<RealSession[]> {
@@ -102,4 +139,22 @@ export class SessionsService {
     );
     return !snap.empty;
   }
+}
+
+/** Sample feed for the browser-only demo (clearly labelled as sample data in the UI). */
+function demoFeed(): FeedItem[] {
+  const games = ['roulette', 'baccarat', 'dragon-tiger', 'baccarat', 'roulette', 'sicbo'];
+  const now = Date.now();
+  return Array.from({ length: 18 }, (_, i) => {
+    const win = i % 10 !== 3 && i % 10 !== 7 && i % 10 !== 9;
+    const pct = win ? 33.3 : -[78, 91, 100][i % 3];
+    return {
+      game: games[i % games.length],
+      net: Math.round(pct * 3),
+      pct,
+      minutes: 22 + ((i * 7) % 31),
+      endReason: win ? 'stop-win' : 'stop-loss',
+      createdAt: now - (i + 1) * 23 * 60_000,
+    };
+  });
 }

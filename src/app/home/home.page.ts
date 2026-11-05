@@ -4,7 +4,10 @@ import { Firestore, addDoc, collection } from '@angular/fire/firestore';
 import { AccountService } from '../core/account.service';
 import { environment } from 'src/environments/environment';
 import { GAMES, getBet, pct } from '../core/games';
-import { FREE_FEATURES, PRICING, PRO_FEATURES } from '../core/pricing';
+import { FREE_FEATURES, PLANS, PRICING, PRO_FEATURES, perDay, savingVsDay } from '../core/pricing';
+import { FeedItem, SessionsService } from '../core/sessions.service';
+import { THEMES, ThemeService } from '../core/theme.service';
+import { getGame } from '../core/games';
 import { TABLE_RULES } from '../core/strategies';
 
 @Component({
@@ -21,6 +24,16 @@ export class HomePage {
   games = GAMES;
   rules = TABLE_RULES;
   pricing = PRICING;
+  plans = PLANS;
+  perDay = perDay;
+  savingVsDay = savingVsDay;
+  theme = inject(ThemeService);
+  themes = THEMES;
+  demo = environment.demoMode;
+  feed: FeedItem[] = [];
+  /** Share of recent sessions that ended at their target – from real results only. */
+  hitRate: number | null = null;
+  private sessions = inject(SessionsService);
   free = FREE_FEATURES;
   pro = PRO_FEATURES;
   pct = pct;
@@ -28,20 +41,24 @@ export class HomePage {
 
   faqs = [
     {
-      q: 'Can TableWise predict results or make me money?',
-      a: 'No – and anyone who says they can is selling something. Every round of these games is independent and every bet has a house edge. TableWise helps you play for fun with small, controlled stakes so losses stay small.',
+      q: 'What does TableWise do?',
+      a: 'It sits beside your live casino table. You tap the last results, and it gives you a signal for every bet – which side and exactly how much – based on the amount you brought. It tracks your target and tells you when to cash out or stop.',
     },
     {
-      q: 'So why does the coach help?',
-      a: 'Most money is lost by playing too long, betting too big and chasing losses. The coach fixes all three: it tells you exactly what to bet and how much, when to stop, and locks after one session a day.',
+      q: 'Which games does it work with?',
+      a: 'Roulette (red/black), Baccarat (player/banker), Dragon Tiger, Sic Bo (small/big) and Lucky 7 – at any online or land-based casino.',
     },
     {
-      q: 'Is practice really unlimited?',
-      a: 'Yes. Practice tables use play money, so there is no timer and no limit. Real-money sessions are the only thing the coach limits.',
+      q: 'Does it guarantee wins?',
+      a: 'No. Casino games are random and the house keeps an edge, so some sessions lose. TableWise gives every bet a plan and makes sure you stop at your target or your limit instead of chasing.',
     },
     {
-      q: 'How do I pay?',
-      a: `PayPal (monthly subscription, cancel any time) or crypto – BTC, ETH, USDT and more – for 1 or 12 months. The first ${PRICING.trialDays} days are free with no card.`,
+      q: 'How much does it cost?',
+      a: `The first ${PRICING.trialHours} hours are free, no card. Then a Day Pass is $${PRICING.dayUsd}, a month is $${PRICING.monthlyUsd} and a year is $${PRICING.yearlyUsd}. Passes never auto-renew. Pay with PayPal, card or crypto.`,
+    },
+    {
+      q: 'Can I try it without money?',
+      a: 'Yes. The practice tables are free forever with play money, and they show the same signals.',
     },
     {
       q: 'Who can use TableWise?',
@@ -57,6 +74,23 @@ export class HomePage {
   });
   sent = false;
   sending = false;
+
+  constructor() {
+    this.sessions.feed(30).then((items) => {
+      this.feed = items.slice(0, 12);
+      const done = items.filter((i) => i.endReason === 'stop-win' || i.endReason === 'stop-loss' || i.net !== 0);
+      this.hitRate = done.length >= 5 ? Math.round((done.filter((i) => i.endReason === 'stop-win').length / done.length) * 100) : null;
+    });
+  }
+
+  gameName(id: string) {
+    return getGame(id)?.name ?? id;
+  }
+
+  ago(t: number) {
+    const m = Math.max(1, Math.round((Date.now() - t) / 60000));
+    return m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
+  }
 
   bestEdge(g: (typeof GAMES)[number]) {
     return getBet(g, g.bestBet)!.edge;

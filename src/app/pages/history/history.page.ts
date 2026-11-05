@@ -29,10 +29,23 @@ import { round2 } from '../../core/strategies';
         </div>
 
         <ng-container *ngIf="!loading && sessions.length">
+          <section class="wall">
+            <div class="wall-main">
+              <p class="tw-eyebrow">Your winnings wall</p>
+              <div class="won">+{{ totalWon | number: '1.0-0' }}</div>
+              <p class="tw-small">won across {{ winCount }} winning session{{ winCount === 1 ? '' : 's' }}</p>
+            </div>
+            <div class="trophies">
+              <div><strong>{{ targetHits }}</strong><span>targets hit</span></div>
+              <div><strong>+{{ best | number: '1.0-0' }}</strong><span>best session</span></div>
+              <div><strong>{{ bestStreak }}</strong><span>wins in a row</span></div>
+            </div>
+          </section>
+
           <div class="tw-stats">
             <div class="tw-stat"><div class="label">Sessions</div><div class="value">{{ sessions.length }}</div></div>
             <div class="tw-stat"><div class="label">Winning sessions</div><div class="value">{{ winRate | number: '1.0-0' }}%</div></div>
-            <div class="tw-stat"><div class="label">Total result</div>
+            <div class="tw-stat"><div class="label">Overall result (wins and losses)</div>
               <div class="value" [class.tw-pos]="total > 0" [class.tw-neg]="total < 0">{{ total > 0 ? '+' : '' }}{{ total | number: '1.0-2' }}</div></div>
             <div class="tw-stat"><div class="label">Total wagered</div><div class="value">{{ wagered | number: '1.0-0' }}</div></div>
             <div class="tw-stat"><div class="label">Stuck to the plan</div><div class="value">{{ discipline | number: '1.0-0' }}%</div></div>
@@ -76,6 +89,17 @@ import { round2 } from '../../core/strategies';
   `,
   styles: [`
     .title { margin: 0 0 18px; }
+    .wall { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; align-items: center; margin-bottom: 16px; padding: 22px;
+      border-radius: 22px; position: relative; overflow: hidden;
+      background: radial-gradient(120% 120% at 0% 0%, rgba(var(--tw-accent-rgb), .22), transparent 60%), linear-gradient(160deg, var(--tw-felt-2), var(--tw-felt));
+      border: 1px solid rgba(var(--tw-accent-rgb), .45); }
+    @media (max-width: 640px) { .wall { grid-template-columns: 1fr; } }
+    .won { font-family: var(--tw-mono); font-size: clamp(44px, 9vw, 72px); font-weight: 800; line-height: 1; color: #8ff0c0;
+      text-shadow: 0 0 30px rgba(47, 224, 143, .45); }
+    .trophies { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .trophies div { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 12px 6px; border-radius: 14px; background: rgba(0,0,0,.25); }
+    .trophies strong { font-family: var(--tw-mono); font-size: 22px; color: var(--tw-gold-2); }
+    .trophies span { font-size: 12px; color: rgba(255,255,255,.75); }
     .chart-card, .list { margin-top: 16px; }
     .chart { width: 100%; height: 180px; display: block; }
     .chart .zero { stroke: var(--tw-line-strong); stroke-dasharray: 4 4; stroke-width: 1; vector-effect: non-scaling-stroke; }
@@ -103,6 +127,11 @@ export class HistoryPage {
   H = 180;
   points = '';
   byCasino: { name: string; count: number; net: number }[] = [];
+  totalWon = 0;
+  winCount = 0;
+  targetHits = 0;
+  best = 0;
+  bestStreak = 0;
   zeroY = 90;
 
   constructor() {
@@ -120,6 +149,16 @@ export class HistoryPage {
     this.winRate = (s.filter((x) => x.net > 0).length / s.length) * 100;
     // "Stuck to the plan" = ended by a stop, a check-in, the timer or the round limit rather than quitting midway.
     this.discipline = (s.filter((x) => x.endReason !== 'manual').length / s.length) * 100;
+    const wins = s.filter((x) => x.net > 0);
+    this.totalWon = round2(wins.reduce((a, x) => a + x.net, 0));
+    this.winCount = wins.length;
+    this.targetHits = s.filter((x) => x.endReason === 'stop-win').length;
+    this.best = Math.max(0, ...s.map((x) => x.net));
+    let run = 0;
+    for (const x of [...s].reverse()) {
+      run = x.net > 0 ? run + 1 : 0;
+      this.bestStreak = Math.max(this.bestStreak, run);
+    }
     const map = new Map<string, { name: string; count: number; net: number }>();
     for (const x of s) {
       const name = x.casino || 'Unspecified';

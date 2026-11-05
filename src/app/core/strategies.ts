@@ -19,8 +19,8 @@ export interface StrategyInfo {
 export const STRATEGIES: StrategyInfo[] = [
   {
     id: 'neural',
-    name: 'Neural Strategy',
-    summary: 'Watches two results to find the pattern (repeating or alternating), bets it with the 8-level series 1-1.6-2.6-4-7-10-15-20, and switches sides after a level-5 loss.',
+    name: 'Neural Signals',
+    summary: 'Our signal system: reads the last results at your table and sets the side and the amount for every bet.',
     realMoney: true,
   },
   {

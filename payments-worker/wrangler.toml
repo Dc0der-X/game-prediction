@@ -9,11 +9,13 @@ FIREBASE_PROJECT_ID = "prediction-ai-a4dfe"
 APP_URL = "https://aicasinopredictor.web.app"
 # Comma-separated list of sites allowed to call this worker.
 APP_ORIGINS = "https://aicasinopredictor.web.app,https://aicasinopredictor.firebaseapp.com,http://localhost:8100,http://localhost:4200"
-PRICE_MONTH_USD = "12"
-PRICE_YEAR_USD = "99"
+PRICE_DAY_USD = "20"
+PRICE_MONTH_USD = "140"
+PRICE_YEAR_USD = "999"
 # "sandbox" while testing, "live" for real money.
 PAYPAL_ENV = "sandbox"
 PAYPAL_CLIENT_ID = ""
+# Only needed for the legacy monthly subscription; one-time passes use the Orders API.
 PAYPAL_PLAN_ID = ""
 PAYPAL_WEBHOOK_ID = ""
 

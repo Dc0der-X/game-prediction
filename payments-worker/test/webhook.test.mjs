@@ -11,7 +11,7 @@ const SA = JSON.stringify({
 });
 const env = {
   FIREBASE_PROJECT_ID: 'demo', APP_URL: 'https://app.test', APP_ORIGINS: 'https://app.test',
-  PRICE_MONTH_USD: '12', PRICE_YEAR_USD: '99', PAYPAL_ENV: 'sandbox', PAYPAL_CLIENT_ID: '', PAYPAL_PLAN_ID: 'P-1',
+  PRICE_DAY_USD: '20', PRICE_MONTH_USD: '140', PRICE_YEAR_USD: '999', PAYPAL_ENV: 'sandbox', PAYPAL_CLIENT_ID: '', PAYPAL_PLAN_ID: 'P-1',
   PAYPAL_WEBHOOK_ID: '', PAYPAL_SECRET: '', NOWPAYMENTS_API_KEY: 'k', NOWPAYMENTS_IPN_SECRET: 'ipn-secret',
   GOOGLE_SERVICE_ACCOUNT: SA,
 };
@@ -57,7 +57,7 @@ function ipn(body, sig = sign(body)) {
   }), env);
 }
 const paid = (over = {}) => ({
-  payment_id: 111, payment_status: 'finished', order_id: 'user1:1:123', price_amount: 12, price_currency: 'usd',
+  payment_id: 111, payment_status: 'finished', order_id: 'user1:month:123', price_amount: 140, price_currency: 'usd',
   pay_amount: 0.0002, pay_currency: 'btc', ...over,
 });
 
@@ -76,7 +76,7 @@ test('finished payment unlocks 30 days of Pro and records the payment', async ()
   assert.equal(u.plan.stringValue, 'pro');
   const days = (Date.parse(u.planExpiresAt.timestampValue) - Date.now()) / 86400000;
   assert.ok(days > 29.9 && days < 30.1, `expected ~30 days, got ${days}`);
-  assert.equal(docs.get('payments/np_111').amountUsd.integerValue, '12');
+  assert.equal(docs.get('payments/np_111').amountUsd.integerValue, '140');
 });
 
 test('duplicate webhook does not extend twice', async () => {
@@ -93,10 +93,17 @@ test('second payment stacks on top of remaining time', async () => {
 
 test('underpaid yearly order is ignored', async () => {
   const before = docs.get('users/user1').planExpiresAt.timestampValue;
-  const res = await ipn(paid({ payment_id: 333, order_id: 'user1:12:1', price_amount: 12 }));
+  const res = await ipn(paid({ payment_id: 333, order_id: 'user1:year:1', price_amount: 140 }));
   assert.equal(res.status, 200);
   assert.equal(docs.get('users/user1').planExpiresAt.timestampValue, before);
   assert.equal(docs.has('payments/np_333'), false);
+});
+
+test('day pass adds exactly one day', async () => {
+  docs.set('users/user2', { email: { stringValue: 'd@e.f' }, role: { stringValue: 'customer' } });
+  await ipn(paid({ payment_id: 555, order_id: 'user2:day:9', price_amount: 20 }));
+  const hours = (Date.parse(docs.get('users/user2').planExpiresAt.timestampValue) - Date.now()) / 3600000;
+  assert.ok(hours > 23.9 && hours < 24.1, `expected ~24h, got ${hours}`);
 });
 
 test('non-finished statuses are ignored', async () => {

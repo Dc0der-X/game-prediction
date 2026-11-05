@@ -2,8 +2,10 @@
  * TableWise payments worker (Cloudflare Workers free tier).
  *
  * Routes
- *   POST /paypal/activate   (signed-in user)  verify a new PayPal subscription and unlock Pro
- *   POST /paypal/webhook    (PayPal)          renewals, cancellations
+ *   POST /paypal/order      (signed-in user)  create a PayPal order for a Day / Month / Year pass
+ *   POST /paypal/capture    (signed-in user)  capture that order and unlock Pro
+ *   POST /paypal/activate   (signed-in user)  verify a PayPal subscription (legacy monthly plan)
+ *   POST /paypal/webhook    (PayPal)          captures, renewals, cancellations
  *   POST /crypto/invoice    (signed-in user)  create a NOWPayments hosted invoice
  *   POST /crypto/webhook    (NOWPayments)     IPN – unlock Pro when a payment is finished
  *
@@ -18,6 +20,7 @@ export interface Env {
   FIREBASE_PROJECT_ID: string;
   APP_URL: string;
   APP_ORIGINS: string;
+  PRICE_DAY_USD: string;
   PRICE_MONTH_USD: string;
   PRICE_YEAR_USD: string;
   PAYPAL_ENV: string;
@@ -49,6 +52,10 @@ export default {
 
     try {
       switch (url.pathname) {
+        case '/paypal/order':
+          return json(await paypalCreateOrder(req, env), 200, cors);
+        case '/paypal/capture':
+          return json(await paypalCapture(req, env), 200, cors);
         case '/paypal/activate':
           return json(await paypalActivate(req, env), 200, cors);
         case '/paypal/webhook':
@@ -161,7 +168,11 @@ async function paypalWebhook(req: Request, env: Env) {
   const type: string = event.event_type;
   const r = event.resource || {};
 
-  if (type.startsWith('BILLING.SUBSCRIPTION.')) {
+  if (type === 'PAYMENT.CAPTURE.COMPLETED') {
+    // One-time pass paid (also covers buyers who closed the page before capture returned).
+    const customId = r.custom_id || '';
+    if (customId) await grantFromCapture(env, r, customId);
+  } else if (type.startsWith('BILLING.SUBSCRIPTION.')) {
     // ACTIVATED, RE-ACTIVATED, UPDATED, CANCELLED, SUSPENDED, EXPIRED, PAYMENT.FAILED
     const sub = r.id ? await paypalGet(env, `/v1/billing/subscriptions/${r.id}`) : r;
     await applySubscription(env, sub);
@@ -189,15 +200,99 @@ async function paypalWebhook(req: Request, env: Env) {
 /* Crypto (NOWPayments)                                                */
 /* ------------------------------------------------------------------ */
 
-function priceFor(env: Env, months: number): number {
-  return months === 12 ? Number(env.PRICE_YEAR_USD) : Number(env.PRICE_MONTH_USD);
+type PlanId = 'day' | 'month' | 'year';
+const PLAN_DAYS: Record<PlanId, number> = { day: 1, month: 30, year: 365 };
+const PLAN_NAME: Record<PlanId, string> = { day: 'Day Pass (24 hours)', month: '1 month', year: '12 months' };
+
+function planOf(v: unknown): PlanId {
+  const s = String(v);
+  if (s === 'day' || s === 'year') return s;
+  if (s === '12') return 'year'; // older invoices used months
+  return 'month';
+}
+
+function priceFor(env: Env, plan: PlanId): number {
+  return Number(plan === 'day' ? env.PRICE_DAY_USD : plan === 'year' ? env.PRICE_YEAR_USD : env.PRICE_MONTH_USD);
+}
+
+/** Adds a pass to the user's access (stacking on any time left) and records the payment once. */
+async function grantPass(env: Env, uid: string, plan: PlanId, paymentId: string, provider: string, amountUsd: number, note: string) {
+  const fs = firestore(env);
+  if (await fs.get(`payments/${paymentId}`)) return { ok: true, duplicate: true };
+  const user = await fs.get(`users/${uid}`);
+  if (!user) throw new HttpError(404, 'User not found');
+  const current = user.planExpiresAt instanceof Date ? user.planExpiresAt.getTime() : 0;
+  const until = new Date(Math.max(Date.now(), current) + PLAN_DAYS[plan] * DAY);
+  await fs.update(`users/${uid}`, { plan: 'pro', planSource: provider === 'paypal' ? 'paypal' : 'crypto', planExpiresAt: until, planName: plan });
+  await fs.create('payments', paymentId, {
+    uid, email: (user.email as string) || '', provider, amountUsd, currency: 'USD', note, createdAt: new Date(),
+  });
+  return { ok: true };
+}
+
+/* ---------- PayPal one-time passes (Orders API) ---------- */
+
+async function paypalPost(env: Env, path: string, body: unknown): Promise<any> {
+  const res = await fetch(`${paypalBase(env)}${path}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${await paypalAccessToken(env)}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data: any = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    console.error('PayPal POST', path, res.status, JSON.stringify(data));
+    throw new HttpError(502, 'PayPal could not process this payment. You have not been charged.');
+  }
+  return data;
+}
+
+async function paypalCreateOrder(req: Request, env: Env) {
+  const { uid } = await requireUser(req, env);
+  const body: any = await req.json().catch(() => ({}));
+  const plan = planOf(body.plan);
+  const order = await paypalPost(env, '/v2/checkout/orders', {
+    intent: 'CAPTURE',
+    purchase_units: [{
+      amount: { currency_code: 'USD', value: priceFor(env, plan).toFixed(2) },
+      custom_id: `${uid}:${plan}`,
+      description: `TableWise Pro – ${PLAN_NAME[plan]}`,
+    }],
+  });
+  return { id: order.id };
+}
+
+/** Grants a pass from a completed PayPal capture (used by /paypal/capture and the webhook). */
+async function grantFromCapture(env: Env, capture: any, customId: string) {
+  const [uid, planRaw] = String(customId || '').split(':');
+  const plan = planOf(planRaw);
+  const value = Number(capture?.amount?.value);
+  if (!uid || capture?.status !== 'COMPLETED') return { ok: false };
+  if (capture.amount?.currency_code !== 'USD' || !(value >= priceFor(env, plan) - 0.01)) {
+    console.error('PayPal amount mismatch', JSON.stringify(capture));
+    return { ok: false };
+  }
+  return grantPass(env, uid, plan, `ppo_${capture.id}`, 'paypal', value, PLAN_NAME[plan]);
+}
+
+async function paypalCapture(req: Request, env: Env) {
+  const { uid } = await requireUser(req, env);
+  const body: any = await req.json().catch(() => ({}));
+  const id = String(body.orderId || '');
+  if (!/^[A-Z0-9]{10,40}$/.test(id)) throw new HttpError(400, 'Invalid order id');
+  const order = await paypalPost(env, `/v2/checkout/orders/${id}/capture`, {});
+  const unit = order.purchase_units?.[0];
+  const capture = unit?.payments?.captures?.[0];
+  if (!String(unit?.custom_id || '').startsWith(`${uid}:`)) throw new HttpError(403, 'This order belongs to another account');
+  const r = await grantFromCapture(env, capture, unit.custom_id);
+  if (!r.ok) throw new HttpError(409, 'Payment not completed.');
+  return { ok: true };
 }
 
 async function cryptoInvoice(req: Request, env: Env) {
   const { uid } = await requireUser(req, env);
   const body: any = await req.json().catch(() => ({}));
-  const months = Number(body.months) === 12 ? 12 : 1;
-  const amount = priceFor(env, months);
+  const plan = planOf(body.plan ?? (Number(body.months) === 12 ? 'year' : 'month'));
+  const amount = priceFor(env, plan);
   const origin = new URL(req.url).origin;
 
   const res = await fetch('https://api.nowpayments.io/v1/invoice', {
@@ -206,8 +301,8 @@ async function cryptoInvoice(req: Request, env: Env) {
     body: JSON.stringify({
       price_amount: amount,
       price_currency: 'usd',
-      order_id: `${uid}:${months}:${Date.now()}`,
-      order_description: `TableWise Pro – ${months === 12 ? '12 months' : '1 month'}`,
+      order_id: `${uid}:${plan}:${Date.now()}`,
+      order_description: `TableWise Pro – ${PLAN_NAME[plan]}`,
       ipn_callback_url: `${origin}/crypto/webhook`,
       success_url: `${env.APP_URL}/pro?paid=1`,
       cancel_url: `${env.APP_URL}/pro`,
@@ -230,37 +325,18 @@ async function cryptoWebhook(req: Request, env: Env) {
 
   if (body.payment_status !== 'finished') return { ok: true, ignored: body.payment_status };
 
-  const [uid, monthsStr] = String(body.order_id || '').split(':');
-  const months = Number(monthsStr) === 12 ? 12 : 1;
+  const [uid, planRaw] = String(body.order_id || '').split(':');
+  const plan = planOf(planRaw);
   if (!uid) throw new HttpError(400, 'Missing order id');
 
   // The invoice amount must match the plan price (in USD).
   const paidUsd = Number(body.price_amount);
-  if (String(body.price_currency).toLowerCase() !== 'usd' || !(paidUsd >= priceFor(env, months) - 0.01)) {
+  if (String(body.price_currency).toLowerCase() !== 'usd' || !(paidUsd >= priceFor(env, plan) - 0.01)) {
     console.error('Crypto amount mismatch', JSON.stringify(body));
     return { ok: true, ignored: 'amount mismatch' };
   }
-
-  const fs = firestore(env);
-  const paymentId = `np_${body.payment_id}`;
-  if (await fs.get(`payments/${paymentId}`)) return { ok: true, duplicate: true };
-
-  const user = await fs.get(`users/${uid}`);
-  if (!user) throw new HttpError(404, 'User not found');
-  const current = user.planExpiresAt instanceof Date ? user.planExpiresAt.getTime() : 0;
-  const days = months === 12 ? 365 : 30;
-  const until = new Date(Math.max(Date.now(), current) + days * DAY);
-
-  await fs.update(`users/${uid}`, { plan: 'pro', planSource: 'crypto', planExpiresAt: until });
-  await fs.create('payments', paymentId, {
-    uid,
-    email: (user.email as string) || '',
-    provider: 'crypto',
-    amountUsd: paidUsd,
-    currency: String(body.pay_currency || '').toUpperCase(),
-    note: `${months === 12 ? '12 months' : '1 month'} · ${body.pay_amount ?? ''} ${String(body.pay_currency || '').toUpperCase()}`,
-    createdAt: new Date(),
-  });
+  await grantPass(env, uid, plan, `np_${body.payment_id}`, 'crypto', paidUsd,
+    `${PLAN_NAME[plan]} · ${body.pay_amount ?? ''} ${String(body.pay_currency || '').toUpperCase()}`);
   return { ok: true };
 }
 

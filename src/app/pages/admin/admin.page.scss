@@ -28,7 +28,7 @@
     font: inherit;
     font-weight: 600;
     cursor: pointer;
-    &.on { background: var(--tw-card-2); color: var(--tw-gold-2); border-color: rgba(92, 225, 255, 0.4); }
+    &.on { background: var(--tw-card-2); color: var(--tw-gold-2); border-color: rgba(var(--tw-accent-rgb), 0.4); }
   }
 }
 

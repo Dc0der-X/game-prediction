@@ -10,26 +10,50 @@ fun, unlimited practice and a disciplined way to play for real that keeps losses
 
 ## What users get
 
-| | Free | Pro (7-day free trial, then paid) |
+| | Free | Pro pass |
 |---|---|---|
-| 5 practice tables (Baccarat, Roulette, Dragon Tiger, Sic Bo, Lucky 7) with play money | ✅ unlimited | ✅ |
-| Strategy tester on every table | ✅ | ✅ |
-| **Session Coach**: enter today's budget → "Bet 4 on Banker", stop-win, stop-loss, 10–20 min timer, one session a day | – | ✅ |
-| Works with any online casino (casino recorded per session) | – | ✅ |
-| History with honest running total, per-casino breakdown | – | ✅ |
-| Strategy Lab: run any betting system on 9,000 simulated sessions | – | ✅ |
-| Self-exclusion lock (24h – 6 months, can't be shortened) | ✅ | ✅ |
+| Practice tables (Roulette, Baccarat, Dragon Tiger, Sic Bo, Lucky 7) with play money and signals | ✅ forever | ✅ |
+| **Signal Room**: enter your amount, tap what came, get the side and the amount for every bet | first 3 hours | ✅ |
+| Live target and loss tracking, check-ins, STOP and cash-out signs | first 3 hours | ✅ |
+| History and the **winnings wall** | first 3 hours | ✅ |
+| Strategy Lab | first 3 hours | ✅ |
+| Personal colour themes, self-exclusion | ✅ | ✅ |
 
-### The funnel (how it makes money)
+### Pricing
 
-1. **Hook**: anyone can open `/lobby` and play practice tables with no sign-up.
-2. **Nudge**: after 10 practice rounds a card offers the free Pro trial.
-3. **Trial**: sign-up gives 7 days of Pro with no card.
-4. **Habit**: the coach is used daily (one session per day), and history builds up.
-5. **Paywall**: when the trial ends, `/coach`, `/lab` and `/history` redirect to `/pro`.
-6. **Pay**: PayPal subscription ($12/month, auto-renews) or crypto (1 month $12 / 12 months $99).
+| Pass | Price | Per day |
+|---|---|---|
+| Free trial | 3 hours after sign-up, no card | – |
+| Day Pass | **$20** | $20.00 |
+| Monthly | **$140** (30 days) | $4.67 (save 77%) |
+| Yearly | **$999** (365 days) | $2.74 (save 86%) |
 
-Prices live in `src/app/core/pricing.ts` and `payments-worker/wrangler.toml`. Keep them in sync with your PayPal plan.
+Passes are one-time payments (PayPal, card or crypto). They never auto-renew and stack on any time left.
+Change prices in `src/app/core/pricing.ts` **and** `payments-worker/wrangler.toml` (`PRICE_DAY_USD`, `PRICE_MONTH_USD`,
+`PRICE_YEAR_USD`).
+
+### Design and marketing
+
+- **Personal themes:** visitors pick a colour mood that feels like theirs. Neon (calm focus), High Roller (gold and
+  plum, status), Classic (green felt, comfort) and Ember (bold energy). The choice is remembered on their device.
+- **Personal touches:** a greeting by name and time of day, celebration on cash-out, and a winnings wall in History.
+- **Real social proof:** the home page "Live results" feed and the "% of sessions hit their target" figure come from
+  real anonymous session results (collection `feed`: game, result %, minutes; no names or bets). Nothing is made up.
+- **Pricing psychology:** each plan shows its per-day price next to the $20 Day Pass, so longer passes read as clear
+  value. "Best value" is mathematically true.
+- **The method stays private:** public pages and the setup screen describe what the coach does, not how it works.
+
+### SEO and AI search
+
+- Per-page titles, descriptions, canonical URLs and robots rules (`src/app/core/seo.service.ts` plus route `data`).
+- Open Graph and Twitter cards with `src/assets/og-image.png` (1200×630).
+- JSON-LD structured data in `src/index.html`: Organization, WebSite, SoftwareApplication with all four offers, and
+  an FAQPage.
+- `robots.txt`, `sitemap.xml`, **`llms.txt`** (a plain-text summary for ChatGPT, Perplexity, Claude and similar
+  crawlers) and `manifest.webmanifest`, so the site can be installed on a phone.
+- `<noscript>` content, so crawlers that don't run JavaScript still read what the product is.
+- When you move to your own domain, replace `https://aicasinopredictor.web.app` in `src/index.html`,
+  `src/app/core/seo.service.ts`, `src/robots.txt`, `src/sitemap.xml` and `src/llms.txt`.
 
 ### The Neural Strategy (the method behind the coach)
 
@@ -142,17 +166,16 @@ npx wrangler login
 
 **PayPal** (developer.paypal.com):
 1. Create a REST app. Copy its **Client ID** and **Secret**.
-2. Create a Product and a monthly **Billing Plan** at your price. Copy the plan id (`P-…`).
-3. Add a **Webhook** pointing to `https://<your-worker>.workers.dev/paypal/webhook` with events
-   `BILLING.SUBSCRIPTION.*` and `PAYMENT.SALE.COMPLETED`. Copy the webhook id.
+2. Add a **Webhook** pointing to `https://<your-worker>.workers.dev/paypal/webhook` with the event
+   `PAYMENT.CAPTURE.COMPLETED`. Copy the webhook id. Passes are one-time orders, so no billing plan is needed.
 
 **Crypto** (nowpayments.io):
 1. Create an account and add your payout wallet.
 2. Copy the **API key** and set an **IPN secret**.
 
 Then:
-1. Fill in `PAYPAL_CLIENT_ID`, `PAYPAL_PLAN_ID`, `PAYPAL_WEBHOOK_ID`, `PAYPAL_ENV` (`sandbox` → `live`) and
-   `APP_URL` in `payments-worker/wrangler.toml`.
+1. Fill in `PAYPAL_CLIENT_ID`, `PAYPAL_WEBHOOK_ID`, `PAYPAL_ENV` (`sandbox` → `live`) and `APP_URL` in
+   `payments-worker/wrangler.toml`.
 2. Set the secrets:
    ```bash
    npx wrangler secret put PAYPAL_SECRET
@@ -161,7 +184,7 @@ Then:
    npx wrangler secret put GOOGLE_SERVICE_ACCOUNT   # paste the service-account JSON
    npm test && npm run deploy
    ```
-3. Put the worker URL, PayPal client id and plan id in `src/environments/environment.prod.ts` → `payments`, then
+3. Put the worker URL and PayPal client id in `src/environments/environment.prod.ts` → `payments`, then
    `npm run deploy` again from the project root.
 
 How it stays safe: the browser only starts a checkout. The worker checks every payment directly with PayPal or

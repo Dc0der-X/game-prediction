@@ -1,0 +1,10 @@
+{
+  "name": "TableWise – Neural Signals",
+  "short_name": "TableWise",
+  "description": "Signals for every bet at your live table – side, amount and when to cash out.",
+  "start_url": "/coach",
+  "display": "standalone",
+  "background_color": "#060912",
+  "theme_color": "#060912",
+  "icons": [{ "src": "assets/icon/favicon.png", "sizes": "any", "type": "image/png" }]
+}

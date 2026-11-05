@@ -18,8 +18,10 @@ export class NeuralFieldComponent implements AfterViewInit, OnDestroy {
   @ViewChild('c') canvas!: ElementRef<HTMLCanvasElement>;
   /** Node count multiplier (1 = default density). */
   @Input() density = 1;
-  /** Main hue as "r,g,b". */
-  @Input() rgb = '92,225,255';
+  /** Main hue as "r,g,b". Empty = follow the theme's --tw-accent-rgb. */
+  @Input() rgb = '';
+  private themeRgb = '92,225,255';
+  private frames = 0;
 
   private raf = 0;
   private ro?: ResizeObserver;
@@ -94,7 +96,11 @@ export class NeuralFieldComponent implements AfterViewInit, OnDestroy {
     const { W, H, dpr } = this;
     ctx.clearRect(0, 0, W, H);
     const link = 150 * dpr;
-    const c = this.rgb;
+    if (this.frames++ % 60 === 0) {
+      const v = getComputedStyle(document.documentElement).getPropertyValue('--tw-accent-rgb').trim();
+      if (v) this.themeRgb = v.replace(/\s+/g, '');
+    }
+    const c = this.rgb || this.themeRgb;
 
     for (const n of this.nodes) {
       if (!this.still) {

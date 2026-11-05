@@ -123,7 +123,7 @@ export class AdminPage {
 
     const customers = this.users.filter((u) => u.status !== 'Admin');
     const payers = new Set(this.payments.map((p) => p.uid));
-    const trialEnded = customers.filter((u) => u.joined && u.joined.getTime() + PRICING.trialDays * DAY < now);
+    const trialEnded = customers.filter((u) => u.joined && u.joined.getTime() + PRICING.trialHours * 3_600_000 < now);
     const paidActive = customers.filter((u) => u.status === 'Paid');
 
     this.kpi = {
@@ -139,7 +139,7 @@ export class AdminPage {
         .filter((p) => p.createdAt && p.createdAt.toMillis() >= now - 30 * DAY)
         .reduce((a, p) => a + (p.amountUsd || 0), 0),
       revenueAll: this.payments.reduce((a, p) => a + (p.amountUsd || 0), 0),
-      mrr: paidActive.length * PRICING.monthlyUsd,
+      mrr: paidActive.length * PRICING.monthlyUsd, // rough: every active pass counted as monthly
       sessionsToday: this.sessions.filter((s) => s.startedAt?.toMillis() >= startToday.getTime()).length,
     };
 

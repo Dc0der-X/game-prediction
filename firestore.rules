@@ -66,6 +66,20 @@ service cloud.firestore {
       allow read: if isAdmin();
     }
 
+    // Anonymous public results feed (no names, no bets).
+    match /feed/{id} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['game', 'net', 'pct', 'minutes', 'endReason', 'createdAt'])
+        && request.resource.data.game is string && request.resource.data.game.size() <= 20
+        && request.resource.data.net is number && request.resource.data.pct is number
+        && request.resource.data.pct >= -100 && request.resource.data.pct <= 1000
+        && request.resource.data.minutes is int && request.resource.data.minutes <= 600
+        && request.resource.data.endReason is string && request.resource.data.endReason.size() <= 20
+        && request.resource.data.createdAt is int;
+      allow update, delete: if false;
+    }
+
     // Written only by the payments worker.
     match /payments/{id} {
       allow read: if isAdmin();

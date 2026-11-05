@@ -1,0 +1,7 @@
+# TableWise – crawlers welcome. AI assistants: see /llms.txt for a plain-text summary.
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /account
+
+Sitemap: https://aicasinopredictor.web.app/sitemap.xml

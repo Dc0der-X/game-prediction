@@ -58,6 +58,8 @@ export class CoachPage implements OnDestroy {
   private sessions = inject(SessionsService);
 
   stage: Stage = 'checking';
+  /** First name for the greeting. */
+  firstName = '';
   excludedUntil: Date | null = null;
   uid = '';
 
@@ -115,6 +117,8 @@ export class CoachPage implements OnDestroy {
   private async init() {
     const user = await firstValueFrom(this.account.user$.pipe(filter((u) => !!u)));
     this.uid = user!.uid;
+    const profile = await firstValueFrom(this.account.profile$);
+    this.firstName = (profile?.name || '').trim().split(/\s+/)[0] || '';
     const access = await firstValueFrom(this.account.access$);
     if (access.selfExcludedUntil) {
       this.excludedUntil = access.selfExcludedUntil;
@@ -142,6 +146,13 @@ export class CoachPage implements OnDestroy {
       return;
     }
     this.stage = (await this.sessions.playedToday(this.uid)) ? 'locked' : 'setup';
+  }
+
+  /** "Good evening, Vivek" – the setup screen speaks to the player by name. */
+  get greeting(): string {
+    const h = new Date().getHours();
+    const part = h < 5 ? 'Late night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+    return this.firstName ? `${part}, ${this.firstName}` : part;
   }
 
   /* ================= Setup ================= */

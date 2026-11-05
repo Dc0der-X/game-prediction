@@ -19,7 +19,7 @@ import {
   setDoc,
   updateDoc,
 } from '@angular/fire/firestore';
-import { BehaviorSubject, Observable, map, of, shareReplay, switchMap } from 'rxjs';
+import { BehaviorSubject, Observable, combineLatest, map, of, shareReplay, switchMap, timer } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { PRICING } from './pricing';
 
@@ -35,6 +35,7 @@ export interface Profile {
   /** Written only by Cloud Functions (or an admin). */
   plan?: 'pro' | null;
   planSource?: 'paypal' | 'crypto' | 'admin';
+  planName?: 'day' | 'month' | 'year';
   planExpiresAt?: Timestamp | null;
   paypalStatus?: string;
   selfExcludedUntil?: Timestamp | null;
@@ -49,6 +50,8 @@ export interface Access {
   trialEndsAt: Date | null;
   paidUntil: Date | null;
   daysLeft: number;
+  /** Milliseconds of free trial left (0 when not on trial). */
+  trialMsLeft: number;
   selfExcludedUntil: Date | null;
 }
 
@@ -58,13 +61,13 @@ export function computeAccess(p: Profile | null | undefined): Access {
   if (!p) {
     return {
       signedIn: false, isAdmin: false, onTrial: false, isPaid: false, hasPro: false,
-      trialEndsAt: null, paidUntil: null, daysLeft: 0, selfExcludedUntil: null,
+      trialEndsAt: null, paidUntil: null, daysLeft: 0, trialMsLeft: 0, selfExcludedUntil: null,
     };
   }
   const now = Date.now();
   // createdAt is null for a moment right after sign-up (pending server timestamp).
   const created = p.createdAt ? p.createdAt.toMillis() : now;
-  const trialEnds = created + PRICING.trialDays * DAY;
+  const trialEnds = created + PRICING.trialHours * 3_600_000;
   const paidUntil = p.planExpiresAt ? p.planExpiresAt.toMillis() : 0;
   const isAdmin = p.role === 'admin';
   const isPaid = paidUntil > now;
@@ -80,6 +83,7 @@ export function computeAccess(p: Profile | null | undefined): Access {
     trialEndsAt: new Date(trialEnds),
     paidUntil: paidUntil ? new Date(paidUntil) : null,
     daysLeft: Math.max(0, Math.ceil((end - now) / DAY)),
+    trialMsLeft: onTrial ? trialEnds - now : 0,
     selfExcludedUntil: excl && excl.getTime() > now ? excl : null,
   };
 }
@@ -112,8 +116,9 @@ export class AccountService {
     shareReplay({ bufferSize: 1, refCount: false })
   );
 
-  readonly access$: Observable<Access> = this.profile$.pipe(
-    map(computeAccess),
+  // Re-computed every 30 s so the free trial ends on time even while a page stays open.
+  readonly access$: Observable<Access> = combineLatest([this.profile$, timer(0, 30_000)]).pipe(
+    map(([p]) => computeAccess(p)),
     shareReplay({ bufferSize: 1, refCount: false })
   );
 

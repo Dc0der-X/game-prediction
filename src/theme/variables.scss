@@ -23,6 +23,10 @@
   --tw-mono: 'JetBrains Mono', ui-monospace, monospace;
   --tw-violet: #8b6cff;
   --tw-money: #f5c76a;
+  /* Accent as r,g,b for glows: rgba(var(--tw-accent-rgb), .4) */
+  --tw-accent-rgb: 92, 225, 255;
+  --tw-glow-2: var(--tw-glow-2);
+  --tw-glow-3: var(--tw-glow-3);
 
   /* Ionic base */
   --ion-font-family: var(--tw-font);
@@ -106,4 +110,42 @@
   --ion-color-light-contrast-rgb: 0, 0, 0;
   --ion-color-light-shade: #d7d8da;
   --ion-color-light-tint: #f5f6f9;
+}
+
+/* ------------------------------------------------------------------
+ * Personal themes. Colour psychology:
+ *   neon    – cool cyan on midnight: calm focus and trust (default)
+ *   royal   – gold on deep plum: prestige, "high roller" status
+ *   emerald – felt green and gold: familiar casino comfort, growth
+ *   ember   – crimson and amber on charcoal: energy and boldness
+ * ------------------------------------------------------------------ */
+:root[data-tw-theme='royal'] {
+  --tw-bg: #0d0714; --tw-bg-2: #140b1e; --tw-card: #1a0f27; --tw-card-2: #241536;
+  --tw-felt: #2a1240; --tw-felt-2: #45206a;
+  --tw-line: rgba(232, 194, 106, 0.14); --tw-line-strong: rgba(232, 194, 106, 0.28);
+  --tw-text: #fbf5ea; --tw-muted: #c3b2cf;
+  --tw-gold: #f2c869; --tw-gold-2: #ffe6a8; --tw-accent-rgb: 242, 200, 105;
+  --tw-glow-2: rgba(160, 80, 220, 0.30); --tw-glow-3: rgba(242, 200, 105, 0.12);
+  --ion-background-color: #0d0714; --ion-color-primary: #f2c869; --ion-color-primary-rgb: 242, 200, 105;
+  --ion-color-primary-contrast: #1a1205; --ion-color-primary-shade: #d5b05c; --ion-color-primary-tint: #f3ce78;
+}
+:root[data-tw-theme='emerald'] {
+  --tw-bg: #06120d; --tw-bg-2: #0a1b14; --tw-card: #0f241b; --tw-card-2: #143024;
+  --tw-felt: #0d4a33; --tw-felt-2: #14684a;
+  --tw-line: rgba(160, 230, 190, 0.12); --tw-line-strong: rgba(160, 230, 190, 0.24);
+  --tw-text: #eef8f1; --tw-muted: #9cb8a8;
+  --tw-gold: #e8c26a; --tw-gold-2: #f6dc9c; --tw-accent-rgb: 232, 194, 106;
+  --tw-glow-2: rgba(30, 160, 100, 0.32); --tw-glow-3: rgba(232, 194, 106, 0.10);
+  --ion-background-color: #06120d; --ion-color-primary: #e8c26a; --ion-color-primary-rgb: 232, 194, 106;
+  --ion-color-primary-contrast: #1b1405; --ion-color-primary-shade: #ccab5d; --ion-color-primary-tint: #eac879;
+}
+:root[data-tw-theme='ember'] {
+  --tw-bg: #0f0a0a; --tw-bg-2: #171010; --tw-card: #1f1414; --tw-card-2: #2a1a18;
+  --tw-felt: #3a1414; --tw-felt-2: #5c1d18;
+  --tw-line: rgba(255, 170, 120, 0.13); --tw-line-strong: rgba(255, 170, 120, 0.26);
+  --tw-text: #fff3ec; --tw-muted: #d0aea0;
+  --tw-gold: #ff9b45; --tw-gold-2: #ffc994; --tw-accent-rgb: 255, 155, 69;
+  --tw-glow-2: rgba(230, 60, 50, 0.30); --tw-glow-3: rgba(255, 155, 69, 0.12);
+  --ion-background-color: #0f0a0a; --ion-color-primary: #ff9b45; --ion-color-primary-rgb: 255, 155, 69;
+  --ion-color-primary-contrast: #1e0d02; --ion-color-primary-shade: #e08940; --ion-color-primary-tint: #ffa558;
 }
