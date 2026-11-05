@@ -155,6 +155,6 @@ export class HistoryPage {
     return g ? getBet(g, betId)?.label ?? betId : betId;
   }
   reason(r: string) {
-    return ({ 'stop-win': 'Stop-win', 'stop-loss': 'Stop-loss', time: 'Timer', rounds: 'Round limit', checkin: 'Stopped at check-in', manual: 'Ended early' } as Record<string, string>)[r] ?? r;
+    return ({ 'stop-win': 'Stop-win', 'stop-loss': 'Stop-loss', time: 'Timer', rounds: 'Round limit', checkin: 'Stopped at check-in', 'profit-lock': 'Kept profit (2 losses)', 'change-table': '3 losses – left table', manual: 'Ended early' } as Record<string, string>)[r] ?? r;
   }
 }

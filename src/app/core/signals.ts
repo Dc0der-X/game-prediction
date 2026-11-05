@@ -1,42 +1,50 @@
 /**
- * Signal engine: turns a staking system into "Bet X on Y" instructions with
- * hard limits. Used by the practice tables (play money) and the Session Coach
- * (real money), so both behave exactly the same.
+ * Signal engine: the original S/O + Attack/Retrench rule, turned into
+ * "Bet X on Y" instructions with discipline rules. Used by the Session Coach
+ * (the player taps what came at their real table) and the practice tables.
+ *
+ * Discipline (checked after every round, in this order):
+ *   stop-win      profit target reached                       → STOP, cash out
+ *   stop-loss     maximum loss reached                        → STOP for today
+ *   profit-lock   was in profit, then 2 losses in a row       → STOP, keep the profit
+ *   change-table  3 losses in a row at this table             → STOP here; new table or end
+ * Every bet is capped so the session can never go past the maximum loss.
  */
 import { GameDef, GameId, Outcome, getBet, sideOf } from './games';
-import { OriginalSystem, StakeTracker, round2 } from './strategies';
+import { OriginalSystem, SESSION_LIMITS, StakeTracker, round2 } from './strategies';
 
 export type SystemId = 'original' | 'flat';
 export type RoundResult = 'won' | 'lost' | 'void';
+export type StopReason = 'stop-win' | 'stop-loss' | 'profit-lock' | 'change-table';
 
 export interface Signal {
   betId: string;
   betLabel: string;
   stake: number;
   mode: 'ATTACK' | 'RETRENCH' | 'FLAT';
-  /** True when the system wanted more but the loss limit capped the bet. */
+  /** True when the system wanted more but the maximum loss capped the bet. */
   capped: boolean;
 }
 
 /** What a zero / tie / triple / seven does to an even-money bet in each game. */
-export const VOID_RESULT: Record<GameId, { label: string; mult: number }> = {
-  baccarat: { label: 'Tie', mult: 0 },
-  'dragon-tiger': { label: 'Tie', mult: -0.5 },
-  roulette: { label: 'Zero', mult: -1 },
-  sicbo: { label: 'Triple', mult: -1 },
-  lucky7: { label: 'Seven', mult: -1 },
+export const VOID_RESULT: Record<GameId, { label: string; short: string; mult: number }> = {
+  baccarat: { label: 'Tie', short: 'T', mult: 0 },
+  'dragon-tiger': { label: 'Tie', short: 'T', mult: -0.5 },
+  roulette: { label: 'Zero', short: '0', mult: -1 },
+  sicbo: { label: 'Triple', short: '★', mult: -1 },
+  lucky7: { label: 'Seven', short: '7', mult: -1 },
 };
 
 export const SYSTEMS: { id: SystemId; name: string; summary: string }[] = [
   {
     id: 'original',
     name: 'TableWise Signals',
-    summary: 'Picks the side every round (Same/Opposite) and steps the stake with Attack/Retrench. Capped at your loss limit.',
+    summary: 'Tells you which side to bet and how much, every round, from what came at your table.',
   },
   {
     id: 'flat',
     name: 'Flat',
-    summary: 'Same bet and stake every round. Lowest cost, mildest bad days.',
+    summary: 'Same bet and amount every round. The lowest-cost option.',
   },
 ];
 
@@ -45,11 +53,22 @@ export interface SignalRound {
   stake: number;
   net: number;
   result: RoundResult;
+  /** The side that came (null for zero / tie / triple / seven). */
+  came?: string | null;
 }
+
+/** Saved events, so a session can be rebuilt exactly after a refresh. */
+export type SignalEvent = { t: 'start'; side: string | null } | { t: 'round'; side: string | null };
 
 export class SignalEngine {
   private orig: OriginalSystem | null = null;
-  private flat: StakeTracker | null = null;
+  rounds: SignalRound[] = [];
+  net = 0;
+  peak = 0;
+  /** Losses in a row at the current table. */
+  streak = 0;
+  /** Number of the current table (1 = first table this session). */
+  table = 1;
 
   constructor(
     public game: GameDef,
@@ -58,24 +77,35 @@ export class SignalEngine {
     public stopWin: number,
     public stopLoss: number
   ) {
-    this.reset();
+    this.start(null);
   }
 
-  reset() {
+  get sides(): [string, string] | null {
+    return this.game.sides ?? null;
+  }
+
+  /** Begin (or begin again at a new table) from the last result seen there. */
+  start(lastSide: string | null) {
     if (this.system === 'original' && this.game.sides) {
-      this.orig = new OriginalSystem(this.unit, this.game);
-      this.flat = null;
+      this.orig = this.orig ?? new OriginalSystem(this.unit, this.game);
+      this.orig.seed(lastSide);
     } else {
       this.orig = null;
-      this.flat = new StakeTracker('flat', this.unit);
     }
+    this.streak = 0;
   }
 
-  /** The next instruction, given the session's current profit/loss. */
-  signal(net: number): Signal {
+  /** Player changed table: new pattern, fresh stake, streak cleared; money totals carry on. */
+  changeTable(lastSide: string | null) {
+    this.table++;
+    this.start(lastSide);
+  }
+
+  /** The next instruction. */
+  signal(): Signal {
     const betId = this.orig ? this.orig.bet(this.game.bestBet) : this.game.bestBet;
     const raw = this.orig ? this.orig.next() : this.unit;
-    const room = this.stopLoss + net; // how much can still be lost before the stop
+    const room = this.stopLoss + this.net; // how much can still be lost before the maximum loss
     const stake = round2(Math.max(0, Math.min(raw, room)));
     return {
       betId,
@@ -86,43 +116,57 @@ export class SignalEngine {
     };
   }
 
-  /** Payout per unit when the signalled bet wins (Banker pays 0.95). */
   winMultiplier(betId: string) {
     return betId === 'banker' ? 0.95 : 1;
   }
 
-  /** Records a round the player reports (real money). Returns the money won or lost. */
-  apply(result: RoundResult, net: number): SignalRound {
-    const sig = this.signal(net);
-    const mult =
-      result === 'won' ? this.winMultiplier(sig.betId) : result === 'lost' ? -1 : VOID_RESULT[this.game.id].mult;
-    const delta = round2(sig.stake * mult);
-    this.orig?.recordResult(result === 'void' ? null : result === 'won');
-    return { betId: sig.betId, stake: sig.stake, net: delta, result };
+  /** Real play: the player taps which side came (null = zero / tie / triple / seven). */
+  applySide(came: string | null): SignalRound {
+    const sig = this.signal();
+    const result: RoundResult = came === null ? 'void' : came === sig.betId ? 'won' : 'lost';
+    const mult = result === 'won' ? this.winMultiplier(sig.betId) : result === 'lost' ? -1 : VOID_RESULT[this.game.id].mult;
+    return this.push({ betId: sig.betId, stake: sig.stake, net: round2(sig.stake * mult), result, came });
   }
 
-  /** Records a round played on a practice table. */
-  applyOutcome(o: Outcome, net: number): SignalRound {
-    const sig = this.signal(net);
-    const side = sideOf(this.game, o);
-    const result: RoundResult = side === null ? 'void' : side === sig.betId ? 'won' : 'lost';
-    const delta = round2(sig.stake * this.game.settle(sig.betId, o));
-    this.orig?.recordResult(result === 'void' ? null : result === 'won');
-    return { betId: sig.betId, stake: sig.stake, net: delta, result };
+  /** Practice tables: a dealt outcome. */
+  applyOutcome(o: Outcome): SignalRound {
+    const sig = this.signal();
+    const came = sideOf(this.game, o);
+    const result: RoundResult = came === null ? 'void' : came === sig.betId ? 'won' : 'lost';
+    return this.push({ betId: sig.betId, stake: sig.stake, net: round2(sig.stake * this.game.settle(sig.betId, o)), result, came });
   }
 
-  /** Rebuilds the engine state from saved rounds (e.g. after a page refresh). */
-  replay(rounds: { result?: RoundResult }[]) {
-    this.reset();
-    for (const r of rounds) {
-      if (r.result) this.orig?.recordResult(r.result === 'void' ? null : r.result === 'won');
-    }
+  private push(r: SignalRound): SignalRound {
+    this.orig?.recordResult(r.result === 'void' ? null : r.result === 'won');
+    this.rounds.push(r);
+    this.net = round2(this.net + r.net);
+    this.peak = Math.max(this.peak, this.net);
+    if (r.net < 0) this.streak++;
+    else if (r.net > 0) this.streak = 0;
+    return r;
   }
 
-  /** Has the session hit a limit? */
-  stopReason(net: number): 'stop-win' | 'stop-loss' | null {
-    if (net >= this.stopWin) return 'stop-win';
-    if (net <= -this.stopLoss + 0.001) return 'stop-loss';
+  /** Which discipline rule (if any) says stop now. */
+  check(): StopReason | null {
+    if (this.net >= this.stopWin) return 'stop-win';
+    if (this.net <= -this.stopLoss + 0.001) return 'stop-loss';
+    if (this.peak > 0 && this.streak >= SESSION_LIMITS.profitLockLosses) return 'profit-lock';
+    if (this.streak >= SESSION_LIMITS.changeTableLosses) return 'change-table';
     return null;
+  }
+
+  /** Rebuilds everything from saved events (e.g. after a page refresh). */
+  static replay(engine: SignalEngine, events: SignalEvent[]): SignalEngine {
+    let first = true;
+    for (const e of events) {
+      if (e.t === 'start') {
+        if (first) engine.start(e.side);
+        else engine.changeTable(e.side);
+        first = false;
+      } else {
+        engine.applySide(e.side);
+      }
+    }
+    return engine;
   }
 }

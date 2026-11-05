@@ -13,7 +13,7 @@ import { environment } from 'src/environments/environment';
     <ion-header class="ion-no-border">
       <div class="demo" *ngIf="demo">Demo · sample data, saved only in this browser · no real money or payments</div>
       <div class="bar">
-        <a class="brand" routerLink="/lobby">
+        <a class="brand" routerLink="/coach">
           <span class="mark">♠</span><span>TableWise</span>
         </a>
         <div class="right" *ngIf="access$ | async as a">
@@ -31,9 +31,9 @@ import { environment } from 'src/environments/environment';
         </div>
       </div>
       <nav class="tabs">
-        <a routerLink="/lobby" routerLinkActive="on">Tables</a>
-        <a routerLink="/rules" routerLinkActive="on">Table Rules</a>
-        <a routerLink="/coach" routerLinkActive="on">Session Coach</a>
+        <a routerLink="/coach" routerLinkActive="on" class="primary">Signal Room</a>
+        <a routerLink="/lobby" routerLinkActive="on">Practice</a>
+        <a routerLink="/rules" routerLinkActive="on">Rules</a>
         <a routerLink="/lab" routerLinkActive="on">Strategy Lab</a>
         <a routerLink="/history" routerLinkActive="on">History</a>
       </nav>
@@ -58,6 +58,9 @@ import { environment } from 'src/environments/environment';
       .tabs a { flex: none; padding: 8px 12px; border-radius: 999px; color: var(--tw-muted);
         text-decoration: none; font-size: 14px; font-weight: 600; }
       .tabs a.on { background: var(--tw-card-2); color: var(--tw-gold-2); }
+      .tabs a.primary { color: var(--tw-gold-2); }
+      .tabs a.primary::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+        background: var(--tw-green); margin-right: 7px; vertical-align: middle; box-shadow: 0 0 8px var(--tw-green); }
     `,
   ],
 })

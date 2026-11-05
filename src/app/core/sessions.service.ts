@@ -13,7 +13,7 @@ import {
 } from '@angular/fire/firestore';
 import { environment } from 'src/environments/environment';
 
-export type EndReason = 'stop-win' | 'stop-loss' | 'time' | 'rounds' | 'checkin' | 'manual';
+export type EndReason = 'stop-win' | 'stop-loss' | 'profit-lock' | 'change-table' | 'time' | 'rounds' | 'checkin' | 'manual';
 
 export interface RoundEntry {
   stake: number;

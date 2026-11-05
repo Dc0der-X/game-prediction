@@ -21,24 +21,27 @@
   <section class="hero">
     <div class="hero-in">
       <div class="copy">
-        <p class="tw-eyebrow">Casino practice + real-money discipline</p>
-        <h1>Play the tables you love.<br /><span>Without the expensive nights.</span></h1>
+        <p class="tw-eyebrow">Signals + discipline for live tables</p>
+        <h1>Tell it what came.<br /><span>It tells you the next bet.</span></h1>
         <p class="lead">
-          Practice Baccarat, Roulette, Dragon Tiger, Sic Bo and Lucky 7 free with play money – as long as you like.
-          When you play for real, the Session Coach sets your stake, your stop-win, your stop-loss and a 15-minute
-          timer, and keeps you to them.
+          Enter how much you're playing with. Tap the last result at your table – Red or Black, Player or Banker,
+          Dragon or Tiger. TableWise shows where to bet and how much, every round, and tells you exactly when to stop:
+          at your profit target, after 2 losses once you're up, or after 3 losses in a row.
         </p>
         <div class="cta">
-          <ion-button routerLink="/lobby">Play free now</ion-button>
-          <ion-button fill="outline" routerLink="/signup">{{ pricing.trialDays }}-day Pro trial</ion-button>
+          <ion-button routerLink="/coach">Open the Signal Room</ion-button>
+          <ion-button fill="outline" routerLink="/lobby">Practise free</ion-button>
         </div>
-        <p class="tw-small tw-muted">No sign-up needed to practice · No card for the trial · 18+</p>
+        <p class="tw-small tw-muted">{{ pricing.trialDays }} days free · No card · 18+ · Signals follow a fixed system; no system changes the house edge.</p>
       </div>
       <div class="felt-art" aria-hidden="true">
-        <div class="tw-cardface big r1">A<span class="suit">♠</span></div>
-        <div class="tw-cardface big red r2">9<span class="suit">♥</span></div>
-        <div class="chip c1">25</div>
-        <div class="chip c2">100</div>
+        <div class="sig-demo">
+          <span class="lbl">NEXT BET</span>
+          <span class="pill-red">Red</span>
+          <span class="amt">8</span>
+        </div>
+        <div class="road-demo"><i class="r"></i><i class="b"></i><i class="r"></i><i class="r"></i><i class="b"></i><i class="r"></i><i class="g"></i><i class="b"></i></div>
+        <div class="lights-demo"><i class="on"></i><i></i><i></i></div>
         <div class="timer">14:59</div>
       </div>
     </div>
@@ -47,24 +50,24 @@
   <!-- Honest strip -->
   <section class="strip">
     <div class="strip-in">
-      <div><strong>5</strong><span>live-style tables</span></div>
-      <div><strong>0</strong><span>fake "predictions"</span></div>
-      <div><strong>1.06%</strong><span>best house edge (Baccarat Banker)</span></div>
-      <div><strong>15 min</strong><span>default session</span></div>
+      <div><strong>1 tap</strong><span>per round – just tell it what came</span></div>
+      <div><strong>3 losses</strong><span>in a row = change table</span></div>
+      <div><strong>5 min</strong><span>STOP check-ins while you play</span></div>
+      <div><strong>5 games</strong><span>Roulette, Baccarat, Dragon Tiger, Sic Bo, Lucky 7</span></div>
     </div>
   </section>
 
   <!-- How it works -->
   <section class="block" id="how">
     <p class="tw-eyebrow">How it works</p>
-    <h2>Practice free. Play real with a coach.</h2>
+    <h2>Three taps to your next bet</h2>
     <div class="steps">
-      <div class="tw-card"><span class="n">1</span><h3>Practice unlimited</h3>
-        <p class="tw-muted">Fair shuffles, real payouts, real odds. Learn every game and try any betting system with play money.</p></div>
-      <div class="tw-card"><span class="n">2</span><h3>Plan your session</h3>
-        <p class="tw-muted">Enter today's budget. The coach picks the best bet, a flat stake and your stop-win and stop-loss.</p></div>
-      <div class="tw-card"><span class="n">3</span><h3>Play, then walk away</h3>
-        <p class="tw-muted">Tap Won / Lost each round. The coach tells you when to stop – then locks until tomorrow.</p></div>
+      <div class="tw-card"><span class="n">1</span><h3>Enter your amount</h3>
+        <p class="tw-muted">Tell it how much you're playing with. It sets your starting bet, your profit target and your maximum loss.</p></div>
+      <div class="tw-card"><span class="n">2</span><h3>Tap what came</h3>
+        <p class="tw-muted">Red or Black, Player or Banker, Dragon or Tiger. Every tap shows where to bet next and how much.</p></div>
+      <div class="tw-card"><span class="n">3</span><h3>Stop on the STOP sign</h3>
+        <p class="tw-muted">Profit target hit, 2 losses after a profit, 3 losses in a row or time up – the big red sign tells you to stop.</p></div>
     </div>
   </section>
 

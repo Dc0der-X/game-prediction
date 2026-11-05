@@ -14,7 +14,7 @@ import { DecimalPipe, NgIf } from '@angular/common';
     <div class="backdrop" role="alertdialog" aria-modal="true" aria-labelledby="stop-title">
       <div class="panel" [class.final]="kind === 'final'">
         <div class="octagon" aria-hidden="true"><span>STOP</span></div>
-        <h2 id="stop-title">{{ kind === 'final' ? 'STOP PLAYING NOW' : 'STOP PLAYING NOW?' }}</h2>
+        <h2 id="stop-title">{{ title || (kind === 'final' ? 'STOP PLAYING NOW' : 'STOP PLAYING NOW?') }}</h2>
         <p class="reason">{{ reason }}</p>
         <div class="net" *ngIf="net !== null" [class.pos]="net > 0" [class.neg]="net < 0">
           {{ net > 0 ? '+' : '' }}{{ net | number: '1.0-2' }}
@@ -63,6 +63,7 @@ import { DecimalPipe, NgIf } from '@angular/common';
 })
 export class StopSignComponent {
   @Input() kind: 'final' | 'checkin' = 'final';
+  @Input() title = '';
   @Input() reason = '';
   @Input() hint = '';
   @Input() net: number | null = null;

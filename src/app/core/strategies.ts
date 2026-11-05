@@ -183,6 +183,15 @@ export class OriginalSystem implements Staker {
     this.consecutiveCorrects = true;
   }
 
+  /** Start fresh from the last result seen at the table: the first bet follows it (S pattern). */
+  seed(sideId: string | null) {
+    this.reset();
+    if (this.sides && sideId) {
+      const i = this.sides.indexOf(sideId);
+      if (i >= 0) this.nextSide = i;
+    }
+  }
+
   /** Current mode, for display. */
   get state() {
     return { mode: this.mode, token: this.token, pattern: this.lastPattern };
@@ -283,16 +292,20 @@ export class OriginalSystem implements Staker {
 /* ------------------------------------------------------------------ */
 
 export const TABLE_RULES = [
-  { title: 'Bring a budget, not a target', text: 'Only play with money you are fine losing today. That amount is your bankroll.' },
-  { title: 'Follow the signal', text: 'Every round the coach tells you exactly where to bet (e.g. Red or Black) and how much. Bet that and nothing else.' },
-  { title: 'Never past the limit', text: 'Stakes step up on winning runs and recover carefully after losses – but no bet can ever go past your loss limit.' },
-  { title: 'Obey the STOP sign', text: 'The coach sets a win target, a loss limit and a timer, and checks in every few minutes. When you see STOP, you stop.' },
-  { title: 'One real session a day', text: 'After a real-money session the coach locks until tomorrow. Practice stays open.' },
+  { title: 'Enter your amount', text: "Tell the coach how much you brought today. It sets your bet size, your profit target and your maximum loss from that." },
+  { title: 'Tell it what came', text: 'Tap the last result at your table. The coach shows exactly where to bet next and how much.' },
+  { title: 'Take the profit', text: 'Hit your profit target and you stop. Once you are up, 2 losses in a row also means stop – you leave with profit.' },
+  { title: '3 losses? Change table', text: 'Three losses in a row and you stop at that table. Move to a new table and start fresh, or end the session.' },
+  { title: 'Never past your limit', text: 'No bet can take you past your maximum loss. A STOP check-in comes every 5 minutes, and one real session a day.' },
 ]
 
 export const SESSION_LIMITS = {
   /** A STOP check-in appears every this many minutes during a session. */
   checkinMinutes: 5,
+  /** After being in profit, this many losses in a row ends the session (keep the profit). */
+  profitLockLosses: 2,
+  /** This many losses in a row: stop and change table. */
+  changeTableLosses: 3,
   unitPct: 0.02,
   stopWinUnits: 5, // +10% of bankroll
   stopLossUnits: 10, // -20% of bankroll

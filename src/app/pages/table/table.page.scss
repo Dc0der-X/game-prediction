@@ -251,3 +251,7 @@
   &.attack { background: rgba(52, 181, 120, 0.25); color: #9cf0c6; }
 }
 .spot.signalled { border-color: var(--tw-gold); box-shadow: inset 0 0 0 2px var(--tw-gold); opacity: 1; }
+
+.sig-meta .lights { display: inline-flex; gap: 4px; margin-left: 6px; vertical-align: middle;
+  i { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.15); }
+  i.on { background: var(--tw-red); box-shadow: 0 0 8px rgba(224,82,82,.8); } }

@@ -61,7 +61,7 @@ export class TablePage implements OnDestroy {
   sigRounds = 0;
   nextCheckinAt = 0;
   checkinIn = 0; // seconds until the next STOP check-in
-  stopSign: 'final' | 'checkin' | null = null;
+  stopSign: 'final' | 'checkin' | 'table' | null = null;
   stopReason = '';
   signalError = '';
   private clock: any;
@@ -97,7 +97,7 @@ export class TablePage implements OnDestroy {
   /* ---------------- Signals ---------------- */
 
   get signal(): Signal | null {
-    return this.engine ? this.engine.signal(this.sigNet) : null;
+    return this.engine ? this.engine.signal() : null;
   }
 
   get stopWin() {
@@ -142,7 +142,7 @@ export class TablePage implements OnDestroy {
 
   playSignal() {
     if (this.dealing || this.stopSign || !this.engine) return;
-    const sig = this.engine.signal(this.sigNet);
+    const sig = this.engine.signal();
     if (sig.stake > this.balance) {
       this.signalError = 'Not enough play chips for this signal – reset your balance.';
       return;
@@ -154,19 +154,36 @@ export class TablePage implements OnDestroy {
     this.settled = [];
     this.timer = setTimeout(() => {
       const o = this.game.play();
-      const round = this.engine!.applyOutcome(o, this.sigNet);
+      const round = this.engine!.applyOutcome(o);
       this.settleRound(o, { [round.betId]: round.stake });
-      this.sigNet = round2(this.sigNet + round.net);
+      this.sigNet = this.engine!.net;
       this.sigRounds++;
       this.lastBets = {};
       this.bets = {};
       this.dealing = false;
-      const hit = this.engine!.stopReason(this.sigNet);
-      if (hit) {
-        this.stopReason = hit === 'stop-win' ? 'Win target reached.' : 'Loss limit reached.';
+      const hit = this.engine!.check();
+      if (hit === 'change-table') {
+        this.stopSign = 'table';
+      } else if (hit) {
+        this.stopReason = {
+          'stop-win': 'Profit target reached.',
+          'stop-loss': 'Maximum loss reached.',
+          'profit-lock': 'Two losses in a row after a profit.',
+        }[hit];
         this.stopSign = 'final';
       }
     }, 650);
+  }
+
+  /** After 3 losses: in practice, "changing table" starts a fresh pattern with the same totals. */
+  switchTable() {
+    this.engine?.changeTable(null);
+    this.stopSign = null;
+  }
+
+  get streakLights(): boolean[] {
+    const limit = (this.engine?.peak ?? 0) > 0 ? SESSION_LIMITS.profitLockLosses : SESSION_LIMITS.changeTableLosses;
+    return Array.from({ length: limit }, (_, i) => i < (this.engine?.streak ?? 0));
   }
 
   get checkinClock() {
