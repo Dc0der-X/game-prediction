@@ -34,6 +34,16 @@ service cloud.firestore {
             || next >= resource.data.selfExcludedUntil);
     }
 
+    // Short optional text fields on a profile.
+    function shortText(field, max) {
+      return !(field in request.resource.data)
+        || (request.resource.data[field] is string && request.resource.data[field].size() <= max);
+    }
+
+    function validProfileText() {
+      return shortText('name', 100) && shortText('phone', 40) && shortText('telegram', 64);
+    }
+
     // Compounding goal: { start, target, setAt } – numbers only, sensible ranges.
     function validGoal() {
       let g = request.resource.data.goal;
@@ -51,13 +61,15 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['name', 'email', 'phone', 'telegram', 'role', 'createdAt', 'ageConfirmed'])
         && request.resource.data.role == 'customer'
         && request.resource.data.createdAt == request.time
-        && request.resource.data.email == request.auth.token.email;
+        && request.resource.data.email == request.auth.token.email
+        && validProfileText();
 
       allow update: if
         (isOwner(uid)
           && changed().hasOnly(['name', 'phone', 'telegram', 'selfExcludedUntil', 'goal'])
           && (!changed().hasAny(['selfExcludedUntil']) || validSelfExclusion())
-          && (!changed().hasAny(['goal']) || validGoal()))
+          && (!changed().hasAny(['goal']) || validGoal())
+          && validProfileText())
         || (isAdmin() && changed().hasOnly(['plan', 'planSource', 'planExpiresAt']));
 
       allow delete: if false;
@@ -65,7 +77,13 @@ service cloud.firestore {
       match /sessions/{sid} {
         allow read: if isOwner(uid) || isAdmin();
         allow create: if isOwner(uid)
+          && request.resource.data.keys().hasOnly(['gameId', 'betId', 'system', 'casino', 'bankroll', 'unit', 'stopWin',
+               'stopLoss', 'minutes', 'rounds', 'net', 'endReason', 'startedAt', 'endedAt', 'savedAt'])
+          && request.resource.data.gameId is string && request.resource.data.gameId.size() <= 20
+          && request.resource.data.casino is string && request.resource.data.casino.size() <= 80
+          && request.resource.data.endReason is string && request.resource.data.endReason.size() <= 20
           && request.resource.data.net is number
+          && request.resource.data.bankroll is number && request.resource.data.bankroll > 0
           && request.resource.data.rounds is list
           && request.resource.data.rounds.size() <= 500;
         allow update, delete: if false;
@@ -105,10 +123,17 @@ service cloud.firestore {
       allow create: if request.resource.data.keys().hasOnly(['name', 'email', 'number', 'message', 'createdAt'])
         && request.resource.data.name is string && request.resource.data.name.size() <= 100
         && request.resource.data.email is string && request.resource.data.email.size() <= 200
-        && request.resource.data.message is string && request.resource.data.message.size() <= 2000;
+        && request.resource.data.message is string && request.resource.data.message.size() <= 2000
+        && (!('number' in request.resource.data) || (request.resource.data.number is string && request.resource.data.number.size() <= 40));
       allow read: if isAdmin();
       allow update, delete: if false;
     }
+
+    // Server-only collections (payments worker / bot, via service account). No client access.
+    match /checkouts/{id} { allow read, write: if false; }
+    match /trialIps/{id} { allow read, write: if false; }
+    match /instantIps/{id} { allow read, write: if false; }
+    match /botChats/{id} { allow read, write: if false; }
 
     // Legacy collection from the old app (contained plaintext passwords). Locked.
     match /User/{id} {

@@ -136,8 +136,19 @@ function newRef(): string {
   return [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
 }
 
+const CHECKOUTS_PER_HOUR = 10;
+
 async function createCheckout(req: Request, env: Env) {
   const { uid } = await requireUser(req, env);
+  const fs0 = firestore(env);
+  const me = await fs0.get(`users/${uid}`);
+  if (!me) throw new HttpError(404, 'User not found');
+  // Rate limit: a handful of checkouts per hour is plenty for a real buyer.
+  const winStart = typeof me.coWindow === 'number' ? me.coWindow : 0;
+  const inWindow = Date.now() - winStart < 3_600_000;
+  const count = inWindow && typeof me.coCount === 'number' ? me.coCount : 0;
+  if (count >= CHECKOUTS_PER_HOUR) throw new HttpError(429, 'Too many checkouts in a short time – please try again in a little while.');
+  await fs0.update(`users/${uid}`, { coWindow: inWindow ? winStart : Date.now(), coCount: count + 1 });
   const body: any = await req.json().catch(() => ({}));
   const plan = planOf(body.plan ?? (Number(body.months) === 12 ? 'year' : 'month'));
   const amount = priceFor(env, plan);
@@ -192,13 +203,32 @@ async function passStart(req: Request, env: Env) {
   if (user.pendingRef && user.pendingRef !== ref) return { ok: false, status: 'waiting' };
   if (co.startedAt instanceof Date) return { ok: true, status: until > Date.now() ? 'pending' : 'hold' };
 
+  // Not seen on the payment network yet: allow one instant start per network per day, so
+  // scripted fake checkouts on fresh accounts can't farm free hours.
+  if (!(co.seenAt instanceof Date)) {
+    const ip = clientIp(req);
+    if (!ip) return { ok: false, status: 'confirming' };
+    const key = await ipHash(ip, `${env.IP_SALT}|instant`);
+    const used = await fs.get(`instantIps/${key}`);
+    const usedAt = used?.at instanceof Date ? used.at.getTime() : 0;
+    if (used && used.uid !== uid && Date.now() - usedAt < DAY) return { ok: false, status: 'confirming' };
+    const mark = { uid, at: new Date() };
+    if (used) await fs.update(`instantIps/${key}`, mark);
+    else await fs.create('instantIps', key, mark);
+  }
+  await startPending(env, uid, ref, String(co.plan || 'month'));
+  return { ok: true, status: 'pending' };
+}
+
+/** Switches a pass on while its payment confirms (pauses by itself after HOLD_MINUTES). */
+async function startPending(env: Env, uid: string, ref: string, plan: string) {
+  const fs = firestore(env);
   const now = new Date();
   await fs.update(`users/${uid}`, {
     plan: 'pro', planSource: 'pending', planExpiresAt: new Date(now.getTime() + holdMs(env)),
-    planName: String(co.plan || 'month'), pendingRef: ref, pendingPlan: String(co.plan || 'month'), pendingSince: now,
+    planName: plan, pendingRef: ref, pendingPlan: plan, pendingSince: now,
   });
-  await fs.update(`checkouts/${ref}`, { startedAt: now });
-  return { ok: true, status: 'pending' };
+  await fs.update(`checkouts/${ref}`, { startedAt: now }).catch(() => {});
 }
 
 async function cryptoWebhook(req: Request, env: Env) {
@@ -215,14 +245,17 @@ async function cryptoWebhook(req: Request, env: Env) {
   const fs = firestore(env);
 
   if (status === 'confirming' || status === 'confirmed' || status === 'sending') {
-    // Payment seen on the network: keep the instant pass on while it confirms.
+    // Payment seen on the network: the pass switches on (or stays on) while it confirms –
+    // even if the buyer never came back to the app.
+    const co = /^[a-f0-9]{24}$/.test(ref) ? await fs.get(`checkouts/${ref}`) : null;
+    if (!co || co.uid !== uid) return { ok: true, ignored: 'unknown checkout' };
+    if (!(co.seenAt instanceof Date)) await fs.update(`checkouts/${ref}`, { seenAt: new Date() });
     const user = await fs.get(`users/${uid}`);
-    if (user?.planSource === 'pending' || user?.planSource === 'hold') {
-      if (user.pendingRef === ref) {
-        await fs.update(`users/${uid}`, { plan: 'pro', planSource: 'pending', planExpiresAt: new Date(Date.now() + holdMs(env)) });
-      }
-    }
-    return { ok: true, extended: true };
+    if (!user || (await fs.get(`payments/ref_${ref}`))) return { ok: true };
+    const until = user.planExpiresAt instanceof Date ? user.planExpiresAt.getTime() : 0;
+    const paidActive = user.plan === 'pro' && user.planSource !== 'pending' && user.planSource !== 'hold' && until > Date.now();
+    if (!paidActive) await startPending(env, uid, ref, String(co.plan || plan));
+    return { ok: true, seen: true };
   }
   if (status === 'failed' || status === 'expired' || status === 'refunded') {
     const user = await fs.get(`users/${uid}`);
@@ -249,6 +282,11 @@ async function cryptoWebhook(req: Request, env: Env) {
 /* Free-trial limit per network                                        */
 /* ------------------------------------------------------------------ */
 
+/** The caller's IP as reported by Cloudflare (never a client-supplied header). */
+function clientIp(req: Request): string {
+  return req.headers.get('CF-Connecting-IP') || '';
+}
+
 /** One-way, salted hash of the caller's IP – the IP itself is never stored. */
 export async function ipHash(ip: string, salt: string): Promise<string> {
   const data = new TextEncoder().encode(`${salt}|${ip}`);
@@ -258,7 +296,7 @@ export async function ipHash(ip: string, salt: string): Promise<string> {
 
 async function trialClaim(req: Request, env: Env) {
   const { uid } = await requireUser(req, env);
-  const ip = req.headers.get('CF-Connecting-IP') || req.headers.get('X-Forwarded-For')?.split(',')[0].trim() || '';
+  const ip = clientIp(req);
   if (!ip) throw new HttpError(400, 'Could not read your network address.');
   const max = Math.max(1, Number(env.TRIAL_PER_IP || 2));
   const fs = firestore(env);

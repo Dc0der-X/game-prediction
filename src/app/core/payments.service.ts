@@ -44,9 +44,10 @@ export class PaymentsService {
   /**
    * The buyer is back from checkout: switch the pass on now.
    * 'pending' = on while the payment confirms, 'paid' / 'active' = confirmed,
-   * 'waiting' = an earlier checkout is still unconfirmed, 'hold' / 'expired' = payment not received.
+   * 'waiting' = an earlier checkout is still unconfirmed, 'confirming' = switches on as soon as the payment
+   * is seen, 'hold' / 'expired' = payment not received.
    */
-  async startPass(ref: string): Promise<'pending' | 'paid' | 'active' | 'waiting' | 'hold' | 'expired'> {
+  async startPass(ref: string): Promise<'pending' | 'paid' | 'active' | 'waiting' | 'confirming' | 'hold' | 'expired'> {
     const res = await this.call<{ status: any }>('/pass/start', { ref });
     return res.status;
   }

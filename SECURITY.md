@@ -1,0 +1,47 @@
+# Security
+
+Review date: 2026-11-05. Everything below is covered by automated tests that run before every deploy.
+
+## How the app is protected
+
+| Area | Protection | Test |
+|---|---|---|
+| Accounts | Firebase Authentication (email + Google). Passwords are never stored by the app. | – |
+| Roles | Nobody can make themselves admin: profiles are created as `customer` only; the role field can't be changed from the app, not even by an admin. | `test/rules.test.mjs` |
+| Paid access | Plans, expiry dates and trial flags are written only by the payment server (service account). Players can't give themselves Pro. | rules tests |
+| Payments | Full passes are granted only from the payment provider's signed confirmation (HMAC-SHA512, constant-time check), with amount and duplicate checks. | worker tests 1–7 |
+| Instant passes | Switch on only when the payment is seen on the network, or once per network per day; unpaid passes pause by themselves after 60 minutes. | worker tests 10–12, 16–17 |
+| Abuse limits | 10 checkouts per account per hour; free hours for 2 accounts per network; bot: 20 replies per chat per 10 minutes, 150 per day. | worker tests 9, 18–20 |
+| Privacy | IP addresses are stored only as salted one-way hashes; bot chats under a hashed chat id, last 10 messages only. | worker tests 9, 14, 16 |
+| Data | Every collection has explicit rules: field lists, types and size limits; server-only collections are closed to the app. | rules tests |
+| Old app data | The old `User` collection (plaintext passwords) is unreadable once these rules are deployed, and is deleted by *Move old accounts → apply-and-clean*. | rules test 1 |
+| Migration | Accounts that already exist never inherit admin rights or paid time from the old app (prevents someone pre-registering the admin's email). | – |
+| Browser | Content-Security-Policy (no inline scripts, no third-party scripts except Google sign-in), HSTS, no framing, nosniff, strict referrer, locked-down browser permissions. No source maps published. | `csptest` (manual) |
+| Bot | Telegram webhook secret checked in constant time; the bot has no tools or data access, never asks for card details, and doesn't promise wins. | worker tests 13–15 |
+| Secrets | Kept only in GitHub Actions secrets and Cloudflare; never in the code. The Firebase web `apiKey` in `environment*.ts` is public by design. | git history scanned |
+
+## Known, accepted risks
+
+- **Angular 16** has published advisories (XSS through untrusted SVG attributes / i18n, XSRF token leak with
+  `HttpClient`). The app doesn't put untrusted data into SVG attributes, doesn't use i18n or `HttpClient` XSRF, and
+  the Content-Security-Policy blocks injected scripts. Plan: upgrade Angular and Ionic in a later release.
+- **Build tools** (`firebase-tools`, `wrangler`) have advisories in their own dependencies. They run only on GitHub's
+  build servers; none of that code is shipped to visitors or to the payment server.
+- **VPNs / mobile networks** can get around per-network limits (free hours, instant passes). Each account still needs
+  its own email, and every instant pass pauses after 60 minutes without payment.
+- **Email sign-ups aren't verified.** Someone can register with an address they don't own; the real owner can always
+  take it back with "Forgot password". Admin rights are never granted through sign-up.
+
+## Owner checklist (once)
+
+1. Deploy, then run *Actions → Move old accounts* right away (preview → apply → apply-and-clean).
+2. **Change the admin password** after the migration – the old app exposed it to anyone who opened the site.
+3. Google Cloud console → *APIs & Services → Credentials* → the Browser API key → restrict it to
+   `aicasinopredictor.web.app/*` (and your own domain later).
+4. Use a separate key with only *Cloud Datastore User* for the payment server (`WORKER_SERVICE_ACCOUNT` secret).
+5. Turn on 2-step verification for the Google, GitHub, Cloudflare and NOWPayments accounts.
+6. Never paste keys into chat or commit them; put them in GitHub → Settings → Secrets.
+
+## Reporting
+
+Found a problem? Email the address on the Contact page. Please don't test against real players' accounts.

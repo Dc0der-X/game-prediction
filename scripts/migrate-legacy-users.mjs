@@ -46,11 +46,20 @@ for (const d of legacy.docs) {
   if (!email) { console.log(`- skip ${d.id}: no email`); skipped++; continue; }
 
   let uid;
+  let found = null;
   try {
-    uid = (await auth.getUserByEmail(email)).uid;
+    found = await auth.getUserByEmail(email);
+  } catch {}
+  if (found) {
+    // SECURITY: anyone can sign up on the new site with any email address. An account that
+    // already exists may not belong to this person, so it never inherits admin rights or paid
+    // time from the old app. Check it in the Firebase console and promote it by hand if it's yours.
     existing++;
-    console.log(`= ${show(email)} (${role}) already in Firebase Auth – keeping its current password`);
-  } catch {
+    console.log(`= ${show(email)} (${role}) already has a login – left unchanged${role === 'admin' ? '. ADMIN NOT GRANTED: check this account in Firebase → Authentication, delete it if it is not yours, then run again.' : ''}`);
+    if (DELETE_LEGACY && APPLY && role !== 'admin') await d.ref.delete();
+    continue;
+  }
+  {
     if (password.length < 6) {
       console.log(`- skip ${show(email)}: password shorter than 6 characters (Firebase minimum). Ask them to sign up again.`);
       skipped++;

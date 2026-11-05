@@ -165,9 +165,10 @@ test('free trial: only 2 accounts per network, IP never stored', async () => {
 
 /* ---------- Instant access with automatic hold ---------- */
 
-const call = async (uid, path, body) => {
+const call = async (uid, path, body, ip = '9.9.9.9') => {
   const res = await worker.fetch(new Request(`https://w.test${path}`, {
-    method: 'POST', headers: { Authorization: `Bearer ${await idToken(uid)}`, 'content-type': 'application/json' }, body: JSON.stringify(body),
+    method: 'POST', headers: { Authorization: `Bearer ${await idToken(uid)}`, 'content-type': 'application/json', 'CF-Connecting-IP': ip },
+    body: JSON.stringify(body),
   }), env);
   return { status: res.status, body: await res.json() };
 };
@@ -208,8 +209,8 @@ test('pass switches on instantly after checkout, then the payment confirms it', 
 
 test('payment not received: the pass goes on hold by itself', async () => {
   docs.set('users/nopay', { email: { stringValue: 'n@x.y' }, role: { stringValue: 'customer' } });
-  const co = await call('nopay', '/checkout', { plan: 'year' });
-  await call('nopay', '/pass/start', { ref: co.body.ref });
+  const co = await call('nopay', '/checkout', { plan: 'year' }, '8.8.4.4');
+  assert.equal((await call('nopay', '/pass/start', { ref: co.body.ref }, '8.8.4.4')).body.status, 'pending');
   await ipn(paid({ payment_id: 902, payment_status: 'expired', order_id: `nopay:year:${co.body.ref}`, price_amount: 999 }));
   const u = docs.get('users/nopay');
   assert.equal(u.planSource.stringValue, 'hold');
@@ -265,4 +266,59 @@ test('bot pings the owner when a person is needed', async () => {
   const toUser = tgSent.find((m) => m.method === 'sendMessage' && m.body.chat_id === 77);
   assert.ok(!toUser.body.text.includes('[[HUMAN]]'));
   assert.ok(tgSent.some((m) => m.method === 'sendMessage' && m.body.chat_id === '999'), 'owner notified');
+});
+
+/* ---------- Abuse protection ---------- */
+
+test('fake checkouts: one unconfirmed instant start per network per day', async () => {
+  docs.set('users/farm1', { email: { stringValue: 'f1@x.y' }, role: { stringValue: 'customer' } });
+  docs.set('users/farm2', { email: { stringValue: 'f2@x.y' }, role: { stringValue: 'customer' } });
+  const a = await call('farm1', '/checkout', { plan: 'day' }, '7.7.7.7');
+  assert.equal((await call('farm1', '/pass/start', { ref: a.body.ref }, '7.7.7.7')).body.status, 'pending');
+  const b = await call('farm2', '/checkout', { plan: 'day' }, '7.7.7.7');
+  assert.equal((await call('farm2', '/pass/start', { ref: b.body.ref }, '7.7.7.7')).body.status, 'confirming');
+  assert.equal(docs.get('users/farm2').plan, undefined, 'second account on the network gets nothing until payment is seen');
+  // Payment seen on the network → switches on by itself, even without returning to the app.
+  await ipn(paid({ payment_id: 950, payment_status: 'confirming', order_id: `farm2:day:${b.body.ref}`, price_amount: 20 }));
+  assert.equal(docs.get('users/farm2').planSource.stringValue, 'pending');
+  assert.ok(minutesLeft('farm2') > 59);
+  const stored = JSON.stringify([...docs.entries()].filter(([k]) => k.startsWith('instantIps/')));
+  assert.ok(!stored.includes('7.7.7.7'), 'raw IPs must not be stored');
+});
+
+test('payment seen for an unknown checkout is ignored', async () => {
+  docs.set('users/ghost', { email: { stringValue: 'g@x.y' }, role: { stringValue: 'customer' } });
+  await ipn(paid({ payment_id: 951, payment_status: 'confirming', order_id: 'ghost:year:aaaaaaaaaaaaaaaaaaaaaaaa', price_amount: 999 }));
+  assert.equal(docs.get('users/ghost').plan, undefined);
+});
+
+test('checkout spam is rate limited', async () => {
+  docs.set('users/spam', { email: { stringValue: 's@x.y' }, role: { stringValue: 'customer' } });
+  for (let i = 0; i < 10; i++) assert.equal((await call('spam', '/checkout', { plan: 'day' })).status, 200);
+  const r = await call('spam', '/checkout', { plan: 'day' });
+  assert.equal(r.status, 429);
+});
+
+test('free-trial limit ignores a faked X-Forwarded-For header', async () => {
+  docs.set('users/fwd', { email: { stringValue: 'fwd@x.y' } });
+  const res = await worker.fetch(new Request('https://w.test/trial/claim', {
+    method: 'POST', headers: { Authorization: `Bearer ${await idToken('fwd')}`, 'X-Forwarded-For': '1.1.1.1', 'content-type': 'application/json' }, body: '{}',
+  }), env);
+  assert.equal(res.status, 400);
+});
+
+test('bot spam is rate limited (protects the Claude bill)', async () => {
+  tgSent.length = 0;
+  claudeReply = 'Hi!';
+  let claudeCalls = 0;
+  const before = lastClaude;
+  for (let i = 0; i < 23; i++) {
+    lastClaude = null;
+    await tgUpdate(`msg ${i}`, 'hook', 555);
+    if (lastClaude) claudeCalls++;
+  }
+  lastClaude = before;
+  assert.equal(claudeCalls, 20, `Claude called ${claudeCalls} times`);
+  const slowDown = tgSent.filter((m) => m.method === 'sendMessage' && /You're quick/.test(m.body.text));
+  assert.equal(slowDown.length, 1, 'one friendly slow-down message, not one per spam message');
 });

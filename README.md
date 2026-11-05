@@ -118,9 +118,10 @@ login, the database rules, the payment server and the support bot. Each part swi
 **Step 3 – Publish.** Merge this branch into `main` (or *Actions → Deploy → Run workflow*). When it's green the app is
 live at https://aicasinopredictor.web.app with email and Google login.
 
-**Step 4 – Keep your admin login.** *Actions → Move old accounts → Run workflow*: `preview`, then `apply`. Every old
-account (yours included) logs in with the same email and password. Run `apply-and-clean` last to delete the old
-plaintext passwords.
+**Step 4 – Keep your admin login (do this right after step 3).** *Actions → Move old accounts → Run workflow*:
+`preview`, then `apply`. Every old account (yours included) logs in with the same email and password. Run
+`apply-and-clean` last to delete the old plaintext passwords. Then **change your admin password** (Account → Forgot
+password) – the old app exposed it publicly. Security details and the full owner checklist: [SECURITY.md](SECURITY.md).
 
 **Then, whenever you're ready – payments and the 24/7 bot** (add the secrets, then *Actions → Deploy → Run workflow*):
 

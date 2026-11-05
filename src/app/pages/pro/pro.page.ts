@@ -171,6 +171,8 @@ export class ProPage {
       const status = await this.payments.startPass(ref);
       if (status === 'pending' || status === 'paid' || status === 'active') {
         this.router.navigateByUrl('/coach');
+      } else if (status === 'confirming') {
+        this.startNote = "Thanks! We're seeing your payment come through – your pass switches on automatically within a few minutes. You can stay on this page.";
       } else if (status === 'waiting') {
         this.startNote = "Thanks! Your earlier checkout is still confirming – this pass switches on automatically as soon as it's received.";
       } else {

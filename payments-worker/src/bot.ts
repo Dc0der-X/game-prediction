@@ -15,6 +15,7 @@
  */
 import Anthropic from '@anthropic-ai/sdk';
 import { firestore } from './firestore';
+import { timingSafeEqual } from './crypto';
 
 export interface BotEnv {
   FIREBASE_PROJECT_ID: string;
@@ -32,6 +33,9 @@ export interface BotEnv {
 }
 
 const KEEP_MESSAGES = 10;
+/** Per chat: at most this many replies per 10 minutes and per day (protects the Claude bill). */
+const PER_10_MIN = 20;
+const PER_DAY = 150;
 const HANDOFF = '[[HUMAN]]';
 
 function systemPrompt(env: BotEnv): string {
@@ -99,7 +103,7 @@ async function answer(env: BotEnv, history: Anthropic.Beta.BetaMessageParam[]): 
 
 export async function telegramWebhook(req: Request, env: BotEnv): Promise<{ ok: boolean }> {
   if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_WEBHOOK_SECRET || !env.ANTHROPIC_API_KEY) return { ok: false };
-  if (req.headers.get('X-Telegram-Bot-Api-Secret-Token') !== env.TELEGRAM_WEBHOOK_SECRET) return { ok: false };
+  if (!timingSafeEqual(req.headers.get('X-Telegram-Bot-Api-Secret-Token') || '', env.TELEGRAM_WEBHOOK_SECRET)) return { ok: false };
 
   const update: any = await req.json().catch(() => ({}));
   const msg = update.message;
@@ -112,11 +116,26 @@ export async function telegramWebhook(req: Request, env: BotEnv): Promise<{ ok: 
     return { ok: true };
   }
 
-  await tg(env, 'sendChatAction', { chat_id: chatId, action: 'typing' });
-
   const fs = firestore(env);
   const key = await sha(`tg|${chatId}`);
   const doc = await fs.get(`botChats/${key}`).catch(() => null);
+
+  // Rate limit per chat.
+  const now = Date.now();
+  const win = typeof doc?.win === 'number' && now - doc.win < 600_000 ? doc.win : now;
+  const n = (win === doc?.win && typeof doc?.n === 'number' ? doc.n : 0) + 1;
+  const day = typeof doc?.day === 'number' && now - doc.day < 86_400_000 ? doc.day : now;
+  const dn = (day === doc?.day && typeof doc?.dn === 'number' ? doc.dn : 0) + 1;
+  const limits = { win, n, day, dn };
+  if (n > PER_10_MIN || dn > PER_DAY) {
+    if (n === PER_10_MIN + 1 || dn === PER_DAY + 1) {
+      await tg(env, 'sendMessage', { chat_id: chatId, text: "You're quick! Give me a few minutes and I'll be right back 🙂" });
+    }
+    if (doc) await fs.update(`botChats/${key}`, limits).catch(() => {});
+    return { ok: true };
+  }
+
+  await tg(env, 'sendChatAction', { chat_id: chatId, action: 'typing' });
   let history: Anthropic.Beta.BetaMessageParam[] = [];
   try {
     history = JSON.parse(String(doc?.history || '[]'));
@@ -134,7 +153,7 @@ export async function telegramWebhook(req: Request, env: BotEnv): Promise<{ ok: 
   await tg(env, 'sendMessage', { chat_id: chatId, text: reply, disable_web_page_preview: true });
 
   history.push({ role: 'assistant', content: reply });
-  const data = { history: JSON.stringify(history.slice(-KEEP_MESSAGES)), updatedAt: new Date() };
+  const data = { history: JSON.stringify(history.slice(-KEEP_MESSAGES)), updatedAt: new Date(), ...limits };
   if (doc) await fs.update(`botChats/${key}`, data).catch(() => {});
   else await fs.create('botChats', key, data).catch(() => {});
 

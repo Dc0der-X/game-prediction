@@ -4,7 +4,10 @@
 # Everything comes from GitHub → Settings → Secrets and variables → Actions:
 #
 #   Secrets (required for the website)
-#     FIREBASE_SERVICE_ACCOUNT   Firebase service-account JSON (whole file)
+#     FIREBASE_SERVICE_ACCOUNT   Firebase service-account JSON (whole file) – used to publish
+#   Secrets (recommended)
+#     WORKER_SERVICE_ACCOUNT     a second key with only the "Cloud Datastore User" role, used by the payment
+#                                server (falls back to FIREBASE_SERVICE_ACCOUNT when not set)
 #   Secrets (payment server + support bot – each part is skipped until its secrets exist)
 #     CLOUDFLARE_API_TOKEN       Cloudflare API token ("Edit Cloudflare Workers" template)
 #     CLOUDFLARE_ACCOUNT_ID      Cloudflare account id
@@ -72,7 +75,7 @@ jobs:
         env:
           NOWPAYMENTS_API_KEY: ${{ secrets.NOWPAYMENTS_API_KEY }}
           NOWPAYMENTS_IPN_SECRET: ${{ secrets.NOWPAYMENTS_IPN_SECRET }}
-          GOOGLE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GOOGLE_SERVICE_ACCOUNT: ${{ secrets.WORKER_SERVICE_ACCOUNT || secrets.FIREBASE_SERVICE_ACCOUNT }}
           IP_SALT: ${{ secrets.IP_SALT }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
@@ -123,6 +126,12 @@ jobs:
             exit 1
           fi
       - run: npm ci
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Database security tests
+        run: npm run test:rules
       - name: Fill in public settings
         env:
           PAYMENTS_API_URL: ${{ vars.PAYMENTS_API_URL || needs.worker.outputs.url }}

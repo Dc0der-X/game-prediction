@@ -14,7 +14,8 @@
     "start:emulators": "ng serve --configuration emulators --proxy-config proxy.emulators.json --host 0.0.0.0 --disable-host-check",
     "emulators": "firebase emulators:start --only auth,firestore --project demo-tablewise",
     "seed:emulators": "node scripts/seed-emulators.mjs",
-    "build:demo": "ng build --configuration demo"
+    "build:demo": "ng build --configuration demo",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-tablewise \"node --test --test-force-exit test/rules.test.mjs\""
   },
   "private": true,
   "dependencies": {
@@ -34,7 +35,6 @@
     "@capacitor/status-bar": "5.0.6",
     "@ionic/angular": "^7.0.0",
     "firebase": "^10.4.0",
-    "firebase-tools": "^12.5.4",
     "ionicons": "^7.0.0",
     "ng-http-loader": "^15.0.0",
     "rxjs": "~7.8.0",
@@ -61,6 +61,7 @@
     "eslint-plugin-import": "2.22.1",
     "eslint-plugin-jsdoc": "30.7.6",
     "eslint-plugin-prefer-arrow": "1.2.2",
+    "firebase-tools": "^12.5.4",
     "jasmine-core": "~4.6.0",
     "jasmine-spec-reporter": "~5.0.0",
     "karma": "~6.4.0",
