@@ -1,24 +1,21 @@
-# Puts TableWise live – no terminal needed.
+# Puts TableWise live on YOUR Firebase project – no terminal needed.
 #
 # Runs on every push to main, or by hand: GitHub → Actions → Deploy → Run workflow.
 # Everything comes from GitHub → Settings → Secrets and variables → Actions:
 #
-#   Secrets (required for the website)
-#     FIREBASE_SERVICE_ACCOUNT   Firebase service-account JSON (whole file) – used to publish
-#   Secrets (recommended)
-#     WORKER_SERVICE_ACCOUNT     a second key with only the "Cloud Datastore User" role, used by the payment
-#                                server (falls back to FIREBASE_SERVICE_ACCOUNT when not set)
-#   Secrets (payment server + support bot – each part is skipped until its secrets exist)
-#     CLOUDFLARE_API_TOKEN       Cloudflare API token ("Edit Cloudflare Workers" template)
-#     CLOUDFLARE_ACCOUNT_ID      Cloudflare account id
-#     NOWPAYMENTS_API_KEY, NOWPAYMENTS_IPN_SECRET
-#     IP_SALT                    any long random string
+#   Variables (Variables tab)
+#     FIREBASE_WEB_CONFIG        required – the firebaseConfig snippet of your Firebase web app (pasted as is)
+#     SITE_URL                   optional – your own domain, e.g. https://tablewise.app
+#     SUPPORT_TELEGRAM           optional – bot username, e.g. TableWiseHelpBot
+#     SUPPORT_WHATSAPP           optional – WhatsApp number, digits only
+#     TELEGRAM_OWNER_CHAT_ID     optional – your Telegram chat id (bot hand-off pings)
+#     PAYMENTS_API_URL           optional – filled automatically from the worker deploy when empty
+#   Secrets (Secrets tab)
+#     FIREBASE_SERVICE_ACCOUNT   required – service-account key JSON of the same project (used to publish)
+#     WORKER_SERVICE_ACCOUNT     recommended – a second key with only "Cloud Datastore User" for the payment server
+#     CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID          payment server (skipped until set)
+#     NOWPAYMENTS_API_KEY, NOWPAYMENTS_IPN_SECRET, IP_SALT
 #     TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, ANTHROPIC_API_KEY
-#   Variables (optional)
-#     PAYMENTS_API_URL           worker URL (filled automatically from the worker deploy when empty)
-#     SUPPORT_TELEGRAM           bot username, e.g. TableWiseHelpBot
-#     SUPPORT_WHATSAPP           WhatsApp number, digits only
-#     TELEGRAM_OWNER_CHAT_ID     your Telegram chat id (hand-off pings)
 name: Deploy
 
 on:
@@ -33,6 +30,11 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  FIREBASE_WEB_CONFIG: ${{ vars.FIREBASE_WEB_CONFIG }}
+  SITE_URL: ${{ vars.SITE_URL }}
+  TELEGRAM_OWNER_CHAT_ID: ${{ vars.TELEGRAM_OWNER_CHAT_ID }}
+
 jobs:
   worker:
     name: Payment server + support bot
@@ -42,9 +44,6 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-    defaults:
-      run:
-        working-directory: payments-worker
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -52,26 +51,28 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: payments-worker/package-lock.json
+      - name: Point at your Firebase project
+        run: node scripts/configure-env.mjs
       - run: npm ci
+        working-directory: payments-worker
       - name: Test
         run: npm test
+        working-directory: payments-worker
       - name: Deploy worker
         id: deploy
-        env:
-          OWNER_CHAT: ${{ vars.TELEGRAM_OWNER_CHAT_ID }}
+        working-directory: payments-worker
         run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "::notice::Cloudflare secrets not set yet – payment server skipped."
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ] || [ -z "$FIREBASE_WEB_CONFIG" ]; then
+            echo "::notice::Cloudflare secrets or FIREBASE_WEB_CONFIG not set yet – payment server skipped."
             exit 0
           fi
-          EXTRA=""
-          if [ -n "$OWNER_CHAT" ]; then EXTRA="--var TELEGRAM_OWNER_CHAT_ID:$OWNER_CHAT"; fi
-          npx wrangler deploy $EXTRA 2>&1 | tee deploy.log
+          npx wrangler deploy 2>&1 | tee deploy.log
           URL=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)
           echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo "Worker live at $URL"
       - name: Set worker secrets
         if: steps.deploy.outputs.url != ''
+        working-directory: payments-worker
         env:
           NOWPAYMENTS_API_KEY: ${{ secrets.NOWPAYMENTS_API_KEY }}
           NOWPAYMENTS_IPN_SECRET: ${{ secrets.NOWPAYMENTS_IPN_SECRET }}
@@ -119,10 +120,14 @@ jobs:
         with:
           node-version: 18
           cache: npm
-      - name: Check secrets
+      - name: Check settings
         run: |
+          if [ -z "$FIREBASE_WEB_CONFIG" ]; then
+            echo "::error::Add the FIREBASE_WEB_CONFIG variable (README → Go live, step 2)."
+            exit 1
+          fi
           if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
-            echo "::error::Add the FIREBASE_SERVICE_ACCOUNT secret (README → Go live)."
+            echo "::error::Add the FIREBASE_SERVICE_ACCOUNT secret (README → Go live, step 2)."
             exit 1
           fi
       - run: npm ci
@@ -132,7 +137,8 @@ jobs:
           java-version: 21
       - name: Database security tests
         run: npm run test:rules
-      - name: Fill in public settings
+      - name: Point at your Firebase project
+        id: cfg
         env:
           PAYMENTS_API_URL: ${{ vars.PAYMENTS_API_URL || needs.worker.outputs.url }}
           SUPPORT_TELEGRAM: ${{ vars.SUPPORT_TELEGRAM }}
@@ -141,10 +147,14 @@ jobs:
       - name: Build
         run: npx ng build --configuration production
       - name: Deploy to Firebase
+        env:
+          PROJECT: ${{ steps.cfg.outputs.project_id }}
+          SITE: ${{ steps.cfg.outputs.site_url }}
         run: |
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
           npx --yes firebase-tools@13.29.1 deploy --only hosting,firestore:rules,firestore:indexes \
-            --project prediction-ai-a4dfe --non-interactive --force
+            --project "$PROJECT" --non-interactive --force
           rm -f "$RUNNER_TEMP/sa.json"
-          echo "Live at https://aicasinopredictor.web.app"
+          echo "Live at https://${PROJECT}.web.app" >> "$GITHUB_STEP_SUMMARY"
+          echo "Site address: ${SITE}" >> "$GITHUB_STEP_SUMMARY"

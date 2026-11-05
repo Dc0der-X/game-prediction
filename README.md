@@ -106,22 +106,35 @@ Everything is open source: Angular, Ionic, Firebase JS SDK, `jose`, `wrangler`.
 Deploys run from GitHub Actions (`.github/workflows/deploy.yml`): every push to `main` publishes the website, the
 login, the database rules, the payment server and the support bot. Each part switches on as soon as its secrets exist.
 
-**Step 1 – Firebase login (5 minutes, console.firebase.google.com → project `prediction-ai-a4dfe`)**
-1. *Authentication → Get started → Sign-in method*: enable **Email/Password** and **Google**.
-2. *Authentication → Settings → Authorized domains*: add `aicasinopredictor.web.app`.
-3. *Project settings → Service accounts → Generate new private key* – downloads a JSON file.
-4. console.cloud.google.com → *IAM* → the `firebase-adminsdk-…` account → *Edit* → add the role **Firebase Admin**.
+**Step 1 – Create your Firebase project (10 minutes, console.firebase.google.com, signed in with your own Google account)**
+1. *Add project* → name it (e.g. `tablewise-live`) → Google Analytics off is fine → *Create*.
+2. *Build → Authentication → Get started → Sign-in method*: enable **Email/Password** and **Google**.
+3. *Build → Firestore Database → Create database* → *Production mode* → pick the location nearest your players.
+4. *Build → Hosting → Get started* → click *Next* through the steps (no need to run the commands shown).
+5. *Project settings (⚙️) → General → Your apps → Web (</>)* → nickname `web` → *Register app*. Copy the
+   `firebaseConfig = { … }` block it shows.
+6. *Project settings → Service accounts → Generate new private key* – downloads a JSON file. Keep it private.
+7. console.cloud.google.com → pick the same project → *IAM* → the `firebase-adminsdk-…` account → *Edit* →
+   add the role **Firebase Admin** → *Save*.
 
-**Step 2 – GitHub secret.** Repo → *Settings → Secrets and variables → Actions → New repository secret*:
-`FIREBASE_SERVICE_ACCOUNT` = the whole JSON file from step 1.3.
+**Step 2 – GitHub settings.** Repo → *Settings → Secrets and variables → Actions*:
+- *Variables* tab → *New repository variable*: `FIREBASE_WEB_CONFIG` = the block from step 1.5 (paste as is).
+- *Secrets* tab → *New repository secret*: `FIREBASE_SERVICE_ACCOUNT` = the whole JSON file from step 1.6.
 
-**Step 3 – Publish.** Merge this branch into `main` (or *Actions → Deploy → Run workflow*). When it's green the app is
-live at https://aicasinopredictor.web.app with email and Google login.
+**Step 3 – Publish.** Merge the pull request into `main` (or *Actions → Deploy → Run workflow*). When it's green the
+app is live at `https://<your-project-id>.web.app` with email and Google login (the address is shown in the run's
+summary).
 
-**Step 4 – Keep your admin login (do this right after step 3).** *Actions → Move old accounts → Run workflow*:
-`preview`, then `apply`. Every old account (yours included) logs in with the same email and password. Run
-`apply-and-clean` last to delete the old plaintext passwords. Then **change your admin password** (Account → Forgot
-password) – the old app exposed it publicly. Security details and the full owner checklist: [SECURITY.md](SECURITY.md).
+**Step 4 – Your admin login.** Open the new site, sign up with your email (or Google), then *Actions → Make admin →
+Run workflow* → enter that email. Reload the site: the *Admin* button appears.
+
+*Moving accounts from an old Firebase project:* only possible with access to that project – then use *Actions → Move
+old accounts* with that project's key. Security details and the owner checklist: [SECURITY.md](SECURITY.md).
+
+**Own domain (optional).** Buy it (Cloudflare Registrar, Namecheap, Porkbun…), then Firebase → *Hosting → Add custom
+domain* and copy the DNS records it shows into your domain's settings. Add the domain under *Authentication →
+Settings → Authorized domains*, and set the GitHub variable `SITE_URL` (e.g. `https://tablewise.app`); the next
+deploy updates links, SEO and the payment server.
 
 **Then, whenever you're ready – payments and the 24/7 bot** (add the secrets, then *Actions → Deploy → Run workflow*):
 

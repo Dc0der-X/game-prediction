@@ -14,7 +14,7 @@ Review date: 2026-11-05. Everything below is covered by automated tests that run
 | Abuse limits | 10 checkouts per account per hour; free hours for 2 accounts per network; bot: 20 replies per chat per 10 minutes, 150 per day. | worker tests 9, 18–20 |
 | Privacy | IP addresses are stored only as salted one-way hashes; bot chats under a hashed chat id, last 10 messages only. | worker tests 9, 14, 16 |
 | Data | Every collection has explicit rules: field lists, types and size limits; server-only collections are closed to the app. | rules tests |
-| Old app data | The old `User` collection (plaintext passwords) is unreadable once these rules are deployed, and is deleted by *Move old accounts → apply-and-clean*. | rules test 1 |
+| Old app data | On any project these rules run on, the old `User` collection (plaintext passwords) is unreadable. | rules test 1 |
 | Migration | Accounts that already exist never inherit admin rights or paid time from the old app (prevents someone pre-registering the admin's email). | – |
 | Browser | Content-Security-Policy (no inline scripts, no third-party scripts except Google sign-in), HSTS, no framing, nosniff, strict referrer, locked-down browser permissions. No source maps published. | `csptest` (manual) |
 | Bot | Telegram webhook secret checked in constant time; the bot has no tools or data access, never asks for card details, and doesn't promise wins. | worker tests 13–15 |
@@ -34,10 +34,12 @@ Review date: 2026-11-05. Everything below is covered by automated tests that run
 
 ## Owner checklist (once)
 
-1. Deploy, then run *Actions → Move old accounts* right away (preview → apply → apply-and-clean).
-2. **Change the admin password** after the migration – the old app exposed it to anyone who opened the site.
+1. Deploy to your own Firebase project, sign up, then *Actions → Make admin*.
+2. The old site (`aicasinopredictor.web.app`, old Firebase project) exposes every old account's plaintext password and
+   can only be fixed by that project's owner. Don't reuse any password from it, and ask the owner or Firebase support
+   to take it down.
 3. Google Cloud console → *APIs & Services → Credentials* → the Browser API key → restrict it to
-   `aicasinopredictor.web.app/*` (and your own domain later).
+   `<your-project-id>.web.app/*`, `<your-project-id>.firebaseapp.com/*` (and your own domain later).
 4. Use a separate key with only *Cloud Datastore User* for the payment server (`WORKER_SERVICE_ACCOUNT` secret).
 5. Turn on 2-step verification for the Google, GitHub, Cloudflare and NOWPayments accounts.
 6. Never paste keys into chat or commit them; put them in GitHub → Settings → Secrets.

@@ -1,0 +1,44 @@
+# Makes an account an admin. Sign up on the site first (email or Google), then:
+# GitHub → Actions → "Make admin" → Run workflow → enter that email.
+# Needs the FIREBASE_SERVICE_ACCOUNT secret. The email is masked in the log.
+name: Make admin
+
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: Email of the account to make admin (it must have signed up already)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  admin:
+    runs-on: ubuntu-latest
+    env:
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+    defaults:
+      run:
+        working-directory: scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: scripts/package-lock.json
+      - run: npm ci
+      - name: Make admin
+        env:
+          EMAIL: ${{ inputs.email }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Add the FIREBASE_SERVICE_ACCOUNT secret first (README → Go live)."
+            exit 1
+          fi
+          echo "::add-mask::$EMAIL"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+          node make-admin.mjs "$RUNNER_TEMP/sa.json" "$EMAIL" --mask
+          rm -f "$RUNNER_TEMP/sa.json"
