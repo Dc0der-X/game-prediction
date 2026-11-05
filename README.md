@@ -16,6 +16,7 @@ fun, unlimited practice and a disciplined way to play for real that keeps losses
 | **Signal Room**: enter your amount, tap what came, get the side and the amount for every bet | first 3 hours | ✅ |
 | Live target, safety limit, cash-out and fresh-table alerts, floating signal window | first 3 hours | ✅ |
 | History and the **winnings wall** | first 3 hours | ✅ |
+| **My Goal** – compounding calculator: start → goal, session-by-session plan, real progress, today's step | first 3 hours | ✅ |
 | Personal colour themes, pause option, 24/7 Telegram support bot | ✅ | ✅ |
 
 ### Pricing
@@ -99,6 +100,42 @@ a cent per reply in Claude API usage.
 Everything is open source: Angular, Ionic, Firebase JS SDK, `jose`, `wrangler`.
 
 ---
+
+## Go live (no terminal needed)
+
+Deploys run from GitHub Actions (`.github/workflows/deploy.yml`): every push to `main` publishes the website, the
+login, the database rules, the payment server and the support bot. Each part switches on as soon as its secrets exist.
+
+**Step 1 – Firebase login (5 minutes, console.firebase.google.com → project `prediction-ai-a4dfe`)**
+1. *Authentication → Get started → Sign-in method*: enable **Email/Password** and **Google**.
+2. *Authentication → Settings → Authorized domains*: add `aicasinopredictor.web.app`.
+3. *Project settings → Service accounts → Generate new private key* – downloads a JSON file.
+4. console.cloud.google.com → *IAM* → the `firebase-adminsdk-…` account → *Edit* → add the role **Firebase Admin**.
+
+**Step 2 – GitHub secret.** Repo → *Settings → Secrets and variables → Actions → New repository secret*:
+`FIREBASE_SERVICE_ACCOUNT` = the whole JSON file from step 1.3.
+
+**Step 3 – Publish.** Merge this branch into `main` (or *Actions → Deploy → Run workflow*). When it's green the app is
+live at https://aicasinopredictor.web.app with email and Google login.
+
+**Step 4 – Keep your admin login.** *Actions → Move old accounts → Run workflow*: `preview`, then `apply`. Every old
+account (yours included) logs in with the same email and password. Run `apply-and-clean` last to delete the old
+plaintext passwords.
+
+**Then, whenever you're ready – payments and the 24/7 bot** (add the secrets, then *Actions → Deploy → Run workflow*):
+
+| Secret | Where to get it |
+|---|---|
+| `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | dash.cloudflare.com (free) → *My Profile → API Tokens → "Edit Cloudflare Workers"*; account id on the Workers page |
+| `NOWPAYMENTS_API_KEY`, `NOWPAYMENTS_IPN_SECRET` | nowpayments.io → *Settings → Payments* |
+| `IP_SALT` | any long random string |
+| `TELEGRAM_BOT_TOKEN` | Telegram → @BotFather → `/newbot` |
+| `TELEGRAM_WEBHOOK_SECRET` | any random string (letters/numbers) |
+| `ANTHROPIC_API_KEY` | console.anthropic.com |
+
+Optional *variables* (same page, Variables tab): `SUPPORT_TELEGRAM` (bot username), `SUPPORT_WHATSAPP` (digits),
+`TELEGRAM_OWNER_CHAT_ID` (your chat id for hand-offs), `PAYMENTS_API_URL` (filled automatically when empty).
+The workflow sets the worker's secrets, connects the Telegram bot and points the app at the payment server by itself.
 
 ## Setup
 

@@ -351,3 +351,11 @@
 .mini-alert { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 12px 0 0; padding: 10px 12px;
   border-radius: 12px; background: rgba(245, 199, 106, .15); border: 1px solid rgba(245, 199, 106, .5);
   button { border: 0; border-radius: 999px; padding: 6px 14px; font: inherit; font-weight: 800; background: var(--tw-money); color: #1a1205; cursor: pointer; } }
+
+/* Goal banner on the setup screen */
+.goal-banner { display: flex; align-items: center; gap: 14px; margin: 0 0 18px; padding: 14px 16px; border-radius: 16px; text-decoration: none;
+  color: var(--tw-text); border: 1px solid rgba(47, 224, 143, .45);
+  background: linear-gradient(120deg, rgba(47, 224, 143, .14), var(--tw-card) 70%);
+  strong { display: block; font-size: 15px; } small { color: var(--tw-muted); font-size: 13px; }
+  &.soft { border-color: var(--tw-line-strong); background: var(--tw-card); } }
+.gb-ico { font-size: 26px; }

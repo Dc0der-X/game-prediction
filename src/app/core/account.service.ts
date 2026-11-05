@@ -24,6 +24,7 @@ import {
 import { BehaviorSubject, Observable, combineLatest, map, of, shareReplay, switchMap, timer } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { PRICING } from './pricing';
+import { Goal } from './goal';
 
 export interface Profile {
   uid: string;
@@ -44,6 +45,8 @@ export interface Profile {
   planExpiresAt?: Timestamp | null;
   paypalStatus?: string;
   selfExcludedUntil?: Timestamp | null;
+  /** The player's compounding goal (set on the My Goal page). */
+  goal?: Goal | null;
 }
 
 export interface Access {
@@ -249,6 +252,12 @@ export class AccountService {
   updateDetails(uid: string, data: { name: string; phone: string; telegram: string }) {
     if (this.demo) return Promise.resolve(this.setDemo({ ...this.demo.value!, ...data }));
     return updateDoc(doc(this.fs, 'users', uid), data);
+  }
+
+  /** Saves (or clears) the player's compounding goal. */
+  setGoal(uid: string, goal: Goal | null) {
+    if (this.demo) return Promise.resolve(this.setDemo({ ...this.demo.value!, goal }));
+    return updateDoc(doc(this.fs, 'users', uid), { goal });
   }
 
   /** Lock real-money sessions for N days. Can be extended, never shortened. */

@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { AsyncPipe, DatePipe, LowerCasePipe, NgFor, NgIf } from '@angular/common';
+import { AsyncPipe, DatePipe, DecimalPipe, LowerCasePipe, NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
@@ -10,7 +10,7 @@ import { TopbarComponent } from '../../shared/topbar.component';
 @Component({
   selector: 'app-account',
   standalone: true,
-  imports: [IonicModule, FormsModule, RouterLink, NgIf, NgFor, AsyncPipe, DatePipe, LowerCasePipe, TopbarComponent],
+  imports: [IonicModule, FormsModule, RouterLink, NgIf, NgFor, AsyncPipe, DatePipe, DecimalPipe, LowerCasePipe, TopbarComponent],
   template: `
     <app-topbar></app-topbar>
     <ion-content>
@@ -27,6 +27,13 @@ import { TopbarComponent } from '../../shared/topbar.component';
           <h3 *ngIf="!a.isAdmin && !a.hasPro && !a.onHold">Free</h3>
           <ion-button size="small" routerLink="/pro" *ngIf="!a.isPaid && !a.isAdmin">Get a pass</ion-button>
         </div>
+
+        <a class="tw-card goal-card" routerLink="/goal">
+          <p class="tw-eyebrow">My goal</p>
+          <h3 *ngIf="p.goal">{{ p.goal.start | number: '1.0-0' }} → {{ p.goal.target | number: '1.0-0' }}</h3>
+          <h3 *ngIf="!p.goal">Set a goal – see how your wins compound</h3>
+          <span class="tw-small go-link">Open the compounding calculator →</span>
+        </a>
 
         <div class="tw-card">
           <p class="tw-eyebrow">Details</p>
@@ -70,6 +77,9 @@ import { TopbarComponent } from '../../shared/topbar.component';
     .tw-card { margin-bottom: 16px; }
     h3 { margin: 0 0 8px; font-size: 18px; }
     .danger { border-color: rgba(224,82,82,.3); }
+    .goal-card { display: block; text-decoration: none; color: inherit; border-color: rgba(var(--tw-accent-rgb), .45);
+      background: linear-gradient(160deg, rgba(var(--tw-accent-rgb), .12), var(--tw-card) 60%); }
+    .go-link { color: var(--tw-gold); font-weight: 700; }
   `],
 })
 export class AccountPage {

@@ -34,6 +34,16 @@ service cloud.firestore {
             || next >= resource.data.selfExcludedUntil);
     }
 
+    // Compounding goal: { start, target, setAt } – numbers only, sensible ranges.
+    function validGoal() {
+      let g = request.resource.data.goal;
+      return g == null
+        || (g is map && g.keys().hasOnly(['start', 'target', 'setAt'])
+            && g.start is number && g.start >= 50
+            && g.target is number && g.target > g.start && g.target <= g.start * 1000
+            && g.setAt is int);
+    }
+
     match /users/{uid} {
       allow read: if isOwner(uid) || isAdmin();
 
@@ -45,8 +55,9 @@ service cloud.firestore {
 
       allow update: if
         (isOwner(uid)
-          && changed().hasOnly(['name', 'phone', 'telegram', 'selfExcludedUntil'])
-          && (!changed().hasAny(['selfExcludedUntil']) || validSelfExclusion()))
+          && changed().hasOnly(['name', 'phone', 'telegram', 'selfExcludedUntil', 'goal'])
+          && (!changed().hasAny(['selfExcludedUntil']) || validSelfExclusion())
+          && (!changed().hasAny(['goal']) || validGoal()))
         || (isAdmin() && changed().hasOnly(['plan', 'planSource', 'planExpiresAt']));
 
       allow delete: if false;
@@ -66,17 +77,20 @@ service cloud.firestore {
       allow read: if isAdmin();
     }
 
-    // Anonymous public results feed (no names, no bets).
+    // Anonymous public cash-outs feed (no names, no bets). Winning sessions only, stamped now.
     match /feed/{id} {
       allow read: if true;
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly(['game', 'net', 'pct', 'minutes', 'endReason', 'createdAt'])
         && request.resource.data.game is string && request.resource.data.game.size() <= 20
-        && request.resource.data.net is number && request.resource.data.pct is number
-        && request.resource.data.pct >= -100 && request.resource.data.pct <= 1000
+        && request.resource.data.net is number && request.resource.data.net > 0
+        && request.resource.data.pct is number
+        && request.resource.data.pct > 0 && request.resource.data.pct <= 100
         && request.resource.data.minutes is int && request.resource.data.minutes <= 600
         && request.resource.data.endReason is string && request.resource.data.endReason.size() <= 20
-        && request.resource.data.createdAt is int;
+        && request.resource.data.createdAt is int
+        && request.resource.data.createdAt > request.time.toMillis() - 300000
+        && request.resource.data.createdAt < request.time.toMillis() + 300000;
       allow update, delete: if false;
     }
 

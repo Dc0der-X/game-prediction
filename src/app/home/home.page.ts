@@ -31,8 +31,8 @@ export class HomePage {
   themes = THEMES;
   demo = environment.demoMode;
   feed: FeedItem[] = [];
-  /** Share of recent sessions that ended at their target – from real results only. */
-  hitRate: number | null = null;
+  /** Number of cash-outs shared in the last 24 hours. */
+  cashouts24h: number | null = null;
   private sessions = inject(SessionsService);
   free = FREE_FEATURES;
   pro = PRO_FEATURES;
@@ -78,8 +78,8 @@ export class HomePage {
   constructor() {
     this.sessions.feed(30).then((items) => {
       this.feed = items.slice(0, 12);
-      const done = items.filter((i) => i.endReason === 'stop-win' || i.endReason === 'stop-loss' || i.net !== 0);
-      this.hitRate = done.length >= 5 ? Math.round((done.filter((i) => i.endReason === 'stop-win').length / done.length) * 100) : null;
+      const n = items.filter((i) => i.createdAt > Date.now() - 86_400_000).length;
+      this.cashouts24h = n > 0 ? n : null;
     });
   }
 

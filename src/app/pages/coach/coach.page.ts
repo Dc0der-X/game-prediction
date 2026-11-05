@@ -1,7 +1,7 @@
 import { Component, ElementRef, NgZone, OnDestroy, ViewChild, inject } from '@angular/core';
 import { DatePipe, DecimalPipe, NgClass, NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
 import { Timestamp } from '@angular/fire/firestore';
 import { firstValueFrom, filter } from 'rxjs';
@@ -13,6 +13,7 @@ import { AccountService } from '../../core/account.service';
 import { EndReason, SessionsService } from '../../core/sessions.service';
 import { GAMES, GameDef, getBet, getGame } from '../../core/games';
 import { SESSION_LIMITS, SessionPlan, planNeural } from '../../core/strategies';
+import { Goal, goalProgress } from '../../core/goal';
 import { Signal, SignalEngine, SignalEvent, SystemId, VOID_RESULT } from '../../core/signals';
 
 type Stage = 'checking' | 'locked' | 'excluded' | 'setup' | 'first' | 'live' | 'newtable' | 'done';
@@ -60,6 +61,10 @@ export class CoachPage implements OnDestroy {
   private zone = inject(NgZone);
   private account = inject(AccountService);
   private sessions = inject(SessionsService);
+  private route = inject(ActivatedRoute);
+  /** The player's goal, with today's step (for the setup banner). */
+  goal: Goal | null = null;
+  goalStep: { amount: number; gain: number; left: number } | null = null;
 
   stage: Stage = 'checking';
   /** First name for the greeting. */
@@ -124,6 +129,7 @@ export class CoachPage implements OnDestroy {
     this.uid = user!.uid;
     const profile = await firstValueFrom(this.account.profile$);
     this.firstName = (profile?.name || '').trim().split(/\s+/)[0] || '';
+    await this.loadGoal(profile?.goal ?? null);
     const access = await firstValueFrom(this.account.access$);
     if (access.selfExcludedUntil) {
       this.excludedUntil = access.selfExcludedUntil;
@@ -151,6 +157,19 @@ export class CoachPage implements OnDestroy {
       return;
     }
     this.stage = (await this.sessions.playedToday(this.uid)) ? 'locked' : 'setup';
+  }
+
+  /** Pre-fills today's amount from ?amount= or the player's goal. */
+  private async loadGoal(goal: Goal | null) {
+    const q = Number(this.route.snapshot.queryParamMap.get('amount'));
+    if (goal) {
+      this.goal = goal;
+      const list = await this.sessions.list(this.uid).catch(() => []);
+      const pr = goalProgress(goal, list.map((s) => ({ net: s.net, startedAt: s.startedAt.toMillis() })));
+      if (!pr.reached) this.goalStep = { amount: pr.nextAmount, gain: pr.nextGain, left: pr.left };
+      if (!this.bankroll && pr.nextAmount >= 50 && !pr.reached) this.bankroll = Math.round(pr.nextAmount * 100) / 100;
+    }
+    if (Number.isFinite(q) && q >= 50) this.bankroll = Math.round(q * 100) / 100;
   }
 
   /** "Good evening, Vivek" – the setup screen speaks to the player by name. */

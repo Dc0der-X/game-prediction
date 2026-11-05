@@ -43,6 +43,7 @@ import { THEMES, ThemeId, ThemeService } from '../core/theme.service';
       </div>
       <nav class="tabs">
         <a routerLink="/coach" routerLinkActive="on" class="primary">Signal Room</a>
+        <a routerLink="/goal" routerLinkActive="on">My Goal</a>
         <a routerLink="/lobby" routerLinkActive="on">Practice</a>
         <a routerLink="/history" routerLinkActive="on">History</a>
       </nav>

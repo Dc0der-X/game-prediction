@@ -31,6 +31,16 @@
         <p class="tw-muted">Pick your game and your amount. The signals do the rest.</p>
       </header>
 
+      <a class="goal-banner" *ngIf="goalStep" routerLink="/goal">
+        <span class="gb-ico">🎯</span>
+        <span><strong>Today's goal step: play with {{ goalStep.amount | number: '1.0-2' }}, target +{{ goalStep.gain | number: '1.0-2' }}</strong>
+          <small>{{ goalStep.left }} winning session{{ goalStep.left === 1 ? '' : 's' }} to your goal of {{ goal?.target | number: '1.0-0' }}</small></span>
+      </a>
+      <a class="goal-banner soft" *ngIf="!goal" routerLink="/goal">
+        <span class="gb-ico">🎯</span>
+        <span><strong>Set a goal</strong><small>See how your wins compound, session by session.</small></span>
+      </a>
+
       <section class="step">
         <div class="step-n">1</div>
         <div class="step-body">

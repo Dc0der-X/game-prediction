@@ -53,7 +53,7 @@ function demoLoad(): any[] {
   }
 }
 
-/** One anonymous line in the public "recent results" feed. No names, no bets, no method. */
+/** One anonymous line in the public "latest cash-outs" feed. No names, no bets, no method. */
 export interface FeedItem {
   game: string;
   net: number;
@@ -85,26 +85,26 @@ export class SessionsService {
     });
   }
 
-  /** Adds the anonymous result to the public feed (best effort). */
+  /** Adds a winning session to the public cash-outs feed (best effort). Only sessions that ended up are shared. */
   private publish(s: RealSession) {
-    if (this.demo || !s.rounds.length) return;
+    if (this.demo || !s.rounds.length || !(s.net > 0)) return;
     const minutes = Math.max(1, Math.round((s.endedAt.toMillis() - s.startedAt.toMillis()) / 60000));
     addDoc(collection(this.fs, 'feed'), {
       game: s.gameId,
       net: Math.round(s.net * 100) / 100,
-      pct: Math.round((s.net / (s.bankroll || 1)) * 1000) / 10,
+      pct: Math.min(100, Math.round((s.net / (s.bankroll || 1)) * 1000) / 10),
       minutes: Math.min(minutes, 600),
       endReason: s.endReason,
       createdAt: Date.now(),
     }).catch(() => {});
   }
 
-  /** Latest anonymous results from all players (public). */
+  /** Latest anonymous cash-outs from all players (public). */
   async feed(max = 30): Promise<FeedItem[]> {
     if (this.demo) return demoFeed();
     try {
       const snap = await getDocs(query(collection(this.fs, 'feed'), orderBy('createdAt', 'desc'), limit(max)));
-      return snap.docs.map((d) => d.data() as FeedItem);
+      return snap.docs.map((d) => d.data() as FeedItem).filter((f) => f.net > 0);
     } catch {
       return [];
     }
@@ -141,20 +141,22 @@ export class SessionsService {
   }
 }
 
-/** Sample feed for the browser-only demo (clearly labelled as sample data in the UI). */
+/** Sample cash-outs for the browser-only demo (clearly labelled as sample data in the UI). */
 function demoFeed(): FeedItem[] {
-  const games = ['roulette', 'baccarat', 'dragon-tiger', 'baccarat', 'roulette', 'sicbo'];
+  const games = ['baccarat', 'roulette', 'craps', 'dragon-tiger', 'baccarat', 'sicbo', 'roulette', 'baccarat'];
+  const amounts = [200, 500, 300, 1000, 150, 250, 400, 2000];
+  const pcts = [10, 10, 7.5, 10, 6, 10, 8.3, 10, 5.5, 10];
   const now = Date.now();
-  return Array.from({ length: 18 }, (_, i) => {
-    const win = i % 10 !== 3 && i % 10 !== 7 && i % 10 !== 9;
-    const pct = win ? 33.3 : -[78, 91, 100][i % 3];
+  return Array.from({ length: 16 }, (_, i) => {
+    const pct = pcts[i % pcts.length];
+    const amount = amounts[i % amounts.length];
     return {
       game: games[i % games.length],
-      net: Math.round(pct * 3),
+      net: Math.round(amount * pct) / 100,
       pct,
-      minutes: 22 + ((i * 7) % 31),
-      endReason: win ? 'stop-win' : 'stop-loss',
-      createdAt: now - (i + 1) * 23 * 60_000,
+      minutes: 14 + ((i * 7) % 29),
+      endReason: pct >= 10 ? 'stop-win' : 'profit-lock',
+      createdAt: now - (i + 1) * 17 * 60_000,
     };
   });
 }

@@ -21,6 +21,7 @@ const routes: Routes = [
 
   // Pro (trial or paid)
   { path: 'coach', data: { title: 'Signal Room', description: '', noindex: true }, canActivate: [proGuard], loadComponent: () => import('./pages/coach/coach.page').then((m) => m.CoachPage) },
+  { path: 'goal', data: { title: 'My goal', description: '', noindex: true }, canActivate: [authGuard], loadComponent: () => import('./pages/goal/goal.page').then((m) => m.GoalPage) },
   { path: 'history', data: { title: 'Your history', description: '', noindex: true }, canActivate: [proGuard], loadComponent: () => import('./pages/history/history.page').then((m) => m.HistoryPage) },
   { path: 'lab', redirectTo: 'coach' },
 

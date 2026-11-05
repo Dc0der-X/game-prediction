@@ -4,7 +4,7 @@
     <button class="burger" (click)="menuOpen = !menuOpen" aria-label="Menu"><ion-icon name="menu-outline"></ion-icon></button>
     <div class="links" [class.open]="menuOpen">
       <a (click)="scrollTo('how')">How it works</a>
-      <a (click)="scrollTo('results')">Live results</a>
+      <a (click)="scrollTo('results')">Live cash-outs</a>
       <a (click)="scrollTo('pricing')">Pricing</a>
       <a (click)="scrollTo('faq')">FAQ</a>
       <ng-container *ngIf="access$ | async as a">
@@ -58,7 +58,7 @@
   <section class="strip">
     <div class="strip-in">
       <div><strong>1 tap</strong><span>per round – just tell it what came</span></div>
-      <div><strong>{{ hitRate === null ? '–' : hitRate + '%' }}</strong><span>of recent sessions hit their target{{ demo ? ' (sample)' : '' }}</span></div>
+      <div><strong>{{ cashouts24h === null ? '–' : cashouts24h }}</strong><span>cash-outs in the last 24 h{{ demo ? ' (sample)' : '' }}</span></div>
       <div><strong>~40 min</strong><span>typical session, then you cash out</span></div>
       <div><strong>5 games</strong><span>Roulette, Baccarat, Dragon Tiger, Sic Bo, Craps</span></div>
     </div>
@@ -96,19 +96,19 @@
 
   <!-- Rules -->
   <section class="block" id="results">
-    <p class="tw-eyebrow">Live results</p>
-    <h2>Sessions finishing right now</h2>
-    <p class="tw-muted narrow">Real, anonymous results from TableWise players{{ demo ? ' – sample data in this demo' : '' }}.
-      No names, no bets, just how sessions ended.</p>
+    <p class="tw-eyebrow">Live cash-outs</p>
+    <h2>Players cashing out right now</h2>
+    <p class="tw-muted narrow">The latest winning sessions from TableWise players, shared anonymously{{ demo ? ' – sample data in this demo' : '' }}.
+      No names, no bets.</p>
     <div class="feed" *ngIf="feed.length; else noFeed">
-      <div class="item" *ngFor="let f of feed" [class.win]="f.net > 0" [class.loss]="f.net < 0">
+      <div class="item win" *ngFor="let f of feed">
         <span class="g">{{ gameName(f.game) }}</span>
-        <span class="r">{{ f.net > 0 ? '+' : '' }}{{ f.pct | number: '1.0-0' }}%</span>
-        <span class="tag">{{ f.endReason === 'stop-win' ? 'Target hit' : f.net > 0 ? 'Cashed out' : 'Next one' }}</span>
+        <span class="r">+{{ f.net | number: '1.0-2' }} <small>+{{ f.pct | number: '1.0-1' }}%</small></span>
+        <span class="tag">{{ f.endReason === 'stop-win' ? 'Target hit' : 'Cashed out on top' }}</span>
         <span class="m tw-muted">{{ f.minutes }} min · {{ ago(f.createdAt) }}</span>
       </div>
     </div>
-    <ng-template #noFeed><p class="tw-muted">Results appear here as players finish sessions.</p></ng-template>
+    <ng-template #noFeed><p class="tw-muted">Cash-outs appear here as players finish winning sessions.</p></ng-template>
   </section>
 
   <!-- Pricing -->

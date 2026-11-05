@@ -9,6 +9,7 @@
  *   node migrate-legacy-users.mjs ./service-account.json            # dry run – shows what would happen
  *   node migrate-legacy-users.mjs ./service-account.json --apply    # do it
  *   node migrate-legacy-users.mjs ./service-account.json --apply --delete-legacy   # and remove the old plaintext records
+ *   add --mask to hide most of each email in the output
  *
  * Get service-account.json from Firebase console → Project settings → Service accounts →
  * Generate new private key. Keep it private; it is git-ignored.
@@ -25,6 +26,9 @@ if (!saPath) {
 }
 const APPLY = flags.includes('--apply');
 const DELETE_LEGACY = flags.includes('--delete-legacy');
+// --mask hides most of each email in the output (for logs other people may see).
+const MASK = flags.includes('--mask');
+const show = (e) => (MASK ? String(e).replace(/^(.)[^@]*(@.*)$/, '$1***$2') : e);
 
 initializeApp({ credential: cert(JSON.parse(readFileSync(saPath, 'utf8'))) });
 const auth = getAuth();
@@ -45,14 +49,14 @@ for (const d of legacy.docs) {
   try {
     uid = (await auth.getUserByEmail(email)).uid;
     existing++;
-    console.log(`= ${email} (${role}) already in Firebase Auth – keeping its current password`);
+    console.log(`= ${show(email)} (${role}) already in Firebase Auth – keeping its current password`);
   } catch {
     if (password.length < 6) {
-      console.log(`- skip ${email}: password shorter than 6 characters (Firebase minimum). Ask them to sign up again.`);
+      console.log(`- skip ${show(email)}: password shorter than 6 characters (Firebase minimum). Ask them to sign up again.`);
       skipped++;
       continue;
     }
-    console.log(`+ ${email} (${role}) → create Firebase Auth user with the same password`);
+    console.log(`+ ${show(email)} (${role}) → create Firebase Auth user with the same password`);
     if (APPLY) uid = (await auth.createUser({ email, password, displayName: u.name || undefined })).uid;
     created++;
   }

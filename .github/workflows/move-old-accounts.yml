@@ -1,0 +1,53 @@
+# One-time: moves every account from the old app (Firestore "User" collection) to
+# Firebase Authentication with the SAME email and password – your admin login keeps working.
+#
+# GitHub → Actions → "Move old accounts" → Run workflow.
+#   1st run: mode = preview      (shows what would happen, writes nothing)
+#   2nd run: mode = apply        (creates the logins)
+#   3rd run: mode = apply-and-clean  (also deletes the old plaintext passwords – do this last)
+# Emails are masked in the log. Needs the FIREBASE_SERVICE_ACCOUNT secret.
+name: Move old accounts
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: preview, apply, or apply-and-clean
+        required: true
+        default: preview
+        type: choice
+        options: [preview, apply, apply-and-clean]
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    env:
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+    defaults:
+      run:
+        working-directory: scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: scripts/package-lock.json
+      - run: npm ci
+      - name: Move accounts
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Add the FIREBASE_SERVICE_ACCOUNT secret first (README → Go live)."
+            exit 1
+          fi
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+          FLAGS="--mask"
+          if [ "$MODE" = "apply" ]; then FLAGS="$FLAGS --apply"; fi
+          if [ "$MODE" = "apply-and-clean" ]; then FLAGS="$FLAGS --apply --delete-legacy"; fi
+          node migrate-legacy-users.mjs "$RUNNER_TEMP/sa.json" $FLAGS
+          rm -f "$RUNNER_TEMP/sa.json"

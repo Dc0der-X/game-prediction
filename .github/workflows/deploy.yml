@@ -1,0 +1,141 @@
+# Puts TableWise live – no terminal needed.
+#
+# Runs on every push to main, or by hand: GitHub → Actions → Deploy → Run workflow.
+# Everything comes from GitHub → Settings → Secrets and variables → Actions:
+#
+#   Secrets (required for the website)
+#     FIREBASE_SERVICE_ACCOUNT   Firebase service-account JSON (whole file)
+#   Secrets (payment server + support bot – each part is skipped until its secrets exist)
+#     CLOUDFLARE_API_TOKEN       Cloudflare API token ("Edit Cloudflare Workers" template)
+#     CLOUDFLARE_ACCOUNT_ID      Cloudflare account id
+#     NOWPAYMENTS_API_KEY, NOWPAYMENTS_IPN_SECRET
+#     IP_SALT                    any long random string
+#     TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, ANTHROPIC_API_KEY
+#   Variables (optional)
+#     PAYMENTS_API_URL           worker URL (filled automatically from the worker deploy when empty)
+#     SUPPORT_TELEGRAM           bot username, e.g. TableWiseHelpBot
+#     SUPPORT_WHATSAPP           WhatsApp number, digits only
+#     TELEGRAM_OWNER_CHAT_ID     your Telegram chat id (hand-off pings)
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  worker:
+    name: Payment server + support bot
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    defaults:
+      run:
+        working-directory: payments-worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: payments-worker/package-lock.json
+      - run: npm ci
+      - name: Test
+        run: npm test
+      - name: Deploy worker
+        id: deploy
+        env:
+          OWNER_CHAT: ${{ vars.TELEGRAM_OWNER_CHAT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::notice::Cloudflare secrets not set yet – payment server skipped."
+            exit 0
+          fi
+          EXTRA=""
+          if [ -n "$OWNER_CHAT" ]; then EXTRA="--var TELEGRAM_OWNER_CHAT_ID:$OWNER_CHAT"; fi
+          npx wrangler deploy $EXTRA 2>&1 | tee deploy.log
+          URL=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Worker live at $URL"
+      - name: Set worker secrets
+        if: steps.deploy.outputs.url != ''
+        env:
+          NOWPAYMENTS_API_KEY: ${{ secrets.NOWPAYMENTS_API_KEY }}
+          NOWPAYMENTS_IPN_SECRET: ${{ secrets.NOWPAYMENTS_IPN_SECRET }}
+          GOOGLE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          IP_SALT: ${{ secrets.IP_SALT }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          for NAME in NOWPAYMENTS_API_KEY NOWPAYMENTS_IPN_SECRET GOOGLE_SERVICE_ACCOUNT IP_SALT TELEGRAM_BOT_TOKEN TELEGRAM_WEBHOOK_SECRET ANTHROPIC_API_KEY; do
+            VALUE="${!NAME}"
+            if [ -n "$VALUE" ]; then
+              printf '%s' "$VALUE" | npx wrangler secret put "$NAME" > /dev/null && echo "$NAME set"
+            else
+              echo "::notice::$NAME not set yet – skipped."
+            fi
+          done
+      - name: Connect the Telegram bot
+        if: steps.deploy.outputs.url != ''
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_WEBHOOK_SECRET" ]; then
+            echo "::notice::Telegram secrets not set yet – bot skipped."
+            exit 0
+          fi
+          curl -sS --fail "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
+            --data-urlencode "url=${URL}/telegram/webhook" \
+            --data-urlencode "secret_token=${TELEGRAM_WEBHOOK_SECRET}" \
+            --data-urlencode 'allowed_updates=["message"]' > /dev/null
+          echo "Telegram bot connected"
+
+  web:
+    name: Website, login and database rules
+    needs: worker
+    if: always()
+    runs-on: ubuntu-latest
+    env:
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+      - name: Check secrets
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Add the FIREBASE_SERVICE_ACCOUNT secret (README → Go live)."
+            exit 1
+          fi
+      - run: npm ci
+      - name: Fill in public settings
+        env:
+          PAYMENTS_API_URL: ${{ vars.PAYMENTS_API_URL || needs.worker.outputs.url }}
+          SUPPORT_TELEGRAM: ${{ vars.SUPPORT_TELEGRAM }}
+          SUPPORT_WHATSAPP: ${{ vars.SUPPORT_WHATSAPP }}
+        run: node scripts/configure-env.mjs
+      - name: Build
+        run: npx ng build --configuration production
+      - name: Deploy to Firebase
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          npx --yes firebase-tools@13.29.1 deploy --only hosting,firestore:rules,firestore:indexes \
+            --project prediction-ai-a4dfe --non-interactive --force
+          rm -f "$RUNNER_TEMP/sa.json"
+          echo "Live at https://aicasinopredictor.web.app"
