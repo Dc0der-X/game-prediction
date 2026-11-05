@@ -33,7 +33,6 @@ import { environment } from 'src/environments/environment';
       <nav class="tabs">
         <a routerLink="/coach" routerLinkActive="on" class="primary">Signal Room</a>
         <a routerLink="/lobby" routerLinkActive="on">Practice</a>
-        <a routerLink="/rules" routerLinkActive="on">Rules</a>
         <a routerLink="/lab" routerLinkActive="on">Strategy Lab</a>
         <a routerLink="/history" routerLinkActive="on">History</a>
       </nav>
@@ -42,13 +41,13 @@ import { environment } from 'src/environments/environment';
   styles: [
     `
       ion-header { background: var(--tw-bg); border-bottom: 1px solid var(--tw-line); }
-      .demo { background: var(--tw-gold); color: #1b1405; text-align: center; font-size: 12px; font-weight: 700; padding: 5px 12px; }
+      .demo { background: var(--tw-gold); color: #031019; text-align: center; font-size: 12px; font-weight: 700; padding: 5px 12px; }
       .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px;
         max-width: 1080px; margin: 0 auto; padding: 12px 16px 6px; }
       .brand { display: flex; align-items: center; gap: 8px; color: var(--tw-text); text-decoration: none;
         font-family: var(--tw-display); font-size: 20px; font-weight: 700; }
       .mark { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9px;
-        background: var(--tw-gold); color: #1b1405; font-size: 18px; }
+        background: var(--tw-gold); color: #031019; font-size: 18px; }
       .right { display: flex; align-items: center; gap: 8px; }
       .right a { text-decoration: none; }
       .icon { color: var(--tw-text); font-size: 28px; display: flex; }

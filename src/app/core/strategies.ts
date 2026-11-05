@@ -25,11 +25,8 @@ export const STRATEGIES: StrategyInfo[] = [
   },
   {
     id: 'original',
-    name: 'TableWise Signals (S/O + Attack/Retrench)',
-    summary:
-      'The previous app\'s rule, ported exactly: picks the side with the Same/Opposite pattern ' +
-      '(follow after the 1st loss, switch after the 2nd) and sizes stakes with Attack 4-2-3-4-5-6-8-10 after wins ' +
-      'and Retrench 4-6-10-16-26-40-60 after losses. Even-money bets only. In real play every bet is capped at the loss limit.',
+    name: 'Neural Signals (TableWise system)',
+    summary: 'Our signal system: reads the last results at your table and sets the side and the amount for every bet. In real play every bet is capped at your safety limit.',
     realMoney: true,
   },
   {
@@ -302,7 +299,8 @@ export const TABLE_RULES = [
 export const SESSION_LIMITS = {
   /** A STOP check-in appears every this many minutes during a session. */
   checkinMinutes: 5,
-  /** After being in profit, this many losses in a row ends the session (keep the profit). */
+  /** After a big profit (this share of the target or more), 2 losses in a row ends the session. */
+  profitLockAt: 0.6,
   profitLockLosses: 2,
   /** This many losses in a row: stop and change table. */
   changeTableLosses: 3,
@@ -332,7 +330,8 @@ export function planSession(game: GameDef, bankroll: number, minutes: number): S
   const m = clamp(minutes, SESSION_LIMITS.minMinutes, SESSION_LIMITS.maxMinutes);
   const unit = Math.max(1, Math.floor(bankroll * SESSION_LIMITS.unitPct));
   const bet = getBet(game, game.bestBet)!;
-  const maxRounds = Math.max(5, Math.round((game.roundsPerHour * m) / 60));
+  // Generous round cap: the timer and the stop rules end sessions, not a tiny round count.
+  const maxRounds = Math.max(20, Math.round(((game.roundsPerHour * m) / 60) * 2));
   return {
     gameId: game.id,
     betId: bet.id,

@@ -1,44 +1,47 @@
-// TableWise theme – dark casino felt with a gold accent.
+// TableWise "Neural" theme – midnight glass, neon-cyan signal accent, gold for money.
 :root {
   /* Brand tokens */
-  --tw-bg: #0a1310;
-  --tw-bg-2: #0e1b16;
-  --tw-card: #12221b;
-  --tw-card-2: #172b22;
-  --tw-felt: #0f4a34;
-  --tw-felt-2: #13603f;
-  --tw-line: rgba(255, 255, 255, 0.08);
-  --tw-line-strong: rgba(255, 255, 255, 0.16);
-  --tw-text: #f2eee3;
-  --tw-muted: #9fb0a5;
-  --tw-gold: #e8c26a;
-  --tw-gold-2: #f5d98f;
-  --tw-red: #e05252;
-  --tw-blue: #4a88e8;
-  --tw-green: #34b578;
+  --tw-bg: #060912;
+  --tw-bg-2: #0a1020;
+  --tw-card: #0d1528;
+  --tw-card-2: #131d36;
+  --tw-felt: #0a1d3d;
+  --tw-felt-2: #12306b;
+  --tw-line: rgba(140, 170, 255, 0.12);
+  --tw-line-strong: rgba(140, 170, 255, 0.24);
+  --tw-text: #eef2ff;
+  --tw-muted: #94a3c8;
+  --tw-gold: #5ce1ff;
+  --tw-gold-2: #b3f2ff;
+  --tw-red: #ff4d6d;
+  --tw-blue: #4f7dff;
+  --tw-green: #2fe08f;
   --tw-black: #24262b;
   --tw-radius: 16px;
   --tw-font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --tw-display: 'Fraunces', Georgia, serif;
+  --tw-display: 'Sora', 'Inter', system-ui, sans-serif;
+  --tw-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --tw-violet: #8b6cff;
+  --tw-money: #f5c76a;
 
   /* Ionic base */
   --ion-font-family: var(--tw-font);
   --ion-background-color: var(--tw-bg);
-  --ion-background-color-rgb: 10, 19, 16;
+  --ion-background-color-rgb: 6, 9, 18;
   --ion-text-color: var(--tw-text);
-  --ion-text-color-rgb: 242, 238, 227;
+  --ion-text-color-rgb: 238, 242, 255;
   --ion-toolbar-background: var(--tw-bg);
   --ion-item-background: var(--tw-card);
   --ion-border-color: var(--tw-line);
-  --ion-placeholder-color: #6f7f75;
+  --ion-placeholder-color: #5d6b8f;
 
-  /** primary – gold **/
-  --ion-color-primary: #e8c26a;
-  --ion-color-primary-rgb: 232, 194, 106;
-  --ion-color-primary-contrast: #1b1405;
-  --ion-color-primary-contrast-rgb: 27, 20, 5;
-  --ion-color-primary-shade: #ccab5d;
-  --ion-color-primary-tint: #eac879;
+  /** primary – neon cyan **/
+  --ion-color-primary: #5ce1ff;
+  --ion-color-primary-rgb: 92, 225, 255;
+  --ion-color-primary-contrast: #031019;
+  --ion-color-primary-contrast-rgb: 3, 16, 25;
+  --ion-color-primary-shade: #51c6e0;
+  --ion-color-primary-tint: #6ce4ff;
 
   /** secondary – felt green **/
   --ion-color-secondary: #13603f;

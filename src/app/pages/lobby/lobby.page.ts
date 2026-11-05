@@ -70,7 +70,7 @@ import { AccountService } from '../../core/account.service';
       .table { display: block; text-decoration: none; color: inherit; background: var(--tw-card);
         border: 1px solid var(--tw-line); border-radius: var(--tw-radius); overflow: hidden;
         transition: transform .15s ease, border-color .15s ease; }
-      .table:hover { transform: translateY(-3px); border-color: rgba(232,194,106,.45); }
+      .table:hover { transform: translateY(-3px); border-color: rgba(92,225,255,.45); }
       .img { height: 130px; background-size: cover; background-position: center; position: relative; }
       .img::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(10,19,16,.9)); }
       .rank { position: absolute; top: 10px; left: 10px; z-index: 1; background: rgba(0,0,0,.6);

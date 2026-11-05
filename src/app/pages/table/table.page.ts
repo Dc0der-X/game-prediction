@@ -182,7 +182,7 @@ export class TablePage implements OnDestroy {
   }
 
   get streakLights(): boolean[] {
-    const limit = (this.engine?.peak ?? 0) > 0 ? SESSION_LIMITS.profitLockLosses : SESSION_LIMITS.changeTableLosses;
+    const limit = this.engine?.inBigProfit ? SESSION_LIMITS.profitLockLosses : SESSION_LIMITS.changeTableLosses;
     return Array.from({ length: limit }, (_, i) => i < (this.engine?.streak ?? 0));
   }
 

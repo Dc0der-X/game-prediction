@@ -6,7 +6,7 @@
  * Discipline (checked after every round, in this order):
  *   stop-win      profit target reached                       → STOP, cash out
  *   stop-loss     maximum loss reached                        → STOP for today
- *   profit-lock   was in profit, then 2 losses in a row       → STOP, keep the profit
+ *   profit-lock   was well up (60% of target), then 2 losses   → STOP, keep the profit
  *   change-table  3 losses in a row at this table             → STOP here; new table or end
  * Every bet is capped so the session can never go past the maximum loss.
  */
@@ -38,8 +38,8 @@ export const VOID_RESULT: Record<GameId, { label: string; short: string; mult: n
 export const SYSTEMS: { id: SystemId; name: string; summary: string }[] = [
   {
     id: 'original',
-    name: 'TableWise Signals',
-    summary: 'Tells you which side to bet and how much, every round, from what came at your table.',
+    name: 'Neural Signals',
+    summary: 'Reads what came at your table and tells you the side and the amount for every bet.',
   },
   {
     id: 'flat',
@@ -146,11 +146,16 @@ export class SignalEngine {
     return r;
   }
 
+  /** Has the session been well up (enough that 2 losses in a row should end it)? */
+  get inBigProfit(): boolean {
+    return this.peak >= this.stopWin * SESSION_LIMITS.profitLockAt;
+  }
+
   /** Which discipline rule (if any) says stop now. */
   check(): StopReason | null {
     if (this.net >= this.stopWin) return 'stop-win';
     if (this.net <= -this.stopLoss + 0.001) return 'stop-loss';
-    if (this.peak > 0 && this.streak >= SESSION_LIMITS.profitLockLosses) return 'profit-lock';
+    if (this.inBigProfit && this.streak >= SESSION_LIMITS.profitLockLosses) return 'profit-lock';
     if (this.streak >= SESSION_LIMITS.changeTableLosses) return 'change-table';
     return null;
   }

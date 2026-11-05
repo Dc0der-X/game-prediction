@@ -12,8 +12,9 @@ import { DecimalPipe, NgIf } from '@angular/common';
   imports: [NgIf, DecimalPipe],
   template: `
     <div class="backdrop" role="alertdialog" aria-modal="true" aria-labelledby="stop-title">
-      <div class="panel" [class.final]="kind === 'final'">
-        <div class="octagon" aria-hidden="true"><span>STOP</span></div>
+      <div class="panel" [class.final]="kind === 'final'" [class.amber]="icon === 'switch'">
+        <div class="octagon" aria-hidden="true" *ngIf="icon === 'stop'"><span>STOP</span></div>
+        <div class="switch" aria-hidden="true" *ngIf="icon === 'switch'">⇄</div>
         <h2 id="stop-title">{{ title || (kind === 'final' ? 'STOP PLAYING NOW' : 'STOP PLAYING NOW?') }}</h2>
         <p class="reason">{{ reason }}</p>
         <div class="net" *ngIf="net !== null" [class.pos]="net > 0" [class.neg]="net < 0">
@@ -38,6 +39,14 @@ import { DecimalPipe, NgIf } from '@angular/common';
       animation: pop .25s ease-out;
     }
     .panel.final { border-color: var(--tw-red); }
+    .panel.amber { border-color: rgba(245, 199, 106, .7); }
+    .panel.amber h2 { color: var(--tw-money); }
+    .panel.amber .stop { background: transparent; color: var(--tw-muted); border: 1px solid var(--tw-line-strong); font-weight: 600; }
+    .panel.amber .cont { background: var(--tw-money); color: #1a1205; border: 0; font-weight: 800; }
+    .switch { width: 120px; height: 120px; margin: 0 auto 14px; border-radius: 50%; display: grid; place-items: center;
+      font-size: 56px; color: #1a1205; background: radial-gradient(circle at 35% 30%, #ffe3a3, var(--tw-money));
+      box-shadow: 0 0 0 6px rgba(245,199,106,.18), 0 0 40px rgba(245,199,106,.45); animation: spin 2.4s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .octagon {
       width: 132px; height: 132px; margin: 0 auto 14px; display: grid; place-items: center;
       background: #d62d2d; color: #fff; font-weight: 900; font-size: 40px; letter-spacing: .04em;
@@ -58,12 +67,13 @@ import { DecimalPipe, NgIf } from '@angular/common';
     @keyframes fade { from { opacity: 0 } }
     @keyframes pop { from { transform: scale(.92); opacity: 0 } }
     @keyframes pulse { from { transform: scale(1) } to { transform: scale(1.05) } }
-    @media (prefers-reduced-motion: reduce) { .octagon, .panel, .backdrop { animation: none; } }
+    @media (prefers-reduced-motion: reduce) { .octagon, .panel, .backdrop, .switch { animation: none; } }
   `],
 })
 export class StopSignComponent {
   @Input() kind: 'final' | 'checkin' = 'final';
   @Input() title = '';
+  @Input() icon: 'stop' | 'switch' = 'stop';
   @Input() reason = '';
   @Input() hint = '';
   @Input() net: number | null = null;

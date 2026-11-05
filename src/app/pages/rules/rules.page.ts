@@ -97,7 +97,7 @@ import { STRATEGIES, TABLE_RULES } from '../../core/strategies';
       .rules li { display: flex; gap: 16px; align-items: flex-start; }
       .rules h3 { margin: 2px 0 4px; font-size: 18px; }
       .rules p { margin: 0; }
-      .n { flex: none; width: 36px; height: 36px; border-radius: 50%; background: var(--tw-gold); color: #1b1405;
+      .n { flex: none; width: 36px; height: 36px; border-radius: 50%; background: var(--tw-gold); color: #031019;
         display: grid; place-items: center; font-weight: 800; }
       .table-wrap { overflow-x: auto; }
       table { width: 100%; border-collapse: collapse; font-size: 14px; }

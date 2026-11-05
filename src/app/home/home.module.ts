@@ -4,6 +4,7 @@ import { IonicModule } from '@ionic/angular';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { HomePage } from './home.page';
+import { NeuralFieldComponent } from '../shared/neural-field.component';
 
 import { HomePageRoutingModule } from './home-routing.module';
 
@@ -14,6 +15,7 @@ import { HomePageRoutingModule } from './home-routing.module';
     ReactiveFormsModule,
     IonicModule,
     RouterModule,
+    NeuralFieldComponent,
     HomePageRoutingModule,
   ],
   declarations: [HomePage],

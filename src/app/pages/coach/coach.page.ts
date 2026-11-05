@@ -1,4 +1,4 @@
-import { Component, OnDestroy, inject } from '@angular/core';
+import { Component, OnDestroy, ViewChild, inject } from '@angular/core';
 import { DatePipe, DecimalPipe, NgClass, NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -8,6 +8,7 @@ import { firstValueFrom, filter } from 'rxjs';
 import { TopbarComponent } from '../../shared/topbar.component';
 import { StopSignComponent } from '../../shared/stop-sign.component';
 import { ConfettiComponent } from '../../shared/confetti.component';
+import { NeuralFieldComponent } from '../../shared/neural-field.component';
 import { AccountService } from '../../core/account.service';
 import { EndReason, SessionsService } from '../../core/sessions.service';
 import { GAMES, GameDef, getBet, getGame, pct } from '../../core/games';
@@ -47,11 +48,12 @@ export const SIDE_TONE: Record<string, string> = {
   selector: 'app-coach',
   standalone: true,
   imports: [IonicModule, FormsModule, RouterLink, NgIf, NgFor, NgClass, DecimalPipe, DatePipe,
-    TopbarComponent, StopSignComponent, ConfettiComponent],
+    TopbarComponent, StopSignComponent, ConfettiComponent, NeuralFieldComponent],
   templateUrl: './coach.page.html',
   styleUrls: ['./coach.page.scss'],
 })
 export class CoachPage implements OnDestroy {
+  @ViewChild(NeuralFieldComponent) field?: NeuralFieldComponent;
   private account = inject(AccountService);
   private sessions = inject(SessionsService);
 
@@ -83,6 +85,12 @@ export class CoachPage implements OnDestroy {
   /** Short "+8" / "-4" pop after each round. */
   flash: { id: number; text: string; kind: 'won' | 'lost' | 'void' } | null = null;
   private flashTimer: any;
+  /** Short "reading the table" phase between a result and the next signal. */
+  thinking = false;
+  private thinkTimer: any;
+  /** Animated (counting) bet amount shown in the signal. */
+  shownStake = 0;
+  private countRaf = 0;
   private tick: any;
   private costCache = new Map<string, number>();
 
@@ -96,6 +104,8 @@ export class CoachPage implements OnDestroy {
   ngOnDestroy() {
     clearInterval(this.tick);
     clearTimeout(this.flashTimer);
+    clearTimeout(this.thinkTimer);
+    cancelAnimationFrame(this.countRaf);
   }
 
   private async init() {
@@ -108,10 +118,22 @@ export class CoachPage implements OnDestroy {
       return;
     }
     const saved = this.restore();
+    if (saved && saved.v === 2 && saved.uid === this.uid && Date.now() > saved.startedAt + saved.plan.minutes * MIN + 60_000) {
+      // A session left open from an earlier visit: close it quietly instead of greeting the player with STOP.
+      this.live = saved;
+      this.engine = SignalEngine.replay(this.makeEngine(saved), saved.events);
+      if (this.engine.rounds.length) await this.finish('time', true);
+      else this.clearPersisted();
+      this.live = null;
+      this.engine = null;
+      this.stage = (await this.sessions.playedToday(this.uid)) ? 'locked' : 'setup';
+      return;
+    }
     if (saved && saved.v === 2 && saved.uid === this.uid) {
       this.live = saved;
       this.engine = SignalEngine.replay(this.makeEngine(saved), saved.events);
       this.stage = saved.events.length ? 'live' : 'first';
+      this.countTo(this.engine.signal().stake);
       this.startTimer();
       return;
     }
@@ -192,6 +214,7 @@ export class CoachPage implements OnDestroy {
     this.persist();
     this.stage = 'live';
     this.stopSign = null;
+    this.reveal();
   }
 
   get signal(): Signal | null {
@@ -212,7 +235,7 @@ export class CoachPage implements OnDestroy {
 
   /** What came: record it, show the next bet, then apply the discipline rules. */
   came(side: string | null) {
-    if (!this.live || !this.engine || this.stage !== 'live' || this.stopSign) return;
+    if (!this.live || !this.engine || this.stage !== 'live' || this.stopSign || this.thinking) return;
     this.live.events.push({ t: 'round', side });
     const r = this.engine.applySide(side);
     this.persist();
@@ -226,7 +249,33 @@ export class CoachPage implements OnDestroy {
       this.finish(hit);
     } else if (this.roundsPlayed >= this.live.plan.maxRounds) {
       this.finish('rounds');
+    } else {
+      this.reveal();
     }
+  }
+
+  /** "Reading the table" for a moment, then show the next signal with a pulse and a counting amount. */
+  private reveal() {
+    clearTimeout(this.thinkTimer);
+    this.thinking = true;
+    this.thinkTimer = setTimeout(() => {
+      this.thinking = false;
+      this.field?.pulse();
+      this.countTo(this.signal?.stake ?? 0);
+    }, 750);
+  }
+
+  private countTo(target: number) {
+    cancelAnimationFrame(this.countRaf);
+    const from = 0;
+    const start = performance.now();
+    const step = (t: number) => {
+      const k = Math.min(1, (t - start) / 500);
+      const e = 1 - Math.pow(1 - k, 3);
+      this.shownStake = Math.round((from + (target - from) * e) * 100) / 100;
+      if (k < 1) this.countRaf = requestAnimationFrame(step);
+    };
+    this.countRaf = requestAnimationFrame(step);
   }
 
   undo() {
@@ -242,6 +291,42 @@ export class CoachPage implements OnDestroy {
   moveTable() {
     this.stopSign = null;
     this.stage = 'newtable';
+  }
+
+  /* ---------- Percentages (all relative to today's amount) ---------- */
+
+  pctOf(v: number): number {
+    const b = this.live?.plan.bankroll || 1;
+    return Math.round((v / b) * 1000) / 10;
+  }
+
+  get pnlPct(): number {
+    return this.pctOf(this.net);
+  }
+
+  get betPct(): number {
+    return this.pctOf(this.signal?.stake ?? 0);
+  }
+
+  /** Progress towards the profit target, 0–100. */
+  get targetPct(): number {
+    if (!this.live) return 0;
+    return Math.max(0, Math.min(100, Math.round((this.net / this.live.plan.stopWin) * 100)));
+  }
+
+  /** Share of the safety limit already used, 0–100. */
+  get riskPct(): number {
+    if (!this.live) return 0;
+    return Math.max(0, Math.min(100, Math.round((-this.net / this.live.plan.stopLoss) * 100)));
+  }
+
+  get winRate(): number {
+    const r = (this.engine?.rounds ?? []).filter((x) => x.result !== 'void');
+    return r.length ? Math.round((r.filter((x) => x.result === 'won').length / r.length) * 100) : 0;
+  }
+
+  modeName(m: string): string {
+    return m === 'ATTACK' ? 'Momentum' : m === 'RETRENCH' ? 'Recovery' : '';
   }
 
   private pop(text: string, kind: 'won' | 'lost' | 'void') {
@@ -293,7 +378,7 @@ export class CoachPage implements OnDestroy {
   /* ---------- Discipline display ---------- */
 
   get inProfitMode(): boolean {
-    return (this.engine?.peak ?? 0) > 0;
+    return !!this.engine?.inBigProfit;
   }
 
   get streakLimit(): number {
@@ -336,10 +421,10 @@ export class CoachPage implements OnDestroy {
     const left = p.maxRounds - this.roundsPlayed;
     if (this.signal.capped) return `Bet capped at ${this.signal.stake} – that's all that's left before your maximum loss.`;
     if (left <= 3) return `${left} round${left === 1 ? '' : 's'} left in this session.`;
-    if (this.inProfitMode && this.engine.streak === 1) return `You're in profit. One more loss in a row and you stop with the profit.`;
-    if (!this.inProfitMode && this.engine.streak === 2) return 'Two losses in a row. One more and you leave this table.';
-    if (this.signal.mode === 'RETRENCH') return 'Recovery mode – bets step carefully back up.';
-    if (this.signal.mode === 'ATTACK' && this.roundsPlayed) return `Winning run. ${round2(p.stopWin - this.net)} more to your profit target.`;
+    if (this.inProfitMode && this.engine.streak === 1) return `Strong profit. Protect it – the coach is watching the next result.`;
+    if (!this.inProfitMode && this.engine.streak === 2) return 'Stay calm. Follow the signal – the coach will tell you if this table turns cold.';
+    if (this.signal.mode === 'RETRENCH') return 'Recovery in progress. Stick to the amount shown.';
+    if (this.net > 0) return `${this.targetPct}% of the way to your profit target.`;
     return 'Place this bet, wait for the result, then tap what came.';
   }
 
@@ -402,9 +487,12 @@ export class CoachPage implements OnDestroy {
     }
   }
 
+  get finalTitle(): string {
+    return this.net > 0 ? 'STOP & CASH OUT' : 'STOP PLAYING NOW';
+  }
+
   get finalHint(): string {
-    if (this.endReason === 'stop-win' || (this.endReason === 'profit-lock' && this.net > 0))
-      return 'Cash out and close the casino tab now. This is the discipline that keeps your profit.';
+    if (this.net > 0) return `You're up ${this.pnlPct}% on your amount. Cash out and close the casino tab now – this is how profit is kept.`;
     return 'Close the casino tab now. No switching tables, no starting again – the coach is locked until tomorrow.';
   }
 
@@ -425,12 +513,16 @@ export class CoachPage implements OnDestroy {
     this.stopSign = null;
   }
 
-  async finish(reason: EndReason) {
+  async finish(reason: EndReason, quiet = false) {
     if (!this.live || this.stage === 'done') return;
     clearInterval(this.tick);
+    clearTimeout(this.thinkTimer);
+    this.thinking = false;
     this.endReason = reason;
-    this.stage = 'done';
-    this.stopSign = reason === 'manual' || reason === 'checkin' ? null : 'final';
+    if (!quiet) {
+      this.stage = 'done';
+      this.stopSign = reason === 'manual' || reason === 'checkin' ? null : 'final';
+    }
     const p = this.live.plan;
     const rounds = this.engine?.rounds ?? [];
     try {

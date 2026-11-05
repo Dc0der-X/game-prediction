@@ -64,7 +64,7 @@ a { color: var(--tw-gold); }
   background:
     radial-gradient(120% 90% at 50% 0%, rgba(255, 255, 255, 0.07), transparent 60%),
     linear-gradient(180deg, var(--tw-felt-2), var(--tw-felt));
-  border-color: rgba(232, 194, 106, 0.25);
+  border-color: rgba(92, 225, 255, 0.25);
 }
 
 .tw-card h2, .tw-card h3 { margin-top: 0; }
@@ -97,7 +97,7 @@ a { color: var(--tw-gold); }
   color: var(--tw-text);
   white-space: nowrap;
 }
-.tw-pill.gold { background: rgba(232, 194, 106, 0.14); border-color: rgba(232, 194, 106, 0.4); color: var(--tw-gold-2); }
+.tw-pill.gold { background: rgba(92, 225, 255, 0.14); border-color: rgba(92, 225, 255, 0.4); color: var(--tw-gold-2); }
 .tw-pill.green { background: rgba(52, 181, 120, 0.14); border-color: rgba(52, 181, 120, 0.4); color: #7fe0b0; }
 .tw-pill.red { background: rgba(224, 82, 82, 0.14); border-color: rgba(224, 82, 82, 0.4); color: #f39b9b; }
 
@@ -143,8 +143,8 @@ a { color: var(--tw-gold); }
   margin: 10px 0;
 }
 .tw-note {
-  background: rgba(232, 194, 106, 0.08);
-  border: 1px solid rgba(232, 194, 106, 0.3);
+  background: rgba(92, 225, 255, 0.08);
+  border: 1px solid rgba(92, 225, 255, 0.3);
   padding: 10px 12px;
   border-radius: 10px;
   font-size: 14px;
@@ -159,7 +159,7 @@ ion-button { --border-radius: 999px; font-weight: 600; text-transform: none; let
 .tone-black { background: var(--tw-black) !important; color: #fff !important; }
 .tone-green { background: var(--tw-green) !important; color: #fff !important; }
 .tone-blue { background: var(--tw-blue) !important; color: #fff !important; }
-.tone-gold { background: var(--tw-gold) !important; color: #1b1405 !important; }
+.tone-gold { background: var(--tw-gold) !important; color: #031019 !important; }
 
 /* ---------- Playing cards ---------- */
 .tw-cardface {
