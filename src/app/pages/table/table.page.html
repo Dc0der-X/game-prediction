@@ -18,7 +18,7 @@
       <button class="toggle" [class.on]="signalsOn" (click)="toggleSignals()" role="switch" [attr.aria-checked]="signalsOn">
         <span class="knob"></span> Signals {{ signalsOn ? 'ON' : 'OFF' }}
       </button>
-      <span class="tw-muted tw-small">{{ signalsOn ? 'Follow the signal – same system and STOP rules as real play.' : 'Free betting – place any bets you like.' }}</span>
+      <span class="tw-muted tw-small">{{ signalsOn ? 'Follow the signal – the same signals as the Signal Room.' : 'Free betting – place any bets you like.' }}</span>
     </div>
 
     <div class="layout">
@@ -94,7 +94,7 @@
             <div class="verdict">
               <div class="text">{{ outcome.text }}</div>
               <div class="net" *ngIf="settled.length" [class.tw-pos]="roundNet > 0" [class.tw-neg]="roundNet < 0">
-                {{ roundNet > 0 ? 'You won +' + (roundNet | number: '1.0-2') : roundNet < 0 ? 'You lost ' + (roundNet | number: '1.0-2') : 'Push – stake returned' }}
+                {{ roundNet > 0 ? 'You won +' + (roundNet | number: '1.0-2') : roundNet < 0 ? (roundNet | number: '1.0-2') : 'Push – stake returned' }}
               </div>
             </div>
           </ng-container>
@@ -103,21 +103,22 @@
         <!-- Result road -->
         <div class="road" aria-label="Recent results">
           <span *ngFor="let h of history" class="dot" [ngClass]="'tone-' + h.tone">{{ h.tag }}</span>
-          <span class="tw-muted tw-small" *ngIf="!history.length">Results appear here. Past results never change the next one.</span>
+          <span class="tw-muted tw-small" *ngIf="!history.length">Results appear here.</span>
         </div>
 
         <!-- Signal -->
         <div class="signal" *ngIf="signalsOn && signal as sig">
           <div class="sig-main">
             <span class="tw-eyebrow">Neural signal <span class="mode attack">{{ levelLabel }}</span></span>
-            <div class="do">{{ sig.watching ? 'Watch – no bet yet' : 'Bet ' + (sig.stake | number: '1.0-2') + ' on ' + sig.betLabel }}</div>
+            <div class="do">Bet {{ sig.stake | number: '1.0-2' }} on {{ sig.betLabel }}
+              <span class="chg" *ngIf="sig.change !== null" [class.up]="sig.change > 0">{{ sig.change > 0 ? '▲ +' + (sig.change | number: '1.0-2') : sig.change < 0 ? '▼ ' + (sig.change | number: '1.0-2') : '= same' }}</span></div>
             <div class="tw-small sig-meta">
               Session <strong [class.tw-pos]="sigNet > 0" [class.tw-neg]="sigNet < 0">{{ sigNet > 0 ? '+' : '' }}{{ sigNet | number: '1.0-2' }}</strong>
-              · target <span class="tw-pos">+{{ stopWin }}</span> · limit <span class="tw-neg">-{{ stopLoss }}</span>
+              · target <span class="tw-pos">+{{ stopWin }}</span> · safety limit {{ stopLoss }}
             </div>
           </div>
           <ion-button (click)="playSignal()" [disabled]="dealing || !!stopSign">
-            {{ sig.watching ? 'Watch' : 'Place &amp;' }} {{ game.id === 'roulette' ? 'spin' : game.id === 'sicbo' ? 'roll' : 'deal' }}
+            Place &amp; {{ game.id === 'roulette' ? 'spin' : game.id === 'sicbo' ? 'roll' : 'deal' }}
           </ion-button>
         </div>
         <p class="tw-error" *ngIf="signalError">{{ signalError }}</p>
@@ -131,7 +132,6 @@
             <span class="best-tag" *ngIf="signalsOn && signal?.betId === b.id">Signal</span>
             <span class="lbl">{{ b.label }}</span>
             <span class="pays">{{ b.pays }}</span>
-            <span class="edge">{{ pct(b.edge) }} edge</span>
             <span class="stake" *ngIf="bets[b.id]">{{ bets[b.id] }}</span>
           </button>
         </div>
@@ -174,21 +174,12 @@
             <div class="tw-stat"><div class="label">Wagered</div><div class="value">{{ wagered | number: '1.0-0' }}</div></div>
             <div class="tw-stat"><div class="label">Your result</div>
               <div class="value" [class.tw-pos]="net > 0" [class.tw-neg]="net < 0">{{ net > 0 ? '+' : '' }}{{ net | number: '1.0-2' }}</div></div>
-            <div class="tw-stat"><div class="label">House expects</div>
-              <div class="value tw-neg">-{{ expectedLoss | number: '1.0-2' }}</div></div>
           </div>
-          <p class="tw-muted tw-small">
-            "House expects" is the long-run cost of your bets. The more you wager, the closer your result gets to it.
-          </p>
         </div>
 
         <div class="tw-card">
-          <p class="tw-eyebrow">Strategy tester</p>
-          <p class="tw-small tw-muted">Auto-plays the chosen system starting at a stake of {{ chip }} – on {{ bestBet.label }},
-            or picking the side itself for Neural Signals.</p>
-          <select class="tw-select" [(ngModel)]="strategy">
-            <option *ngFor="let s of strategies" [value]="s.id">{{ s.name }}</option>
-          </select>
+          <p class="tw-eyebrow">Fast-forward</p>
+          <p class="tw-small tw-muted">Let the signals play a run of rounds for you at a base of {{ chip }}.</p>
           <div class="tw-row" style="margin-top: 10px">
             <ion-button size="small" fill="outline" (click)="autoPlay(10)" [disabled]="dealing || balance < chip">Auto ×10</ion-button>
             <ion-button size="small" fill="outline" (click)="autoPlay(50)" [disabled]="dealing || balance < chip">Auto ×50</ion-button>
@@ -197,28 +188,28 @@
             {{ autoResult.rounds }} rounds:
             <strong [class.tw-pos]="autoResult.net > 0" [class.tw-neg]="autoResult.net < 0">
               {{ autoResult.net > 0 ? '+' : '' }}{{ autoResult.net | number: '1.0-2' }}</strong>
-            · biggest stake {{ autoResult.maxStake | number: '1.0-0' }}
+            · biggest bet {{ autoResult.maxStake | number: '1.0-2' }}
           </div>
-          <a class="tw-small" routerLink="/lab">Test it on 9,000 sessions in the Strategy Lab →</a>
         </div>
 
         <div class="tw-card upsell" *ngIf="(access$ | async)?.hasPro !== true && rounds >= 10">
-          <p class="tw-eyebrow">Playing for real later?</p>
-          <p class="tw-small">The Session Coach turns your budget into a plan – stake size, stop-win, stop-loss and a timer – and keeps you to it.</p>
-          <ion-button size="small" [routerLink]="(access$ | async)?.signedIn ? '/pro' : '/signup'">Try Pro free for 7 days</ion-button>
+          <p class="tw-eyebrow">Ready for your live table?</p>
+          <p class="tw-small">Take these signals to a real table in the Signal Room – every bet, every amount, and the moment to cash out.</p>
+          <ion-button size="small" [routerLink]="(access$ | async)?.signedIn ? '/pro' : '/signup'">Start free – 3 hours</ion-button>
         </div>
       </aside>
     </div>
   </div>
 </ion-content>
 
-<app-stop-sign *ngIf="stopSign === 'final'" kind="final" [reason]="stopReason" [net]="sigNet"
-  hint="In real play this is where you leave the table. Here, you can start a fresh practice session."
-  stopLabel="Start a new practice session" (stop)="newSignalSession()"></app-stop-sign>
-<app-stop-sign *ngIf="stopSign === 'table'" kind="checkin" icon="switch" title="CHOPPY GAME" reason="No clear pattern after 60 results." [net]="sigNet"
-  hint="The book's advice: call a choppy game off and start fresh. Or keep practising."
-  stopLabel="Start a new practice session" continueLabel="Keep practising"
-  (stop)="newSignalSession()" (continue)="stopSign = null"></app-stop-sign>
-<app-stop-sign *ngIf="stopSign === 'checkin'" kind="checkin" reason="Time check." [hint]="checkinHint" [net]="sigNet"
-  stopLabel="Stop – start a fresh session" continueLabel="Keep practising"
+<app-stop-sign *ngIf="stopSign === 'final'" kind="final" [icon]="sigNet > 0 ? 'cash' : 'stop'"
+  [title]="sigNet > 0 ? 'CASH OUT NOW' : 'SESSION COMPLETE'" [reason]="stopReason" [net]="sigNet"
+  hint="In real play this is the moment to cash out. Here, start a fresh practice session any time."
+  stopLabel="Start a fresh practice session" (stop)="newSignalSession()"></app-stop-sign>
+<app-stop-sign *ngIf="stopSign === 'table'" kind="checkin" icon="switch" title="FRESH TABLE TIME" reason="3 misses in a row – hop to a new table." [net]="sigNet"
+  hint="In real play you open another live table. Here, the signals start fresh from step 1 – your totals carry on."
+  stopLabel="Start a fresh practice session" continueLabel="New table"
+  (stop)="newSignalSession()" (continue)="switchTable()"></app-stop-sign>
+<app-stop-sign *ngIf="stopSign === 'checkin'" kind="checkin" [icon]="sigNet > 0 ? 'cash' : 'switch'" title="TIME CHECK" reason="Quick check-in." [hint]="checkinHint" [net]="sigNet"
+  stopLabel="Start a fresh session" continueLabel="Keep practising"
   (stop)="newSignalSession()" (continue)="stopSign = null"></app-stop-sign>

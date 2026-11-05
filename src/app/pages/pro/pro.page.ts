@@ -1,6 +1,6 @@
-import { Component, ElementRef, OnDestroy, ViewChild, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { AsyncPipe, DatePipe, DecimalPipe, NgClass, NgFor, NgIf } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
 import { AccountService } from '../../core/account.service';
 import { PaymentsService } from '../../core/payments.service';
@@ -19,20 +19,25 @@ import { environment } from 'src/environments/environment';
         <ng-container *ngIf="access$ | async as a">
           <header class="head">
             <p class="tw-eyebrow">TableWise Pro</p>
-            <h1 *ngIf="a.isPaid">You're on Pro until {{ a.paidUntil | date: 'MMM d, h:mm a' }}</h1>
+            <h1 *ngIf="a.isPaid && !a.paymentPending">You're on Pro until {{ a.paidUntil | date: 'MMM d, h:mm a' }}</h1>
+            <h1 *ngIf="a.paymentPending">Your pass is on – enjoy!</h1>
             <h1 *ngIf="!a.isPaid && a.onTrial">Keep your signals going</h1>
-            <h1 *ngIf="!a.isPaid && !a.onTrial && !a.trialBlocked">Your free hours are up. Pick your pass.</h1>
-            <h1 *ngIf="!a.isPaid && a.trialBlocked">Pick your pass to start</h1>
-            <p class="tw-note" *ngIf="!a.isPaid && a.trialBlocked">Free hours are limited to 2 accounts per network, and this network has
-              already used them. A pass unlocks everything straight away.</p>
-            <p class="tw-muted lead">Every pass unlocks live signals, your session plan, the STOP alerts and your winnings wall.
-              Buy once – no auto-renewal, no surprises.</p>
+            <h1 *ngIf="!a.isPaid && !a.onTrial && !a.onHold">Pick your pass and jump back in</h1>
+            <h1 *ngIf="a.onHold">Your pass is paused</h1>
+            <p class="tw-note" *ngIf="!a.isPaid && a.trialBlocked && !a.onHold">This network has already used its free hours. A pass unlocks everything instantly.</p>
+            <p class="tw-muted lead">Every pass unlocks live signals, your session plan, the cash-out alerts and your winnings wall.
+              Pay once – no auto-renewal.</p>
           </header>
 
-          <div class="tw-note" *ngIf="paidReturn && !a.isPaid">
-            Thanks! Crypto payments unlock automatically once the network confirms them – usually 5–30 minutes.
+          <div class="tw-note good" *ngIf="a.paymentPending">
+            You're all set – the Signal Room is open. We're confirming your payment in the background (usually a few minutes).
+            <a routerLink="/coach">Go to the Signal Room →</a>
           </div>
-          <div class="tw-note" *ngIf="done">Payment confirmed – Pro is active. Enjoy your session.</div>
+          <div class="tw-note" *ngIf="a.onHold">
+            We haven't received your payment yet. Finish it on the checkout page and your pass switches back on automatically –
+            or pick a pass below to pay again.
+          </div>
+          <div class="tw-note" *ngIf="startNote">{{ startNote }}</div>
 
           <div class="plans" role="radiogroup" aria-label="Choose a pass">
             <button *ngFor="let p of plans" class="plan" role="radio" [attr.aria-checked]="selected === p.id"
@@ -56,24 +61,19 @@ import { environment } from 'src/environments/environment';
             </div>
             <div class="pay">
               <div class="tw-error" *ngIf="error">{{ error }}</div>
-              <ng-container *ngIf="payments.configured">
-                <p class="pay-label" *ngIf="payments.paypalEnabled">PayPal or card</p>
-                <div #paypal class="paypal"></div>
-                <ng-container *ngIf="payments.cryptoEnabled">
-                  <p class="pay-label">Crypto – BTC, ETH, USDT and 100+ more</p>
-                  <button class="crypto" (click)="crypto()" [disabled]="busy">{{ busy ? 'Opening checkout…' : 'Pay \$' + plan.usd + ' with crypto' }}</button>
-                </ng-container>
-              </ng-container>
-              <p class="tw-note" *ngIf="demo">Checkout is switched off in this demo. In the live app this box shows PayPal / card and crypto checkout for the pass you picked.</p>
+              <p class="pay-label">Card or crypto – BTC, ETH, USDT and 100+ more</p>
+              <button class="pay-btn" (click)="pay()" [disabled]="busy || (!payments.configured && !demo)">
+                {{ busy ? 'Opening checkout…' : 'Get my ' + plan.name + ' – \$' + plan.usd }}</button>
+              <p class="tw-small tw-muted instant">⚡ Your pass switches on the moment you're back from checkout.</p>
+              <p class="tw-note" *ngIf="demo">Demo: no real payment – the pass switches on instantly and "confirms" after a few seconds.</p>
               <p class="tw-note" *ngIf="!payments.configured && !demo">Checkout is not configured yet. Admin: set <code>payments.apiUrl</code> (README → Payments).</p>
-              <p class="secure">🔒 Payments are processed by PayPal and NOWPayments. We never see your card or wallet keys.</p>
+              <p class="secure">🔒 Secure hosted checkout. We never see your card or wallet keys.</p>
             </div>
           </section>
 
           <p class="tw-muted tw-small fine">
-            Passes start when payment is confirmed and add to any time you have left. TableWise gives signals and session
-            discipline; it does not take bets, and no system removes the house edge – some sessions lose.
-            18+ only. Play only with money you can afford to lose.
+            Passes add to any time you have left. TableWise gives signals and session guidance; it does not take bets
+            or hold money. 18+ only.
           </p>
         </ng-container>
       </div>
@@ -108,21 +108,22 @@ import { environment } from 'src/environments/environment';
     .checkout h2 { margin: 0 0 8px; }
     .checkout ul { padding-left: 18px; line-height: 1.8; margin: 0; }
     .pay-label { font-size: 13px; color: var(--tw-muted); margin: 0 0 8px; font-weight: 600; }
-    .paypal { margin-bottom: 14px; max-width: 380px; }
-    .crypto { width: 100%; max-width: 380px; height: 50px; border-radius: 999px; border: 1px solid var(--tw-line-strong);
-      background: var(--tw-card-2); color: var(--tw-text); font: inherit; font-weight: 700; cursor: pointer; }
-    .crypto[disabled] { opacity: .6; }
+    .pay-btn { width: 100%; max-width: 380px; height: 54px; border-radius: 999px; border: 0; cursor: pointer;
+      background: linear-gradient(135deg, var(--tw-gold-2), var(--tw-gold)); color: #031019; font: inherit; font-size: 17px; font-weight: 800;
+      box-shadow: 0 12px 30px rgba(var(--tw-accent-rgb), .3); }
+    .pay-btn[disabled] { opacity: .6; cursor: default; }
+    .instant { margin: 10px 0 0; }
+    .tw-note.good { border-color: rgba(46, 204, 113, .5); }
     .secure { font-size: 12px; color: var(--tw-muted); margin-top: 12px; }
     .fine { margin-top: 18px; max-width: 760px; }
     code { color: var(--tw-gold-2); }
   `],
 })
-export class ProPage implements OnDestroy {
-  @ViewChild('paypal') paypalEl?: ElementRef<HTMLElement>;
+export class ProPage {
   private account = inject(AccountService);
+  private router = inject(Router);
   payments = inject(PaymentsService);
   access$ = this.account.access$;
-  paidReturn = inject(ActivatedRoute).snapshot.queryParamMap.has('paid');
   plans = PLANS;
   pricing = PRICING;
   features = PRO_FEATURES;
@@ -132,15 +133,11 @@ export class ProPage implements OnDestroy {
   selected: PlanId = 'month';
   busy = false;
   error = '';
-  done = false;
-  private renderTimer: any;
+  startNote = '';
 
   constructor() {
-    this.renderPayPal();
-  }
-
-  ngOnDestroy() {
-    clearTimeout(this.renderTimer);
+    const ref = inject(ActivatedRoute).snapshot.queryParamMap.get('paid');
+    if (ref) this.start(ref);
   }
 
   get plan(): Plan {
@@ -150,29 +147,37 @@ export class ProPage implements OnDestroy {
   choose(id: PlanId) {
     this.selected = id;
     this.error = '';
-    this.renderPayPal();
   }
 
-  /** (Re)draws the PayPal buttons for the selected pass. */
-  private renderPayPal() {
-    if (!this.payments.paypalEnabled) return;
-    clearTimeout(this.renderTimer);
-    this.renderTimer = setTimeout(() => {
-      if (!this.paypalEl) return;
-      this.payments
-        .renderPayPal(this.paypalEl.nativeElement, this.selected, () => (this.done = true), (msg) => (this.error = msg))
-        .catch((e) => (this.error = e.message));
-    }, 250);
-  }
-
-  async crypto() {
-    this.busy = true;
+  async pay() {
     this.error = '';
+    if (this.demo) {
+      this.account.demoStartPass(this.selected);
+      this.router.navigateByUrl('/coach');
+      return;
+    }
+    this.busy = true;
     try {
-      window.location.href = await this.payments.cryptoCheckout(this.selected);
+      window.location.href = await this.payments.checkout(this.selected);
     } catch (e: any) {
       this.error = e.message;
       this.busy = false;
+    }
+  }
+
+  /** Back from checkout: switch the pass on now, then send the player to their table. */
+  private async start(ref: string) {
+    try {
+      const status = await this.payments.startPass(ref);
+      if (status === 'pending' || status === 'paid' || status === 'active') {
+        this.router.navigateByUrl('/coach');
+      } else if (status === 'waiting') {
+        this.startNote = "Thanks! Your earlier checkout is still confirming – this pass switches on automatically as soon as it's received.";
+      } else {
+        this.startNote = "We haven't received this payment yet. Once it arrives, your pass switches on automatically.";
+      }
+    } catch (e: any) {
+      this.startNote = 'Thanks! Your pass switches on automatically as soon as the payment is received.';
     }
   }
 }

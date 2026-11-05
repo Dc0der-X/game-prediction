@@ -285,7 +285,7 @@ export const GAMES: GameDef[] = [
     sides: ['banker', 'player'],
     name: 'Baccarat',
     image: 'assets/img/baccarat.jpeg',
-    blurb: 'Lowest house edge in the casino. Banker is the best bet.',
+    blurb: 'Player or Banker – the classic. Smooth, simple and fast to follow.',
     roundsPerHour: 70,
     bestBet: 'banker',
     bets: [
@@ -308,7 +308,7 @@ export const GAMES: GameDef[] = [
     sides: ['red', 'black'],
     name: 'Roulette',
     image: 'assets/img/roulette.png',
-    blurb: 'European single-zero wheel. Every bet carries 2.70% edge.',
+    blurb: 'Red or Black on a European single-zero wheel.',
     roundsPerHour: 40,
     bestBet: 'red',
     bets: [
@@ -330,7 +330,7 @@ export const GAMES: GameDef[] = [
     sides: ['dragon', 'tiger'],
     name: 'Dragon Tiger',
     image: 'assets/img/dragon-tiger.webp',
-    blurb: 'One card each, high card wins. Fast – so keep sessions short.',
+    blurb: 'One card each, high card wins. Quick rounds, quick wins.',
     roundsPerHour: 100,
     bestBet: 'dragon',
     bets: [
@@ -346,7 +346,7 @@ export const GAMES: GameDef[] = [
     sides: ['small', 'big'],
     name: 'Sic Bo',
     image: 'assets/img/sic-bo.jpeg',
-    blurb: 'Three dice. Small or Big is the only bet worth making.',
+    blurb: 'Three dice – the signal calls Small or Big.',
     roundsPerHour: 50,
     bestBet: 'small',
     bets: [
@@ -368,7 +368,7 @@ export const GAMES: GameDef[] = [
     sides: ['dontpass', 'pass'],
     name: 'Craps',
     image: 'assets/img/dice-coins.jpeg',
-    blurb: 'Pass and Don\'t Pass are two of the fairest bets in any casino.',
+    blurb: 'Pass or Don\'t Pass – one signal per line decision.',
     roundsPerHour: 60,
     bestBet: 'dontpass',
     bets: [

@@ -44,7 +44,7 @@ export const FREE_FEATURES = [
 export const PRO_FEATURES = [
   'Live signals: the side and the amount for every bet',
   'Your session plan from the amount you bring',
-  'Target and loss alerts, check-ins and the STOP sign',
+  'Cash-out alerts the moment your target is hit',
   'Session history and your winnings wall',
-  'Strategy Lab and every table',
+  'All 5 live games: Baccarat, Craps, Roulette, Sic Bo, Dragon Tiger',
 ];

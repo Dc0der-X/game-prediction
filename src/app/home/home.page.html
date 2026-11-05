@@ -10,7 +10,7 @@
       <ng-container *ngIf="access$ | async as a">
         <a *ngIf="!a.signedIn" routerLink="/login">Log in</a>
         <ion-button size="small" *ngIf="!a.signedIn" routerLink="/signup">Start free</ion-button>
-        <ion-button size="small" *ngIf="a.signedIn" routerLink="/lobby">Open app</ion-button>
+        <ion-button size="small" *ngIf="a.signedIn" routerLink="/coach">Open Signal Room</ion-button>
       </ng-container>
     </div>
   </nav>
@@ -23,11 +23,11 @@
     <div class="hero-in">
       <div class="copy">
         <p class="tw-eyebrow">Neural Signals · for live tables</p>
-        <h1>Know your next bet.<br /><span>Know when to walk away.</span></h1>
+        <h1>Win smarter.<br /><span>Keep more.</span></h1>
         <p class="lead">
           Bring your amount. Tap what came at your table – Red or Black, Player or Banker, Dragon or Tiger.
-          TableWise shows the side and the exact amount for every bet, tracks your target live, and tells you
-          the moment to cash out.
+          TableWise shows the side and the exact amount for every bet, rides the runs with you, fills your target
+          live and tells you the perfect moment to cash out on top.
         </p>
         <div class="cta">
           <ion-button routerLink="/signup">Start free – {{ pricing.trialHours }} hours</ion-button>
@@ -70,7 +70,7 @@
     <h2>Three steps. Zero guesswork.</h2>
     <div class="steps">
       <div class="tw-card"><span class="n">1</span><h3>Bring your amount</h3>
-        <p class="tw-muted">Tell it what you're playing with today. It builds your session: first bet, target and limit.</p></div>
+        <p class="tw-muted">Tell it what you're playing with today. It builds your session: every bet size and your profit target.</p></div>
       <div class="tw-card"><span class="n">2</span><h3>Tap what came</h3>
         <p class="tw-muted">Each tap gives you the next signal – the side and the exact amount. No charts, no maths, no second-guessing.</p></div>
       <div class="tw-card"><span class="n">3</span><h3>Cash out on cue</h3>
@@ -81,14 +81,14 @@
   <!-- Tables -->
   <section class="block">
     <p class="tw-eyebrow">The tables</p>
-    <h2>Every game, with its real house edge</h2>
+    <h2>Five live tables. One signal.</h2>
     <div class="games">
       <a class="game" *ngFor="let g of games" [routerLink]="['/table', g.id]">
         <div class="img" [style.background-image]="'url(' + g.image + ')'"></div>
         <div class="body">
           <h3>{{ g.name }}</h3>
           <p class="tw-muted tw-small">{{ g.blurb }}</p>
-          <span class="tw-pill">{{ pct(bestEdge(g)) }} edge on the best bet</span>
+          <span class="tw-pill gold">Signals on {{ sidesOf(g) }}</span>
         </div>
       </a>
     </div>
@@ -104,7 +104,7 @@
       <div class="item" *ngFor="let f of feed" [class.win]="f.net > 0" [class.loss]="f.net < 0">
         <span class="g">{{ gameName(f.game) }}</span>
         <span class="r">{{ f.net > 0 ? '+' : '' }}{{ f.pct | number: '1.0-0' }}%</span>
-        <span class="tag">{{ f.endReason === 'stop-win' ? 'Target hit' : f.net > 0 ? 'Cashed out' : 'Session closed' }}</span>
+        <span class="tag">{{ f.endReason === 'stop-win' ? 'Target hit' : f.net > 0 ? 'Cashed out' : 'Next one' }}</span>
         <span class="m tw-muted">{{ f.minutes }} min · {{ ago(f.createdAt) }}</span>
       </div>
     </div>
@@ -132,7 +132,7 @@
   <!-- FAQ -->
   <section class="block" id="faq">
     <p class="tw-eyebrow">FAQ</p>
-    <h2>Straight answers</h2>
+    <h2>Quick answers</h2>
     <div class="faq">
       <details *ngFor="let f of faqs" class="tw-card">
         <summary>{{ f.q }}</summary>
@@ -171,8 +171,7 @@
       <div>
         <div class="brand"><span class="mark">♠</span>TableWise</div>
         <p class="tw-muted tw-small">
-          For entertainment and self-control only. TableWise does not take bets, predict outcomes or guarantee results.
-          18+. Gambling can be addictive – please play responsibly.
+          Signals and session guidance for live tables. TableWise does not take bets or hold money. 18+, play responsibly.
         </p>
       </div>
       <div class="tw-small">

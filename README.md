@@ -14,10 +14,9 @@ fun, unlimited practice and a disciplined way to play for real that keeps losses
 |---|---|---|
 | Practice tables (Baccarat, Craps, Roulette, Sic Bo, Dragon Tiger) with play money and signals | ✅ forever | ✅ |
 | **Signal Room**: enter your amount, tap what came, get the side and the amount for every bet | first 3 hours | ✅ |
-| Live target and loss tracking, check-ins, STOP and cash-out signs | first 3 hours | ✅ |
+| Live target, safety limit, cash-out and fresh-table alerts, floating signal window | first 3 hours | ✅ |
 | History and the **winnings wall** | first 3 hours | ✅ |
-| Strategy Lab | first 3 hours | ✅ |
-| Personal colour themes, self-exclusion | ✅ | ✅ |
+| Personal colour themes, pause option, 24/7 Telegram support bot | ✅ | ✅ |
 
 ### Pricing
 
@@ -28,13 +27,13 @@ fun, unlimited practice and a disciplined way to play for real that keeps losses
 | Monthly | **$140** (30 days) | $4.67 (save 77%) |
 | Yearly | **$999** (365 days) | $2.74 (save 86%) |
 
-Passes are one-time payments (PayPal, card or crypto). They never auto-renew and stack on any time left.
+Passes are one-time payments (card or crypto through one hosted checkout). They switch on the moment the buyer is back
+from checkout, never auto-renew and stack on any time left.
 Change prices in `src/app/core/pricing.ts` **and** `payments-worker/wrangler.toml` (`PRICE_DAY_USD`, `PRICE_MONTH_USD`,
 `PRICE_YEAR_USD`).
 
-Games: only the five with the fairest even-money bets, ranked by house edge – Baccarat Banker 1.06%, Craps Don't Pass
-1.36%, Roulette (single zero) 2.70%, Sic Bo Small/Big 2.78%, Dragon Tiger 3.73%. Lucky 7 (7.69%) was removed. Craps
-follows the book's own rule: start on Don't Pass, switch to Pass after a level-5 loss.
+Games: Baccarat, Craps, Roulette, Sic Bo, Dragon Tiger (even-money sides: Player/Banker, Pass/Don't Pass, Red/Black,
+Small/Big, Dragon/Tiger).
 
 ### Design and marketing
 
@@ -59,51 +58,26 @@ follows the book's own rule: start on Don't Pass, switch to Pass after a level-5
 - When you move to your own domain, replace `https://aicasinopredictor.web.app` in `src/index.html`,
   `src/app/core/seo.service.ts`, `src/robots.txt`, `src/sitemap.xml` and `src/llms.txt`.
 
-### The Neural Strategy (the method behind the coach)
+### Neural Signals (one system for everyone)
 
-The Signal Room implements the betting method from *The Neural Strategy*, checked bet by bet against the
-book's worked examples (Tables 2, 5 and 10):
+Every player gets the same signals; there is no strategy to pick and nothing to read.
 
-1. **Watch two results.** Same twice → bet it to repeat. Different → bet the alternation; once an alternating bet
-   loses, bet only the opposite of the losing bet.
-2. **Bet ladder** (multiples of the base): 1 · 1.6 · 2.6 · 4 · 7 · 10 · 15 · 20, i.e. 5 8 13 20 35 50 75 100 for a 5 base.
-   Up one level after a loss, down one after a win, down two after two wins in a row or two of the last three.
-3. **Switch sides** when the level-5 bet loses. Bet the other side at level 6, with the book's step-down rules
-   (−2, −1, −2… after wins) until three wins.
-4. **Session:** the amount you enter is the session bankroll (base = amount ÷ 61). Quit at **+⅓**. The session ends
-   if the bankroll is lost. A game that's still choppy after about 60 results is better called off.
-5. **Protected mode** (optional): target +⅙, stop at half the amount.
+1. **Side – SOS rule (Same, Opposite, Same).** Start on the side that came last. A win keeps the pattern that just
+   won. 1st miss → follow the side that just came (Same); 2nd miss → bet against it (Opposite – the table is
+   swinging); 3rd miss → Same again. Result: **the signal never bets against a run** – once a side comes twice in a
+   row, the signal is on it (checked on 18.9 million simulated bets, 0 exceptions). Zero / tie / bar don't change the side.
+2. **Amount – 8-step ladder** (multiples of the base): **1.5 · 2.5 · 4 · 6 · 10.5 · 15 · 22.5 · 30**. Up one step
+   after a miss; down one after a win, down two after two wins in a row or two of the last three. Every signal shows
+   the change from the last bet (▲ +3 / ▼ −2 / = same). Base = amount ÷ 92 (whole ladder fits in the amount).
+3. **Session rules (same for every game):** profit target **+20%** of the amount → cash out; once well up (60% of the
+   target), 2 misses in a row → cash out on top; **3 misses in a row → fresh table** (ladder back to step 1, totals
+   carry on); **safety limit 40%** of the amount – no bet can go past it. Check-in every 15 minutes, one session a day.
 
-Simulated over 72,000 fair sessions ($300, $5 base): Baccarat wins about 70% of sessions (+$100) and loses about 30%
-(around −$273), for an average of about −$11 per session. The Protected settings average about −$5. These figures are
-lower than the 84% the book reports. Code: `NeuralSystem` in `src/app/core/strategies.ts`, `SignalEngine` in
+Target and limit were chosen by simulation (20,000 sessions per game per setting, $200): +20% / 40% gave the highest
+share of winning sessions on every game – Baccarat 66%, Craps 67%, Sic Bo 63%, Roulette 63%, Dragon Tiger 59% –
+and the smallest average cost. Averages stay slightly negative (about −$4 to −$13 per $200 session), as with any
+system on a house-edge game. Code: `NeuralSystem` in `src/app/core/strategies.ts`, `SignalEngine` in
 `src/app/core/signals.ts`.
-
-**Why flat and not the old "recovery ladder"** (4-6-10-16-26-40-60): simulated on Baccarat Banker, $200 budget,
-$4 stake, 20 rounds, 9,000+ sessions:
-
-| System | Winning sessions | Real cost / session | Worst 1-in-10 session |
-|---|---|---|---|
-| **Flat + stops** | 47% | **−$0.80** | **−$21** |
-| Recovery ladder | 67% | −$1.08 | −$55 |
-| Martingale | 68% | −$0.96 | −$56 |
-
-Recovery systems win more often but stake more, so they cost more and have much worse bad days.
-
-**The original app's rule** is available in practice tables and the Strategy Lab as
-*Original S/O + Attack/Retrench*. It's ported line by line from the old prediction pages:
-- **Side (S/O):** keep the winning pattern; follow the last result after the 1st loss and switch after the 2nd.
-- **Stake:** Attack 4-2-3-4-5-6-8-10 after wins, Retrench 4-6-10-16-26-40-60 after losses.
-
-Averaged over 54,000 sessions each ($200, $4 base, +$20 / −$40 stops, 20 rounds):
-
-| Game | System | Winning sessions | Real cost / session | Worst 1-in-10 |
-|---|---|---|---|---|
-| Roulette | Flat | 39% | −$1.94 | −$24 |
-| Roulette | Original S/O | 65% | −$2.59 | −$54 |
-| Baccarat | Flat | 48% | −$0.80 | −$21 |
-| Baccarat | Original S/O | 68% | −$1.07 | −$54 | Every game engine
-was checked over 1,000,000 rounds per game, and each bet's measured edge matches its published house edge.
 
 ---
 
@@ -118,7 +92,8 @@ was checked over 1,000,000 rounds per game, and each bet's measured edge matches
 | Admin dashboard | Built into the app at `/admin` | – |
 
 All of this runs on the **free Firebase Spark plan**. No Cloud Functions are needed, so you never have to add a card
-to Firebase. Payment fees are charged only by PayPal / NOWPayments, per transaction.
+to Firebase. Payment fees are charged only by the checkout provider, per transaction; the support bot costs about
+a cent per reply in Claude API usage.
 
 Everything is open source: Angular, Ionic, Firebase JS SDK, `jose`, `wrangler`.
 
@@ -178,32 +153,59 @@ npm install
 npx wrangler login
 ```
 
-**PayPal** (developer.paypal.com):
-1. Create a REST app. Copy its **Client ID** and **Secret**.
-2. Add a **Webhook** pointing to `https://<your-worker>.workers.dev/paypal/webhook` with the event
-   `PAYMENT.CAPTURE.COMPLETED`. Copy the webhook id. Passes are one-time orders, so no billing plan is needed.
-
-**Crypto** (nowpayments.io):
+**Card + crypto** (nowpayments.io – one hosted checkout; enable card payments in your NOWPayments dashboard if your
+account supports them, or swap in another card-to-crypto gateway with the same invoice + signed-webhook flow):
 1. Create an account and add your payout wallet.
 2. Copy the **API key** and set an **IPN secret**.
 
 Then:
-1. Fill in `PAYPAL_CLIENT_ID`, `PAYPAL_WEBHOOK_ID`, `PAYPAL_ENV` (`sandbox` → `live`) and `APP_URL` in
-   `payments-worker/wrangler.toml`.
+1. Fill in `APP_URL` (and `HOLD_MINUTES`, default 60) in `payments-worker/wrangler.toml`.
 2. Set the secrets:
    ```bash
-   npx wrangler secret put PAYPAL_SECRET
    npx wrangler secret put NOWPAYMENTS_API_KEY
    npx wrangler secret put NOWPAYMENTS_IPN_SECRET
    npx wrangler secret put GOOGLE_SERVICE_ACCOUNT   # paste the service-account JSON
+   npx wrangler secret put IP_SALT                  # any long random string
    npm test && npm run deploy
    ```
-3. Put the worker URL and PayPal client id in `src/environments/environment.prod.ts` → `payments`, then
-   `npm run deploy` again from the project root.
+3. Put the worker URL in `src/environments/environment.prod.ts` → `payments.apiUrl`, then `npm run deploy` again
+   from the project root.
 
-How it stays safe: the browser only starts a checkout. The worker checks every payment directly with PayPal or
-NOWPayments (signature check, amount check, duplicate check), then writes `planExpiresAt` with the service account.
-Firestore rules stop customers from ever writing their own plan, role or expiry date.
+**Instant access, automatic hold – no manual approval ever:**
+1. Buyer picks a pass → hosted checkout → pays → lands on `/pro?paid=<ref>`. The pass switches on **right away**
+   (status "pending") and the buyer goes straight to the Signal Room.
+2. Payment seen on the network → the pending time is extended. Payment finished → the full Day / Month / Year pass
+   is granted, counted from the moment it switched on.
+3. Payment failed / expired, or no confirmation within 60 minutes → the pass pauses by itself ("payment not received").
+   If the payment arrives later, it switches back on automatically.
+4. Only one unconfirmed instant start per account, so the free hour can't be farmed with fake checkouts.
+
+How it stays safe: the browser only starts a checkout. Only the provider's signed IPN (signature, amount and
+duplicate checks) grants a full pass, written with the service account. Firestore rules stop customers from ever
+writing their own plan, role or expiry date.
+
+### 4. 24/7 Telegram support bot (fully automatic)
+
+The worker also runs a Telegram bot (`payments-worker/src/bot.ts`) that answers customers in a warm, upbeat voice
+using Claude: how it works, games, prices, how to pay, pass status. It never promises wins, never asks for card
+details, is honest if someone sincerely asks whether it's a bot, and pings you only when a customer asks for a person.
+
+1. In Telegram, message **@BotFather** → `/newbot` → copy the token. Put the bot's username in
+   `src/environments/environment.prod.ts` → `support.telegram`.
+2. Set the secrets and deploy:
+   ```bash
+   npx wrangler secret put TELEGRAM_BOT_TOKEN
+   npx wrangler secret put TELEGRAM_WEBHOOK_SECRET   # any random string
+   npx wrangler secret put ANTHROPIC_API_KEY         # console.anthropic.com
+   npm run deploy
+   ```
+3. Connect Telegram to the worker once (in a browser):
+   `https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<your-worker>.workers.dev/telegram/webhook&secret_token=<SECRET>`
+4. Optional: put your own Telegram chat id in `TELEGRAM_OWNER_CHAT_ID` (wrangler.toml) to get a ping for hand-offs.
+
+The bot uses `claude-opus-5-5` at low effort (change with the `BOT_MODEL` var). Only the last 10 messages of each chat
+are kept, under a hashed chat id. WhatsApp: keep it as a click-to-chat link plus WhatsApp Business auto-replies;
+WhatsApp's business rules restrict gambling-related messaging, so Telegram carries the automation.
 
 ---
 
@@ -213,7 +215,7 @@ Firestore rules stop customers from ever writing their own plan, role or expiry 
 - Revenue (30 days and all time) and estimated monthly recurring revenue
 - Sign-ups per day chart
 - User list with search, CSV export and **+30 days / +1 year / Revoke** buttons (for manual payments)
-- Every PayPal / crypto payment
+- Every card / crypto payment
 - Live feed of coach sessions (game, casino, budget, result)
 - Contact-form messages
 
@@ -240,10 +242,10 @@ The dev server proxies the emulators on the app's own address, so it also works 
 ```
 src/app/core/        games.ts (engines + odds), strategies.ts (rules, coach plan, simulator),
                      account / sessions / payments services, guards, pricing
-src/app/pages/       lobby, table, rules, auth, coach, history, lab, pro, account, admin
+src/app/pages/       lobby, table, rules, auth, coach, history, pro, account, admin
 src/app/home/        public landing page
 firestore.rules      security rules (who can read and write what)
-payments-worker/     Cloudflare Worker: PayPal + NOWPayments verification (+ tests)
+payments-worker/     Cloudflare Worker: checkout, instant pass + auto-hold, trial limit, Telegram bot (+ tests)
 scripts/             one-time migration and make-admin scripts
 ```
 

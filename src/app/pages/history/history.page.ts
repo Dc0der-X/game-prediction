@@ -45,7 +45,7 @@ import { round2 } from '../../core/strategies';
           <div class="tw-stats">
             <div class="tw-stat"><div class="label">Sessions</div><div class="value">{{ sessions.length }}</div></div>
             <div class="tw-stat"><div class="label">Winning sessions</div><div class="value">{{ winRate | number: '1.0-0' }}%</div></div>
-            <div class="tw-stat"><div class="label">Overall result (wins and losses)</div>
+            <div class="tw-stat"><div class="label">Overall result</div>
               <div class="value" [class.tw-pos]="total > 0" [class.tw-neg]="total < 0">{{ total > 0 ? '+' : '' }}{{ total | number: '1.0-2' }}</div></div>
             <div class="tw-stat"><div class="label">Total wagered</div><div class="value">{{ wagered | number: '1.0-0' }}</div></div>
             <div class="tw-stat"><div class="label">Stuck to the plan</div><div class="value">{{ discipline | number: '1.0-0' }}%</div></div>
@@ -59,8 +59,7 @@ import { round2 } from '../../core/strategies';
               <polyline [attr.points]="points" class="line" />
             </svg>
             <p class="tw-muted tw-small">
-              Winning sessions feel great, but the running total is what matters. Over many sessions it drifts
-              towards the house edge – that's normal and expected. Keep stakes small and it stays small.
+              Every session you finish adds to this line. Cash out on top and keep the line climbing.
             </p>
           </div>
 
@@ -194,6 +193,6 @@ export class HistoryPage {
     return g ? getBet(g, betId)?.label ?? betId : betId;
   }
   reason(r: string) {
-    return ({ 'stop-win': 'Stop-win', 'stop-loss': 'Stop-loss', time: 'Timer', rounds: 'Round limit', checkin: 'Stopped at check-in', 'profit-lock': 'Kept profit (2 losses)', 'change-table': '3 losses – left table', manual: 'Ended early' } as Record<string, string>)[r] ?? r;
+    return ({ 'stop-win': 'Target hit', 'stop-loss': 'Safety limit', time: 'Timer', rounds: 'Full session', checkin: 'Cashed out at check-in', 'profit-lock': 'Cashed out on top', 'change-table': 'Fresh table', manual: 'Cashed out' } as Record<string, string>)[r] ?? r;
   }
 }

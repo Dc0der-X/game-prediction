@@ -2,13 +2,12 @@
 
 > TableWise is a session coach for live casino table games. Players enter the amount they are playing with,
 > tap the last results at their table, and get a signal for every bet: which side (e.g. Red or Black, Player or
-> Banker) and exactly how much. It tracks a profit target and a loss limit live and tells the player when to cash
-> out or stop. It works beside any online or land-based casino; it does not take bets or hold money.
+> Banker) and exactly how much – up or down from the last bet. It fills a profit target live, keeps every bet inside a
+> safety limit and tells the player the moment to cash out. It works beside any online or land-based casino; it does not take bets or hold money.
 
 ## What it does
-- Signal Room: personal session plan from the player's amount; side and amount for every bet; live progress to target; STOP and cash-out alerts; check-ins; session history.
+- Signal Room: personal session plan from the player's amount; side and amount for every bet (the signal rides runs and follows swings); 8-step bet ladder; live progress to target; cash-out alerts; fresh-table alert after 3 misses; floating signal window beside the live casino; session history.
 - Practice tables: free play-money Roulette, Baccarat, Craps, Dragon Tiger and Sic Bo with the same signals.
-- Strategy Lab: simulate betting systems over thousands of sessions.
 - Personal colour themes (Neon, High Roller, Classic, Ember).
 
 ## Games
@@ -19,11 +18,12 @@ Roulette (red/black), Baccarat (player/banker), Dragon Tiger, Sic Bo (small/big)
 - Day Pass: $20 (24 hours).
 - Monthly: $140 (30 days).
 - Yearly: $999 (365 days).
-Passes do not auto-renew. Payment by PayPal, card or crypto.
+Passes do not auto-renew. Payment by card or crypto; the pass switches on as soon as the buyer returns from checkout.
+- Support: 24/7 Telegram chat.
 
 ## Important
-Casino games are random and the house keeps an edge; TableWise does not guarantee wins and some sessions lose.
-For adults 18+ where online casino games are legal. Responsible-gambling tools: session limits, check-ins, self-exclusion.
+TableWise gives signals and session guidance; it does not take bets, hold money or guarantee results.
+For adults 18+ where online casino games are legal. Built-in tools: safety limit, check-ins, pause option.
 
 ## Links
 - Home: https://aicasinopredictor.web.app/home

@@ -3,7 +3,7 @@ import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
 import { TopbarComponent } from '../../shared/topbar.component';
-import { GAMES, getBet, pct } from '../../core/games';
+import { GAMES, getBet } from '../../core/games';
 import { AccountService } from '../../core/account.service';
 
 @Component({
@@ -17,44 +17,38 @@ import { AccountService } from '../../core/account.service';
         <section class="hero tw-card felt">
           <div>
             <p class="tw-eyebrow">Practice lobby</p>
-            <h1>Pick a table. Play-money is unlimited.</h1>
+            <h1>Warm up with free play money.</h1>
             <p class="tw-muted">
-              Real odds, real payouts, fair shuffles. Learn every game here first –
-              then use the Session Coach when you play for real.
+              Same signals as the Signal Room, unlimited chips. Get the feel here, then take the signals to your live table.
             </p>
           </div>
           <div class="hero-cta" *ngIf="access$ | async as a">
-            <ion-button *ngIf="!a.signedIn" routerLink="/signup">Start 7-day free Pro trial</ion-button>
-            <ion-button *ngIf="a.signedIn && a.hasPro" routerLink="/coach">Open Session Coach</ion-button>
-            <ion-button *ngIf="a.signedIn && !a.hasPro" routerLink="/pro">Unlock Pro</ion-button>
-            <ion-button fill="clear" routerLink="/rules">Read the Table Rules</ion-button>
+            <ion-button *ngIf="!a.signedIn" routerLink="/signup">Start free – 3 hours</ion-button>
+            <ion-button *ngIf="a.signedIn && a.hasPro" routerLink="/coach">Open the Signal Room</ion-button>
+            <ion-button *ngIf="a.signedIn && !a.hasPro" routerLink="/pro">Get your pass</ion-button>
+            <ion-button fill="clear" routerLink="/rules">How it works</ion-button>
           </div>
         </section>
 
-        <h2 class="section">Tables <span class="tw-muted tw-small">ranked by house edge – lower is better</span></h2>
+        <h2 class="section">Tables</h2>
         <div class="tw-grid">
           <a class="table" *ngFor="let g of games; let i = index" [routerLink]="['/table', g.id]">
-            <div class="img" [style.background-image]="'url(' + g.image + ')'">
-              <span class="rank">#{{ i + 1 }}</span>
-            </div>
+            <div class="img" [style.background-image]="'url(' + g.image + ')'"></div>
             <div class="body">
               <div class="tw-row">
                 <h3>{{ g.name }}</h3>
                 <span class="tw-spacer"></span>
-                <span class="tw-pill" [class.green]="edge(g) < 0.02" [class.gold]="edge(g) >= 0.02 && edge(g) < 0.05"
-                      [class.red]="edge(g) >= 0.05">{{ pct(edge(g)) }} edge</span>
+                <span class="tw-pill green">Signals on</span>
               </div>
               <p class="tw-muted tw-small">{{ g.blurb }}</p>
-              <p class="tw-small">Best bet: <strong class="tw-gold">{{ bestLabel(g) }}</strong></p>
+              <p class="tw-small">Signals on <strong class="tw-gold">{{ sidesLabel(g) }}</strong></p>
               <span class="play">Enter table →</span>
             </div>
           </a>
         </div>
 
         <p class="tw-muted tw-small foot">
-          18+ only. No betting system beats the house edge – TableWise helps you play for fun with
-          limits. Need help? <a href="https://www.begambleaware.org" target="_blank" rel="noopener">BeGambleAware</a>
-          · <a href="https://www.gamblersanonymous.org" target="_blank" rel="noopener">Gamblers Anonymous</a>
+          18+ only. Play within your budget.
         </p>
       </div>
     </ion-content>
@@ -85,14 +79,9 @@ import { AccountService } from '../../core/account.service';
 })
 export class LobbyPage {
   access$ = inject(AccountService).access$;
-  // Sorted by the house edge of each game's best bet.
-  games = [...GAMES].sort((a, b) => this.edge(a) - this.edge(b));
-  pct = pct;
+  games = GAMES;
 
-  edge(g: (typeof GAMES)[number]) {
-    return getBet(g, g.bestBet)!.edge;
-  }
-  bestLabel(g: (typeof GAMES)[number]) {
-    return getBet(g, g.bestBet)!.label;
+  sidesLabel(g: (typeof GAMES)[number]) {
+    return (g.sides ?? [g.bestBet]).map((id) => getBet(g, id)!.label).join(' / ');
   }
 }

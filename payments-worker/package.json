@@ -2,7 +2,7 @@
   "name": "tablewise-payments-worker",
   "private": true,
   "version": "1.0.0",
-  "description": "Free Cloudflare Worker that verifies PayPal and crypto (NOWPayments) payments and unlocks Pro in Firestore.",
+  "description": "Free Cloudflare Worker that verifies card / crypto (NOWPayments) payments and unlocks Pro in Firestore.",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
@@ -10,6 +10,7 @@
     "test": "wrangler deploy --dry-run --outdir dist && node --test test/webhook.test.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "1.5.0",
     "jose": "5.9.6"
   },
   "devDependencies": {

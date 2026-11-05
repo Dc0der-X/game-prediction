@@ -90,165 +90,134 @@ export function makeStaker(strategy: StrategyId, unit: number, game: GameDef): S
 }
 
 /* ------------------------------------------------------------------ */
-/* The Neural Strategy (from the book of the same name)                */
+/* Neural Signals – the one system every player gets                   */
 /* ------------------------------------------------------------------ */
 
-/** Betting series as multiples of the base bet: 5 8 13 20 35 50 75 100 for a 5 base. */
-export const NEURAL_SERIES = [1, 1.6, 2.6, 4, 7, 10, 15, 20];
-/** Session bankroll = the sum of the series (306 for a 5 base, rounded to 300 in the book). */
+/** Bet ladder as multiples of the base unit: 1.5 2.5 4 6 10.5 15 22.5 30 for a base of 1. */
+export const NEURAL_SERIES = [1.5, 2.5, 4, 6, 10.5, 15, 22.5, 30];
+/** The whole ladder added up (92 units). */
 export const NEURAL_BANKROLL_UNITS = NEURAL_SERIES.reduce((a, b) => a + b, 0);
 
-/** Bet size for a level, rounded like casino chips (whole numbers from a base of 2 up). */
+/** Base unit for today's amount: the whole ladder always fits inside the amount. */
+export function neuralBase(amount: number): number {
+  return amount >= NEURAL_BANKROLL_UNITS ? Math.floor(amount / NEURAL_BANKROLL_UNITS) : 0.5;
+}
+
+/** Bet size for a ladder level (0–7). */
 export function neuralStake(base: number, level: number): number {
-  const raw = base * NEURAL_SERIES[Math.max(0, Math.min(7, level))];
-  return base >= 2 ? Math.round(raw) : Math.round(raw * 2) / 2;
+  return round2(base * NEURAL_SERIES[Math.max(0, Math.min(7, level))]);
 }
 
 /**
- * The Neural Strategy:
- *  1. Watch two results. Same twice → bet it to repeat. Different → bet the
- *     alternation; after an alternating bet loses, bet only the opposite of
- *     the losing bet (the side that is dominating).
- *  2. Start at level 1. Loss → up one level. Win → down one level; two wins in
- *     a row, or two of the last three, → down two levels.
- *  3. Losing the level-5 bet → switch to the other side and bet level 6.
- *     After a switch: a win drops two levels, the next consecutive win one
- *     level, then two, and so on; a loss raises one level. After three wins
- *     the normal rules apply again. Switch again on a level-5 loss once you
- *     have won three times or made five bets since the last switch.
- *  Ties (Baccarat) change nothing. Zero and other house results count as a loss.
+ * Neural Signals.
+ *
+ * Side – the SOS rule (Same, Opposite, Same):
+ *   start on the result that came last (Same);
+ *   a win keeps the pattern that just won (Same stays with the result, Opposite keeps swinging);
+ *   1st loss → follow the side that just came (Same);
+ *   2nd loss → bet against the side that just came (Opposite, the table is swinging);
+ *   3rd loss → Same again, and so on.
+ *   This never bets against a run: once a side comes twice in a row, the signal is on it.
+ *   Zero / tie / bar results don't change the side.
+ * Amount – the ladder (book step-down rules):
+ *   loss → one step up; win → one step down, two steps after two wins in a row or two of
+ *   the last three. A tie changes nothing; a zero counts as a loss.
  */
 export class NeuralSystem implements Staker {
   private sides: [string, string];
-  private seen: number[] = [];
-  private mode: 'observe' | 'repeat' | 'alternate' = 'observe';
-  private side = 0;
+  private nextSide = 0;
+  private sos: 'S' | 'O' = 'S';
+  private losses = 0;
   level = 0;
   private recent: boolean[] = [];
-  switched = false;
-  private winsSinceSwitch = 0;
-  private betsSinceSwitch = 0;
-  private switchWinStreak = 0;
-  switches = 0;
 
   constructor(private base: number, private game: GameDef) {
     this.sides = game.sides!;
-    this.startCraps();
+    this.reset();
   }
 
-  /** Book rule for craps: no watching – start on Don't Pass, switch to Pass after a level-5 loss. */
-  private startCraps() {
-    if (this.game.id !== 'craps') return;
-    this.mode = 'repeat';
-    this.side = 0;
-  }
-
+  /** Neural Signals never needs to sit out rounds. */
   get watching(): boolean {
-    return this.mode === 'observe';
+    return false;
   }
 
-  /** How many results have been watched so far (0–2). */
   get watched(): number {
-    return this.seen.length;
+    return 0;
   }
 
-  get pattern(): 'watching' | 'repeating' | 'alternating' {
-    return this.mode === 'observe' ? 'watching' : this.mode === 'repeat' ? 'repeating' : 'alternating';
+  /** 'same' = staying with the side that is coming, 'opposite' = following the swing. */
+  get pattern(): 'same' | 'opposite' {
+    return this.sos === 'S' ? 'same' : 'opposite';
   }
 
   reset() {
-    this.seen = [];
-    this.mode = 'observe';
-    this.side = 0;
+    // Craps (book rule) starts on Don't Pass; everything else on the first side until a result is seen.
+    const dp = this.sides.indexOf('dontpass');
+    this.nextSide = dp >= 0 ? dp : 0;
+    this.sos = 'S';
+    this.losses = 0;
     this.level = 0;
     this.recent = [];
-    this.switched = false;
-    this.winsSinceSwitch = 0;
-    this.betsSinceSwitch = 0;
-    this.switchWinStreak = 0;
-    this.switches = 0;
-    this.startCraps();
+  }
+
+  /** Start (or start again at a new table) from the last result seen there. */
+  seed(sideId: string | null) {
+    this.reset();
+    const i = sideId ? this.sides.indexOf(sideId) : -1;
+    if (i >= 0) this.nextSide = i;
   }
 
   observe(sideId: string | null) {
-    if (this.mode !== 'observe' || sideId === null) return;
-    const i = this.sides.indexOf(sideId);
-    if (i < 0) return;
-    this.seen.push(i);
-    if (this.seen.length === 2) {
-      const [a, b] = this.seen;
-      if (a === b) {
-        this.mode = 'repeat';
-        this.side = a;
-      } else {
-        this.mode = 'alternate';
-        this.side = 1 - b; // continue the alternation: p b → bet p
-      }
-    }
+    this.seed(sideId);
   }
 
-  bet(defaultBet: string): string {
-    return this.mode === 'observe' ? defaultBet : this.sides[this.side];
+  bet(_defaultBet?: string): string {
+    return this.sides[this.nextSide];
   }
 
   next(): number {
-    return this.mode === 'observe' ? 0 : neuralStake(this.base, this.level);
+    return neuralStake(this.base, this.level);
   }
 
   record(net: number, outcome?: Outcome) {
-    if (this.mode === 'observe') {
-      if (outcome) this.observe(sideOf(this.game, outcome));
-      return;
-    }
-    this.recordResult(net > 0 ? true : net < 0 ? false : null);
+    const came = outcome ? sideOf(this.game, outcome) : null;
+    this.recordRound(net, came === null ? null : came === this.bet());
   }
 
-  /** true = bet won, false = bet lost (including zero), null = tie / push. */
-  recordResult(won: boolean | null) {
-    if (this.mode === 'observe' || won === null) return;
-    if (this.switched) this.betsSinceSwitch++;
-
-    if (won) {
-      if (this.mode === 'alternate') this.side = 1 - this.side;
-      if (this.switched) {
-        const drop = this.switchWinStreak % 2 === 0 ? 2 : 1;
-        this.switchWinStreak++;
-        this.winsSinceSwitch++;
-        this.level = Math.max(0, this.level - drop);
-        if (this.winsSinceSwitch >= 3) this.switched = false; // back to the general rules
+  /**
+   * One finished bet. `net` decides the amount (win / loss / push);
+   * `hit` decides the side: true = our side came, false = the other side came, null = zero / tie.
+   */
+  recordRound(net: number, hit: boolean | null) {
+    // ---- side (SOS) ----
+    if (hit !== null) {
+      const happened = hit ? this.nextSide : 1 - this.nextSide;
+      if (hit) {
+        this.losses = 0;
+        this.nextSide = this.sos === 'S' ? happened : 1 - happened;
       } else {
-        const r = [...this.recent.slice(-2), true];
-        const twoInRow = r.length >= 2 && r[r.length - 2];
-        const twoOfThree = r.length >= 3 && r.filter((x) => x).length >= 2;
-        this.level = Math.max(0, this.level - (twoInRow || twoOfThree ? 2 : 1));
+        this.losses++;
+        if (this.losses === 2) {
+          this.sos = 'O';
+          this.nextSide = 1 - happened;
+        } else {
+          this.sos = 'S';
+          this.losses = 1;
+          this.nextSide = happened;
+        }
       }
+    }
+    // ---- amount (ladder) ----
+    if (net > 0) {
+      const r = [...this.recent.slice(-2), true];
+      const twoInRow = r.length >= 2 && r[r.length - 2];
+      const twoOfThree = r.length >= 3 && r.filter((x) => x).length >= 2;
+      this.level = Math.max(0, this.level - (twoInRow || twoOfThree ? 2 : 1));
       this.recent.push(true);
-      return;
+    } else if (net < 0) {
+      this.level = Math.min(7, this.level + 1);
+      this.recent.push(false);
     }
-
-    // Lost
-    this.recent.push(false);
-    this.switchWinStreak = 0;
-    const lostLevel5 = this.level === 4;
-    const mayFlip = !this.switched || this.winsSinceSwitch >= 3 || this.betsSinceSwitch >= 5;
-    if (lostLevel5 && mayFlip) {
-      // Switch sides: bet the opposite of what we have been betting, at level 6.
-      const lostSide = this.side;
-      this.mode = 'repeat';
-      this.side = 1 - lostSide;
-      this.level = 5;
-      this.switched = true;
-      this.winsSinceSwitch = 0;
-      this.betsSinceSwitch = 0;
-      this.switches++;
-      return;
-    }
-    if (this.mode === 'alternate') {
-      // The alternation broke: bet only the opposite of the losing bet from now on.
-      this.mode = 'repeat';
-      this.side = 1 - this.side;
-    }
-    this.level = Math.min(7, this.level + 1);
   }
 }
 
@@ -465,11 +434,11 @@ export class OriginalSystem implements Staker {
 /* ------------------------------------------------------------------ */
 
 export const TABLE_RULES = [
-  { title: 'Enter your amount', text: "Tell the coach how much you brought today. It sets your bet size, your profit target and your maximum loss from that." },
-  { title: 'Tell it what came', text: 'Tap the last result at your table. The coach shows exactly where to bet next and how much.' },
-  { title: 'Take the profit', text: 'Hit your profit target and you stop. Once you are up, 2 losses in a row also means stop – you leave with profit.' },
-  { title: '3 losses? Change table', text: 'Three losses in a row and you stop at that table. Move to a new table and start fresh, or end the session.' },
-  { title: 'Never past your limit', text: 'No bet can take you past your maximum loss. A STOP check-in comes every 5 minutes, and one real session a day.' },
+  { title: 'Enter your amount', text: 'Tell the coach what you are playing with today. It sets every bet, your profit target and your safety limit from it.' },
+  { title: 'Tap what came', text: 'Tap the last result at your live table. The coach shows where to bet next and exactly how much – up or down from the last bet.' },
+  { title: 'Ride the runs', text: 'When a side keeps coming, the signal goes with it. When the table swings, the signal swings with it.' },
+  { title: 'Cash out on top', text: 'Hit your target and cash out. Once you are well up, 2 misses in a row also means cash out – the profit is yours.' },
+  { title: 'Fresh table after 3', text: 'Three misses in a row: hop to a fresh table. The ladder starts again at step 1 and your totals carry on.' },
 ]
 
 export const SESSION_LIMITS = {
@@ -478,8 +447,11 @@ export const SESSION_LIMITS = {
   /** After a big profit (this share of the target or more), 2 losses in a row ends the session. */
   profitLockAt: 0.6,
   profitLockLosses: 2,
-  /** This many losses in a row: stop and change table. */
+  /** This many losses in a row: move to a fresh table. */
   changeTableLosses: 3,
+  /** Neural Signals: profit target and safety limit as shares of today's amount. */
+  targetShare: 0.2,
+  safetyShare: 0.4,
   unitPct: 0.02,
   stopWinUnits: 5, // +10% of bankroll
   stopLossUnits: 10, // -20% of bankroll
@@ -509,19 +481,13 @@ export interface SessionPlan {
 export type NeuralMode = 'book' | 'protected';
 
 /**
- * Neural Strategy session (book rules): the amount is the session bankroll,
- * the base bet is bankroll / 61.2 (the series total), the target is 1/3 of the
- * bankroll and the session ends if the bankroll is lost. "Protected" halves
- * the risk: target 1/6, stop at half the bankroll.
+ * Neural Signals session: the base unit makes the whole ladder fit inside
+ * today's amount; the profit target and the safety limit are shares of it.
+ * `mode` is kept only so older saved plans still load.
  */
-export function planNeural(game: GameDef, amount: number, minutes: number, mode: NeuralMode): SessionPlan {
-  const raw = amount / NEURAL_BANKROLL_UNITS;
-  // Round like the book: a 300 bankroll gives a 5 base (series total 306, "rounded to 300").
-  const base = raw >= 2 ? Math.round(raw) : Math.max(0.5, Math.round(raw * 2) / 2);
+export function planNeural(game: GameDef, amount: number, minutes: number, mode: NeuralMode = 'book'): SessionPlan {
+  const base = neuralBase(amount);
   const bet = getBet(game, game.bestBet)!;
-  const book = mode === 'book';
-  const stopWin = Math.round(amount / (book ? 3 : 6));
-  const stopLoss = book ? amount : Math.round(amount / 2);
   return {
     mode,
     series: NEURAL_SERIES.map((_, i) => neuralStake(base, i)),
@@ -531,8 +497,8 @@ export function planNeural(game: GameDef, amount: number, minutes: number, mode:
     edge: bet.edge,
     bankroll: amount,
     unit: base,
-    stopWin,
-    stopLoss,
+    stopWin: Math.max(1, Math.round(amount * SESSION_LIMITS.targetShare)),
+    stopLoss: Math.max(1, Math.round(amount * SESSION_LIMITS.safetyShare)),
     minutes,
     maxRounds: 150,
     expectedLoss: 0,

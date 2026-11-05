@@ -5,7 +5,7 @@ compatibility_date = "2024-11-01"
 
 [vars]
 FIREBASE_PROJECT_ID = "prediction-ai-a4dfe"
-# Where users return after crypto checkout.
+# Where users return after checkout.
 APP_URL = "https://aicasinopredictor.web.app"
 # Comma-separated list of sites allowed to call this worker.
 APP_ORIGINS = "https://aicasinopredictor.web.app,https://aicasinopredictor.firebaseapp.com,http://localhost:8100,http://localhost:4200"
@@ -14,16 +14,16 @@ PRICE_MONTH_USD = "140"
 PRICE_YEAR_USD = "999"
 # Accounts per network that get the free trial.
 TRIAL_PER_IP = "2"
-# "sandbox" while testing, "live" for real money.
-PAYPAL_ENV = "sandbox"
-PAYPAL_CLIENT_ID = ""
-# Only needed for the legacy monthly subscription; one-time passes use the Orders API.
-PAYPAL_PLAN_ID = ""
-PAYPAL_WEBHOOK_ID = ""
+# Minutes a pass stays on after checkout while the payment confirms. No confirmation by then → on hold.
+HOLD_MINUTES = "60"
+# Telegram support bot (src/bot.ts). Your own Telegram chat id gets a ping when a customer asks for a person.
+TELEGRAM_OWNER_CHAT_ID = ""
 
 # Secrets – set with `npx wrangler secret put NAME` (never commit them):
-#   PAYPAL_SECRET            PayPal REST app secret
 #   NOWPAYMENTS_API_KEY      NOWPayments API key
 #   NOWPAYMENTS_IPN_SECRET   NOWPayments IPN secret
 #   GOOGLE_SERVICE_ACCOUNT   Firebase service-account JSON (whole file, one line)
 #   IP_SALT                  any long random string (hashes IPs for the free-trial limit)
+#   TELEGRAM_BOT_TOKEN       from @BotFather (support bot)
+#   TELEGRAM_WEBHOOK_SECRET  any random string, also passed to Telegram's setWebhook
+#   ANTHROPIC_API_KEY        Claude API key for the support bot

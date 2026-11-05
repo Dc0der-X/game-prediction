@@ -20,11 +20,12 @@ import { TopbarComponent } from '../../shared/topbar.component';
         <div class="tw-card" *ngIf="access$ | async as a">
           <p class="tw-eyebrow">Plan</p>
           <h3 *ngIf="a.isAdmin">Admin – full access</h3>
-          <h3 *ngIf="!a.isAdmin && a.isPaid">Pro · paid until {{ a.paidUntil | date: 'mediumDate' }}</h3>
+          <h3 *ngIf="!a.isAdmin && a.isPaid && !a.paymentPending">Pro · until {{ a.paidUntil | date: 'mediumDate' }}</h3>
+          <h3 *ngIf="!a.isAdmin && a.paymentPending">Pro · on – payment confirming</h3>
+          <h3 *ngIf="!a.isAdmin && a.onHold">Pass paused – payment not received yet</h3>
           <h3 *ngIf="!a.isAdmin && a.onTrial">Free trial · ends {{ a.trialEndsAt | date: 'mediumDate' }}</h3>
-          <h3 *ngIf="!a.isAdmin && !a.hasPro">Free</h3>
-          <p class="tw-muted tw-small" *ngIf="p.paypalStatus">PayPal subscription: {{ p.paypalStatus | lowercase }}</p>
-          <ion-button size="small" routerLink="/pro" *ngIf="!a.isPaid && !a.isAdmin">See Pro plans</ion-button>
+          <h3 *ngIf="!a.isAdmin && !a.hasPro && !a.onHold">Free</h3>
+          <ion-button size="small" routerLink="/pro" *ngIf="!a.isPaid && !a.isAdmin">Get a pass</ion-button>
         </div>
 
         <div class="tw-card">

@@ -36,7 +36,8 @@ export interface Profile {
   ageConfirmed?: boolean;
   /** Written only by Cloud Functions (or an admin). */
   plan?: 'pro' | null;
-  planSource?: 'paypal' | 'crypto' | 'admin';
+  /** 'pending' = switched on at checkout, payment still confirming; 'hold' = payment not received. */
+  planSource?: 'paypal' | 'crypto' | 'admin' | 'pending' | 'hold';
   planName?: 'day' | 'month' | 'year';
   /** Set by the payments worker: true = this account gets the free hours (max 2 per network). */
   trialOk?: boolean;
@@ -58,6 +59,10 @@ export interface Access {
   trialMsLeft: number;
   /** The free hours were refused because this network already used them. */
   trialBlocked: boolean;
+  /** Pass is on while the payment confirms (up to 60 minutes). */
+  paymentPending: boolean;
+  /** An instant pass ended without a confirmed payment. */
+  onHold: boolean;
   selfExcludedUntil: Date | null;
 }
 
@@ -67,7 +72,8 @@ export function computeAccess(p: Profile | null | undefined): Access {
   if (!p) {
     return {
       signedIn: false, isAdmin: false, onTrial: false, isPaid: false, hasPro: false,
-      trialEndsAt: null, paidUntil: null, daysLeft: 0, trialMsLeft: 0, trialBlocked: false, selfExcludedUntil: null,
+      trialEndsAt: null, paidUntil: null, daysLeft: 0, trialMsLeft: 0, trialBlocked: false, paymentPending: false, onHold: false,
+      selfExcludedUntil: null,
     };
   }
   const now = Date.now();
@@ -94,6 +100,8 @@ export function computeAccess(p: Profile | null | undefined): Access {
     daysLeft: Math.max(0, Math.ceil((end - now) / DAY)),
     trialMsLeft: onTrial ? trialEnds - now : 0,
     trialBlocked: p.trialOk === false,
+    paymentPending: isPaid && p.planSource === 'pending',
+    onHold: !isPaid && (p.planSource === 'pending' || p.planSource === 'hold'),
     selfExcludedUntil: excl && excl.getTime() > now ? excl : null,
   };
 }
@@ -103,6 +111,12 @@ export class AccountService {
   private auth = inject(Auth, { optional: true }) as Auth;
   private fs = inject(Firestore, { optional: true }) as Firestore;
   private demo = environment.demoMode ? new BehaviorSubject<Profile | null>(loadDemoProfile()) : null;
+
+  constructor() {
+    // Demo: a simulated payment confirms a few seconds after checkout, even across reloads.
+    const p = this.demo?.value;
+    if (p?.planSource === 'pending') setTimeout(() => this.demoConfirm(), 4000);
+  }
 
   // Plain listeners (not rxfire helpers): @angular/fire 7 bundles its own firebase
   // copy, and rxfire would otherwise talk to the app's top-level firebase package.
@@ -140,7 +154,7 @@ export class AccountService {
   /* Demo mode: any email/password works; an email containing "admin" opens the admin view. */
   private setDemo(p: Profile | null) {
     try {
-      if (p) localStorage.setItem(DEMO_KEY, JSON.stringify({ ...p, createdAt: p.createdAt?.toMillis(), selfExcludedUntil: p.selfExcludedUntil?.toMillis() ?? null }));
+      if (p) localStorage.setItem(DEMO_KEY, JSON.stringify({ ...p, createdAt: p.createdAt?.toMillis(), selfExcludedUntil: p.selfExcludedUntil?.toMillis() ?? null, planExpiresAt: p.planExpiresAt?.toMillis() ?? null }));
       else localStorage.removeItem(DEMO_KEY);
     } catch {}
     this.demo!.next(p);
@@ -165,6 +179,20 @@ export class AccountService {
         body: '{}',
       });
     } catch {}
+  }
+
+  /** Demo only: simulates a checkout – the pass switches on at once and confirms a few seconds later. */
+  demoStartPass(plan: 'day' | 'month' | 'year') {
+    if (!this.demo?.value) return;
+    this.setDemo({ ...this.demo.value, plan: 'pro', planSource: 'pending', planName: plan, planExpiresAt: Timestamp.fromMillis(Date.now() + 60 * 60_000) });
+    setTimeout(() => this.demoConfirm(), 8000);
+  }
+
+  private demoConfirm() {
+    const p = this.demo?.value;
+    if (p?.planSource !== 'pending') return;
+    const days = p.planName === 'day' ? 1 : p.planName === 'year' ? 365 : 30;
+    this.setDemo({ ...p, planSource: 'crypto', planExpiresAt: Timestamp.fromMillis(Date.now() + days * DAY) });
   }
 
   /** One-tap Google sign-in. Creates the profile on first use; we keep only name and email. */
@@ -255,6 +283,7 @@ function loadDemoProfile(): Profile | null {
       ...p,
       createdAt: p.createdAt ? Timestamp.fromMillis(p.createdAt) : Timestamp.now(),
       selfExcludedUntil: p.selfExcludedUntil ? Timestamp.fromMillis(p.selfExcludedUntil) : null,
+      planExpiresAt: typeof p.planExpiresAt === 'number' ? Timestamp.fromMillis(p.planExpiresAt) : null,
     };
   } catch {
     return null;

@@ -330,3 +330,24 @@
 .bead.tone-black { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35); }
 .bead.tone-black.mark-won { box-shadow: inset 0 0 0 1px rgba(255,255,255,.35), 0 0 0 2px var(--tw-bg-2), 0 0 0 4px var(--tw-green), 0 0 12px rgba(47, 224, 143, 0.5); }
 .bead.tone-black.mark-lost { box-shadow: inset 0 0 0 1px rgba(255,255,255,.35), 0 0 0 2px var(--tw-bg-2), 0 0 0 4px var(--tw-red), 0 0 12px rgba(255, 77, 109, 0.45); }
+
+/* ===================== Live table helpers ===================== */
+.casino-row { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; margin-top: 12px; }
+@media (max-width: 620px) { .casino-row { grid-template-columns: 1fr; } }
+.setup-ladder { margin: 6px 0 12px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.tool { padding: 9px 14px; border-radius: 999px; border: 1px solid var(--tw-line-strong); background: var(--tw-card);
+  color: var(--tw-gold-2); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  &:hover { border-color: var(--tw-gold); } }
+/* The signal + input pair keeps its grid places on the page; in the floating window it stacks. */
+.mini { display: contents; }
+.chg { display: inline-block; margin: 8px 0 0; padding: 3px 10px; border-radius: 999px; font-size: 14px; font-weight: 800;
+  letter-spacing: 0; background: rgba(255, 255, 255, .1); color: rgba(255, 255, 255, .85); align-self: flex-start;
+  animation: chg-in .35s ease-out;
+  &.up { background: rgba(47, 224, 143, .18); color: #8ff0c0; box-shadow: 0 0 14px rgba(47, 224, 143, .25); }
+  &.down { background: rgba(var(--tw-accent-rgb), .16); color: var(--tw-gold-2); } }
+@keyframes chg-in { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
+.bar .safe { background: linear-gradient(90deg, rgba(var(--tw-accent-rgb), .55), var(--tw-gold)); box-shadow: 0 0 14px rgba(var(--tw-accent-rgb), .45); }
+.mini-alert { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 12px 0 0; padding: 10px 12px;
+  border-radius: 12px; background: rgba(245, 199, 106, .15); border: 1px solid rgba(245, 199, 106, .5);
+  button { border: 0; border-radius: 999px; padding: 6px 14px; font: inherit; font-weight: 800; background: var(--tw-money); color: #1a1205; cursor: pointer; } }

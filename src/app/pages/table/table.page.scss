@@ -261,3 +261,6 @@
   .rolls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
   .pair { display: inline-flex; gap: 4px; }
   .tw-die.mini { width: 34px; height: 34px; font-size: 18px; font-style: normal; } }
+.do .chg { display: inline-block; vertical-align: middle; margin-left: 8px; padding: 2px 9px; border-radius: 999px; font-family: var(--tw-mono);
+  font-size: 13px; font-weight: 800; background: rgba(255, 255, 255, .1); color: rgba(255, 255, 255, .85);
+  &.up { background: rgba(47, 224, 143, .18); color: #8ff0c0; } }

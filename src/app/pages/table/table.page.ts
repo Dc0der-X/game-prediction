@@ -10,7 +10,7 @@ import { AccountService } from '../../core/account.service';
 import {
   BetType, Card, GameDef, Outcome, RANKS, RED_NUMBERS, SUITS, getBet, getGame, isRedSuit, pct, sideOf,
 } from '../../core/games';
-import { NEURAL_BANKROLL_UNITS, SESSION_LIMITS, STRATEGIES, StrategyId, makeStaker, round2 } from '../../core/strategies';
+import { NEURAL_BANKROLL_UNITS, SESSION_LIMITS, makeStaker, round2 } from '../../core/strategies';
 import { Signal, SignalEngine } from '../../core/signals';
 
 const START_BALANCE = 1000;
@@ -49,9 +49,7 @@ export class TablePage implements OnDestroy {
   net = 0;
   expectedLoss = 0;
 
-  // Auto-play (strategy tester)
-  strategies = STRATEGIES;
-  strategy: StrategyId = 'neural';
+  // Auto-play the signals
   autoResult: { rounds: number; net: number; maxStake: number } | null = null;
 
   // Signal mode: the same signals + STOP rules as the real-money coach, with play money.
@@ -100,13 +98,17 @@ export class TablePage implements OnDestroy {
     return this.engine ? this.engine.signal() : null;
   }
 
-  /** Practice uses the book's settings: session bankroll = the series total, target = 1/3 of it. */
-  get stopLoss() {
+  /** Practice amount = the whole ladder for this chip; target and safety limit as in real play. */
+  get amount() {
     return Math.round(this.chip * NEURAL_BANKROLL_UNITS);
   }
 
+  get stopLoss() {
+    return Math.round(this.amount * SESSION_LIMITS.safetyShare);
+  }
+
   get stopWin() {
-    return Math.round(this.stopLoss / 3);
+    return Math.round(this.amount * SESSION_LIMITS.targetShare);
   }
 
   /** Starts a fresh practice signal session (new limits from the current chip). */
@@ -144,23 +146,8 @@ export class TablePage implements OnDestroy {
   playSignal() {
     if (this.dealing || this.stopSign || !this.engine) return;
     const sig = this.engine.signal();
-    if (sig.watching) {
-      // The Neural Strategy watches two results before betting: deal without a bet.
-      this.dealing = true;
-      this.outcome = null;
-      this.settled = [];
-      this.timer = setTimeout(() => {
-        const o = this.game.play();
-        this.engine!.applyOutcome(o);
-        this.outcome = o;
-        this.roundNet = 0;
-        this.history = [o, ...this.history].slice(0, 40);
-        this.dealing = false;
-      }, 650);
-      return;
-    }
     if (sig.stake > this.balance) {
-      this.signalError = 'Not enough play chips for this signal – reset your balance.';
+      this.signalError = 'Top up your play chips to place this signal.';
       return;
     }
     this.signalError = '';
@@ -178,26 +165,25 @@ export class TablePage implements OnDestroy {
       this.bets = {};
       this.dealing = false;
       const hit = this.engine!.check();
-      if (hit === 'change-table' || hit === 'choppy') {
+      if (hit === 'change-table') {
         this.stopSign = 'table';
       } else if (hit) {
-        this.stopReason = hit === 'stop-win' ? 'Target reached.' : hit === 'stop-loss' ? 'Session bankroll lost.' : 'Two losses in a row after a profit.';
+        this.stopReason = hit === 'stop-win' ? 'Target hit!' : hit === 'stop-loss' ? 'Safety limit reached.' : "You're ahead – lock it in.";
         this.stopSign = 'final';
       }
     }, 650);
   }
 
-  /** After 3 losses: in practice, "changing table" starts a fresh pattern with the same totals. */
+  /** After 3 misses: a fresh table starts from the last result, with the same totals. */
   switchTable() {
-    this.engine?.changeTable(null);
+    this.engine?.changeTable(this.history[0] ? sideOf(this.game, this.history[0]) : null);
     this.stopSign = null;
   }
 
   get levelLabel(): string {
     const s = this.signal;
     if (!s) return '';
-    if (s.watching) return `Watching ${this.engine?.watched ?? 0}/2`;
-    return `Level ${s.level}/8 · ${s.switched ? 'switched' : s.pattern}`;
+    return `Step ${s.level}/8 · ${s.pattern === 'opposite' ? 'swing' : 'ride the run'}`;
   }
 
   get streakLights(): boolean[] {
@@ -210,9 +196,8 @@ export class TablePage implements OnDestroy {
   }
 
   get checkinHint() {
-    if (this.sigNet > 0) return 'You are up. In real play, the best moment to leave is now.';
-    if (this.sigNet < 0) return 'You are down. In real play, stopping now keeps the loss small.';
-    return 'Take a breath. In real play this is a good moment to decide.';
+    if (this.sigNet > 0) return 'You are up. In real play, this is a great moment to cash out on top.';
+    return 'Quick check-in. Keep practising as long as you like.';
   }
 
   /* ---------------- Betting ---------------- */
@@ -281,20 +266,13 @@ export class TablePage implements OnDestroy {
 
   autoPlay(n: number) {
     if (this.dealing) return;
-    const tracker = makeStaker(this.strategy, this.chip, this.game);
+    const tracker = makeStaker('neural', this.chip, this.game);
+    if (this.history[0]) (tracker as any).seed?.(sideOf(this.game, this.history[0]));
     let total = 0;
     let maxStake = 0;
     let played = 0;
     let last: Outcome | null = null;
     for (let i = 0; i < n; i++) {
-      if (tracker.watching) {
-        // Neural Strategy: watch results (no bet) until the pattern is read.
-        const seen = this.game.play();
-        tracker.observe?.(sideOf(this.game, seen));
-        this.history = [seen, ...this.history].slice(0, 40);
-        last = seen;
-        continue;
-      }
       const stake = Math.min(tracker.next(), this.balance);
       if (stake <= 0) break;
       maxStake = Math.max(maxStake, stake);

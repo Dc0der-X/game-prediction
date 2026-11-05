@@ -44,7 +44,6 @@ import { THEMES, ThemeId, ThemeService } from '../core/theme.service';
       <nav class="tabs">
         <a routerLink="/coach" routerLinkActive="on" class="primary">Signal Room</a>
         <a routerLink="/lobby" routerLinkActive="on">Practice</a>
-        <a routerLink="/lab" routerLinkActive="on">Strategy Lab</a>
         <a routerLink="/history" routerLinkActive="on">History</a>
       </nav>
     </ion-header>

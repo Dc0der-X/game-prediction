@@ -3,34 +3,21 @@ import { Auth } from '@angular/fire/auth';
 import { environment } from 'src/environments/environment';
 import { PlanId } from './pricing';
 
-declare global {
-  interface Window {
-    paypal?: any;
-  }
-}
-
 /**
- * Checkout. The browser never decides who has paid: it only starts a checkout.
- * The payments worker (/payments-worker, free Cloudflare Worker) verifies every
- * payment with PayPal / NOWPayments and then writes the user's plan, which
- * Firestore rules make read-only for customers.
+ * Checkout (card or crypto through one hosted checkout page).
+ *
+ * The browser only starts a checkout and tells the worker the buyer is back. The worker
+ * (/payments-worker, free Cloudflare Worker) switches the pass on straight away for up to
+ * 60 minutes while the payment confirms; only the payment provider's signed confirmation
+ * grants the full pass. No confirmation → the pass goes on hold by itself.
  */
 @Injectable({ providedIn: 'root' })
 export class PaymentsService {
   private auth = inject(Auth, { optional: true }) as Auth;
-  private sdkPromise: Promise<any> | null = null;
   private cfg = environment.payments;
 
   get configured() {
     return !!this.cfg.apiUrl;
-  }
-
-  get paypalEnabled() {
-    return this.configured && !!this.cfg.paypalClientId;
-  }
-
-  get cryptoEnabled() {
-    return this.configured && this.cfg.cryptoEnabled;
   }
 
   /** POST to the payments worker with the user's Firebase ID token. */
@@ -44,54 +31,23 @@ export class PaymentsService {
       body: JSON.stringify(body),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || 'Payment server error. Please try again.');
+    if (!res.ok) throw new Error(data.error || 'Checkout is busy right now. Please try again.');
     return data as T;
   }
 
-  private loadPayPal(): Promise<any> {
-    if (window.paypal) return Promise.resolve(window.paypal);
-    if (!this.sdkPromise) {
-      this.sdkPromise = new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src =
-          'https://www.paypal.com/sdk/js?client-id=' +
-          encodeURIComponent(this.cfg.paypalClientId) +
-          '&currency=USD&intent=capture';
-        s.onload = () => resolve(window.paypal);
-        s.onerror = () => {
-          this.sdkPromise = null;
-          reject(new Error('Could not load PayPal. Check your connection and try again.'));
-        };
-        document.head.appendChild(s);
-      });
-    }
-    return this.sdkPromise;
-  }
-
-  /** Renders PayPal (and card) buttons that buy one pass. */
-  async renderPayPal(el: HTMLElement, plan: PlanId, onDone: () => void, onError: (msg: string) => void) {
-    const paypal = await this.loadPayPal();
-    el.innerHTML = '';
-    await paypal
-      .Buttons({
-        style: { shape: 'pill', color: 'gold', layout: 'vertical', label: 'pay' },
-        createOrder: async () => (await this.call<{ id: string }>('/paypal/order', { plan })).id,
-        onApprove: async (data: any) => {
-          try {
-            await this.call('/paypal/capture', { orderId: data.orderID });
-            onDone();
-          } catch {
-            onError('Payment received, but activation is still processing. It usually completes within a minute – refresh this page shortly.');
-          }
-        },
-        onError: () => onError('PayPal could not complete the payment. You have not been charged.'),
-      })
-      .render(el);
-  }
-
-  /** Creates a crypto invoice and returns the hosted checkout URL. */
-  async cryptoCheckout(plan: PlanId): Promise<string> {
-    const res = await this.call<{ url: string }>('/crypto/invoice', { plan });
+  /** Creates a hosted checkout for a pass and returns its URL. */
+  async checkout(plan: PlanId): Promise<string> {
+    const res = await this.call<{ url: string }>('/checkout', { plan });
     return res.url;
+  }
+
+  /**
+   * The buyer is back from checkout: switch the pass on now.
+   * 'pending' = on while the payment confirms, 'paid' / 'active' = confirmed,
+   * 'waiting' = an earlier checkout is still unconfirmed, 'hold' / 'expired' = payment not received.
+   */
+  async startPass(ref: string): Promise<'pending' | 'paid' | 'active' | 'waiting' | 'hold' | 'expired'> {
+    const res = await this.call<{ status: any }>('/pass/start', { ref });
+    return res.status;
   }
 }

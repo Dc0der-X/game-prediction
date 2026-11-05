@@ -76,7 +76,7 @@
 
       <!-- Payments -->
       <div class="tw-card" *ngIf="tab === 'payments'">
-        <p class="tw-muted tw-small" *ngIf="!payments.length">No payments yet. They appear here automatically when PayPal or crypto payments are confirmed.</p>
+        <p class="tw-muted tw-small" *ngIf="!payments.length">No payments yet. They appear here automatically when card or crypto payments are confirmed.</p>
         <div class="table" *ngIf="payments.length">
           <table>
             <thead><tr><th>Date</th><th>User</th><th>Method</th><th>Note</th><th class="r">Amount</th></tr></thead>

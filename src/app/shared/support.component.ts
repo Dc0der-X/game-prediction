@@ -12,10 +12,10 @@ import { environment } from 'src/environments/environment';
     <div class="wrap">
       <div class="panel" *ngIf="open" role="dialog" aria-label="Chat with support">
         <p class="h">Chat with us</p>
-        <p class="sub">Questions about signals, passes or payments – we reply fast, any time.</p>
+        <p class="sub">Signals, passes or payments – Telegram answers instantly, 24/7.</p>
         <ng-container *ngIf="profile$ | async as p; else guest">
           <a class="opt tg" [class.off]="!tg" [attr.href]="tg ? tgLink(p.email) : null" target="_blank" rel="noopener">
-            <span class="ico">✈</span><span><strong>Telegram</strong><small>{{ tg ? '@' + tg : 'Not connected yet' }}</small></span>
+            <span class="ico">✈</span><span><strong>Telegram</strong><small>{{ tg ? 'Instant reply · @' + tg : 'Not connected yet' }}</small></span>
           </a>
           <a class="opt wa" [class.off]="!wa" [attr.href]="wa ? waLink(p.email) : null" target="_blank" rel="noopener">
             <span class="ico">✆</span><span><strong>WhatsApp</strong><small>{{ wa ? '+' + wa : 'Not connected yet' }}</small></span>
@@ -23,7 +23,7 @@ import { environment } from 'src/environments/environment';
         </ng-container>
         <ng-template #guest>
           <a class="opt tg" [class.off]="!tg" [attr.href]="tg ? tgLink('') : null" target="_blank" rel="noopener">
-            <span class="ico">✈</span><span><strong>Telegram</strong><small>{{ tg ? '@' + tg : 'Not connected yet' }}</small></span>
+            <span class="ico">✈</span><span><strong>Telegram</strong><small>{{ tg ? 'Instant reply · @' + tg : 'Not connected yet' }}</small></span>
           </a>
           <a class="opt wa" [class.off]="!wa" [attr.href]="wa ? waLink('') : null" target="_blank" rel="noopener">
             <span class="ico">✆</span><span><strong>WhatsApp</strong><small>{{ wa ? '+' + wa : 'Not connected yet' }}</small></span>

@@ -30,11 +30,7 @@ export const environment = {
     whatsapp: '',
   },
   payments: {
-    /** PayPal REST app client id. Leave empty to hide the PayPal button. */
-    paypalClientId: '',
-    /** PayPal billing plan id (P-XXXX) for the monthly subscription. */
-    paypalPlanId: '',
-    /** Crypto checkout (NOWPayments) is handled by the payments worker; set false to hide it. */
+    /** Card / crypto checkout (NOWPayments) is handled by the payments worker; set false to hide it. */
     cryptoEnabled: true,
     /**
      * URL of the free Cloudflare Worker in /payments-worker that verifies payments,

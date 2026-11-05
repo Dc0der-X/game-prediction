@@ -42,19 +42,19 @@ export class HomePage {
   faqs = [
     {
       q: 'What does TableWise do?',
-      a: 'It sits beside your live casino table. You tap the last results, and it gives you a signal for every bet – which side and exactly how much – based on the amount you brought. It tracks your target and tells you when to cash out or stop.',
+      a: 'It sits beside your live casino table. Tap what came, and it gives you a signal for every bet – which side and exactly how much – based on the amount you brought. It fills your target live and tells you the moment to cash out.',
     },
     {
       q: 'Which games does it work with?',
       a: 'Roulette (red/black), Baccarat (player/banker), Dragon Tiger, Sic Bo (small/big) and Craps (pass/don\'t pass) – at any online or land-based casino.',
     },
     {
-      q: 'Does it guarantee wins?',
-      a: 'No. Casino games are random and the house keeps an edge, so some sessions lose. TableWise gives every bet a plan and makes sure you stop at your target or your limit instead of chasing.',
+      q: 'Why does it tell me to cash out?',
+      a: 'Because the best sessions end on top. When your target is hit – or you are well up and the table cools – the coach tells you to cash out, so the win stays yours. Every bet also stays inside a safety limit, so one session never decides your week.',
     },
     {
       q: 'How much does it cost?',
-      a: `The first ${PRICING.trialHours} hours are free, no card. Then a Day Pass is $${PRICING.dayUsd}, a month is $${PRICING.monthlyUsd} and a year is $${PRICING.yearlyUsd}. Passes never auto-renew. Pay with PayPal, card or crypto.`,
+      a: `The first ${PRICING.trialHours} hours are free, no card. Then a Day Pass is $${PRICING.dayUsd}, a month is $${PRICING.monthlyUsd} and a year is $${PRICING.yearlyUsd}. Passes never auto-renew. Pay by card or crypto – your pass switches on the moment you pay.`,
     },
     {
       q: 'Can I try it without money?',
@@ -92,8 +92,8 @@ export class HomePage {
     return m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
   }
 
-  bestEdge(g: (typeof GAMES)[number]) {
-    return getBet(g, g.bestBet)!.edge;
+  sidesOf(g: (typeof GAMES)[number]) {
+    return (g.sides ?? [g.bestBet]).map((id) => getBet(g, id)!.label).join(' / ');
   }
 
   scrollTo(id: string) {

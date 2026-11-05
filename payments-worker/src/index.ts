@@ -2,33 +2,37 @@
  * TableWise payments worker (Cloudflare Workers free tier).
  *
  * Routes
- *   POST /paypal/order      (signed-in user)  create a PayPal order for a Day / Month / Year pass
- *   POST /paypal/capture    (signed-in user)  capture that order and unlock Pro
- *   POST /paypal/activate   (signed-in user)  verify a PayPal subscription (legacy monthly plan)
- *   POST /paypal/webhook    (PayPal)          captures, renewals, cancellations
+ *   POST /checkout          (signed-in user)  create a hosted checkout (card or crypto) for a Day / Month / Year pass
+ *   POST /pass/start        (signed-in user)  the buyer is back from checkout: switch the pass on right away
+ *   POST /crypto/webhook    (NOWPayments)     IPN – confirms, extends or puts the pass on hold
  *   POST /trial/claim       (signed-in user)  free-trial limit: max TRIAL_PER_IP accounts per network
- *   POST /crypto/invoice    (signed-in user)  create a NOWPayments hosted invoice
- *   POST /crypto/webhook    (NOWPayments)     IPN – unlock Pro when a payment is finished
+ *   POST /crypto/invoice    alias of /checkout (older app versions)
+ *   POST /telegram/webhook  (Telegram)        24/7 support bot (src/bot.ts)
  *
- * The browser is never trusted: every payment is checked with PayPal / NOWPayments
- * before the user's plan is written to Firestore with a service account.
+ * Instant access, automatic hold:
+ *   1. The buyer pays and lands back on /pro?paid=<ref>. The app calls /pass/start and the pass
+ *      switches on at once (planSource "pending") for HOLD_MINUTES (default 60).
+ *   2. Payment seen on the network (confirming / confirmed / sending) → the pending time is extended.
+ *   3. Payment finished → the full pass is granted (Day / Month / Year), counted from the purchase.
+ *   4. Payment failed / expired, or no confirmation within HOLD_MINUTES → access stops by itself
+ *      ("on hold – payment not received"). If the payment arrives later, the pass switches back on.
+ *   An account can have only one unconfirmed instant start at a time, so the instant hour can't be farmed.
+ *
+ * The browser is never trusted: only NOWPayments' signed IPN can grant a full pass, and plans are
+ * written to Firestore with a service account.
  */
 import { firestore, Fields } from './firestore';
 import { verifyFirebaseIdToken } from './auth';
 import { sortKeysDeep, hmacSha512Hex, timingSafeEqual } from './crypto';
+import { BotEnv, telegramWebhook } from './bot';
 
-export interface Env {
+export interface Env extends BotEnv {
   FIREBASE_PROJECT_ID: string;
   APP_URL: string;
   APP_ORIGINS: string;
   PRICE_DAY_USD: string;
   PRICE_MONTH_USD: string;
   PRICE_YEAR_USD: string;
-  PAYPAL_ENV: string;
-  PAYPAL_CLIENT_ID: string;
-  PAYPAL_PLAN_ID: string;
-  PAYPAL_WEBHOOK_ID: string;
-  PAYPAL_SECRET: string;
   NOWPAYMENTS_API_KEY: string;
   NOWPAYMENTS_IPN_SECRET: string;
   GOOGLE_SERVICE_ACCOUNT: string;
@@ -36,9 +40,12 @@ export interface Env {
   IP_SALT: string;
   /** How many accounts on one network get the free trial (default 2). */
   TRIAL_PER_IP?: string;
+  /** Minutes of instant access while a payment confirms (default 60). */
+  HOLD_MINUTES?: string;
 }
 
 const DAY = 86_400_000;
+const MIN = 60_000;
 
 class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -57,20 +64,18 @@ export default {
 
     try {
       switch (url.pathname) {
-        case '/paypal/order':
-          return json(await paypalCreateOrder(req, env), 200, cors);
-        case '/paypal/capture':
-          return json(await paypalCapture(req, env), 200, cors);
-        case '/paypal/activate':
-          return json(await paypalActivate(req, env), 200, cors);
-        case '/paypal/webhook':
-          return json(await paypalWebhook(req, env), 200);
-        case '/trial/claim':
-          return json(await trialClaim(req, env), 200, cors);
+        case '/checkout':
         case '/crypto/invoice':
-          return json(await cryptoInvoice(req, env), 200, cors);
+          return json(await createCheckout(req, env), 200, cors);
+        case '/pass/start':
+          return json(await passStart(req, env), 200, cors);
         case '/crypto/webhook':
           return json(await cryptoWebhook(req, env), 200);
+        case '/trial/claim':
+          return json(await trialClaim(req, env), 200, cors);
+        case '/telegram/webhook':
+          // Always 200 so Telegram doesn't retry; the bot replies on its own.
+          return json(await telegramWebhook(req, env).catch((e) => (console.error(e), { ok: false })), 200);
         default:
           return json({ error: 'Not found' }, 404, cors);
       }
@@ -81,127 +86,6 @@ export default {
     }
   },
 };
-
-/* ------------------------------------------------------------------ */
-/* PayPal                                                              */
-/* ------------------------------------------------------------------ */
-
-function paypalBase(env: Env) {
-  return env.PAYPAL_ENV === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
-}
-
-let paypalToken: { value: string; exp: number } | null = null;
-
-async function paypalAccessToken(env: Env): Promise<string> {
-  if (paypalToken && paypalToken.exp > Date.now() + 60_000) return paypalToken.value;
-  const res = await fetch(`${paypalBase(env)}/v1/oauth2/token`, {
-    method: 'POST',
-    headers: {
-      Authorization: 'Basic ' + btoa(`${env.PAYPAL_CLIENT_ID}:${env.PAYPAL_SECRET}`),
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: 'grant_type=client_credentials',
-  });
-  if (!res.ok) throw new Error(`PayPal auth failed: ${res.status}`);
-  const data: any = await res.json();
-  paypalToken = { value: data.access_token, exp: Date.now() + data.expires_in * 1000 };
-  return paypalToken.value;
-}
-
-async function paypalGet(env: Env, path: string): Promise<any> {
-  const res = await fetch(`${paypalBase(env)}${path}`, {
-    headers: { Authorization: `Bearer ${await paypalAccessToken(env)}` },
-  });
-  if (res.status === 404) throw new HttpError(404, 'Subscription not found');
-  if (!res.ok) throw new Error(`PayPal GET ${path} failed: ${res.status}`);
-  return res.json();
-}
-
-/** Writes Pro access from a PayPal subscription object. Returns the uid. */
-async function applySubscription(env: Env, sub: any): Promise<string | null> {
-  const uid: string | undefined = sub?.custom_id;
-  if (!uid || sub.plan_id !== env.PAYPAL_PLAN_ID) return null;
-  const fs = firestore(env);
-  const status: string = sub.status || 'UNKNOWN';
-  const fields: Fields = { paypalSubscriptionId: sub.id, paypalStatus: status };
-
-  if (status === 'ACTIVE') {
-    // Access runs to the next billing date plus a one-day grace period.
-    const next = Date.parse(sub.billing_info?.next_billing_time || '');
-    const until = Number.isFinite(next) ? next + DAY : Date.now() + 31 * DAY;
-    const user = await fs.get(`users/${uid}`);
-    const current = user?.planExpiresAt instanceof Date ? user.planExpiresAt.getTime() : 0;
-    Object.assign(fields, { plan: 'pro', planSource: 'paypal', planExpiresAt: new Date(Math.max(until, current)) });
-  }
-  // Cancelled/suspended: keep planExpiresAt – they keep what they already paid for.
-  await fs.update(`users/${uid}`, fields);
-  return uid;
-}
-
-async function paypalActivate(req: Request, env: Env) {
-  const { uid } = await requireUser(req, env);
-  const body: any = await req.json().catch(() => ({}));
-  const id = String(body.subscriptionId || '');
-  if (!/^I-[A-Z0-9]+$/.test(id)) throw new HttpError(400, 'Invalid subscription id');
-
-  const sub = await paypalGet(env, `/v1/billing/subscriptions/${id}`);
-  if (sub.custom_id !== uid) throw new HttpError(403, 'This subscription belongs to another account');
-  if (sub.plan_id !== env.PAYPAL_PLAN_ID) throw new HttpError(400, 'Unknown plan');
-  if (sub.status !== 'ACTIVE') throw new HttpError(409, `Subscription is ${sub.status}. It may take a minute to activate.`);
-  await applySubscription(env, sub);
-  return { ok: true };
-}
-
-async function paypalWebhook(req: Request, env: Env) {
-  const raw = await req.text();
-  const event = JSON.parse(raw);
-
-  const verify = await fetch(`${paypalBase(env)}/v1/notifications/verify-webhook-signature`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${await paypalAccessToken(env)}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      auth_algo: req.headers.get('paypal-auth-algo'),
-      cert_url: req.headers.get('paypal-cert-url'),
-      transmission_id: req.headers.get('paypal-transmission-id'),
-      transmission_sig: req.headers.get('paypal-transmission-sig'),
-      transmission_time: req.headers.get('paypal-transmission-time'),
-      webhook_id: env.PAYPAL_WEBHOOK_ID,
-      webhook_event: event,
-    }),
-  });
-  const result: any = await verify.json().catch(() => ({}));
-  if (result.verification_status !== 'SUCCESS') throw new HttpError(400, 'Invalid webhook signature');
-
-  const type: string = event.event_type;
-  const r = event.resource || {};
-
-  if (type === 'PAYMENT.CAPTURE.COMPLETED') {
-    // One-time pass paid (also covers buyers who closed the page before capture returned).
-    const customId = r.custom_id || '';
-    if (customId) await grantFromCapture(env, r, customId);
-  } else if (type.startsWith('BILLING.SUBSCRIPTION.')) {
-    // ACTIVATED, RE-ACTIVATED, UPDATED, CANCELLED, SUSPENDED, EXPIRED, PAYMENT.FAILED
-    const sub = r.id ? await paypalGet(env, `/v1/billing/subscriptions/${r.id}`) : r;
-    await applySubscription(env, sub);
-  } else if (type === 'PAYMENT.SALE.COMPLETED' && r.billing_agreement_id) {
-    const sub = await paypalGet(env, `/v1/billing/subscriptions/${r.billing_agreement_id}`);
-    const uid = await applySubscription(env, sub);
-    if (uid) {
-      const fs = firestore(env);
-      const user = await fs.get(`users/${uid}`);
-      await fs.create('payments', `pp_${r.id}`, {
-        uid,
-        email: (user?.email as string) || '',
-        provider: 'paypal',
-        amountUsd: Number(r.amount?.total || 0),
-        currency: r.amount?.currency || 'USD',
-        note: `Subscription ${sub.id}`,
-        createdAt: new Date(),
-      });
-    }
-  }
-  return { ok: true };
-}
 
 /* ------------------------------------------------------------------ */
 /* Crypto (NOWPayments)                                                */
@@ -229,78 +113,36 @@ async function grantPass(env: Env, uid: string, plan: PlanId, paymentId: string,
   const user = await fs.get(`users/${uid}`);
   if (!user) throw new HttpError(404, 'User not found');
   const current = user.planExpiresAt instanceof Date ? user.planExpiresAt.getTime() : 0;
-  const until = new Date(Math.max(Date.now(), current) + PLAN_DAYS[plan] * DAY);
-  await fs.update(`users/${uid}`, { plan: 'pro', planSource: provider === 'paypal' ? 'paypal' : 'crypto', planExpiresAt: until, planName: plan });
+  // An instant (pending) start is replaced by the real pass, counted from when it started.
+  const pending = user.planSource === 'pending' || user.planSource === 'hold';
+  const from = pending
+    ? (user.pendingSince instanceof Date ? user.pendingSince.getTime() : Date.now())
+    : Math.max(Date.now(), current);
+  const until = new Date(Math.max(Date.now(), from + PLAN_DAYS[plan] * DAY));
+  await fs.update(`users/${uid}`, {
+    plan: 'pro', planSource: 'crypto', planExpiresAt: until, planName: plan, pendingRef: '', pendingPlan: '',
+  });
   await fs.create('payments', paymentId, {
     uid, email: (user.email as string) || '', provider, amountUsd, currency: 'USD', note, createdAt: new Date(),
   });
   return { ok: true };
 }
 
-/* ---------- PayPal one-time passes (Orders API) ---------- */
+/* ---------- Checkout ---------- */
 
-async function paypalPost(env: Env, path: string, body: unknown): Promise<any> {
-  const res = await fetch(`${paypalBase(env)}${path}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${await paypalAccessToken(env)}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data: any = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    console.error('PayPal POST', path, res.status, JSON.stringify(data));
-    throw new HttpError(502, 'PayPal could not process this payment. You have not been charged.');
-  }
-  return data;
+function newRef(): string {
+  const b = new Uint8Array(12);
+  crypto.getRandomValues(b);
+  return [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
 }
 
-async function paypalCreateOrder(req: Request, env: Env) {
-  const { uid } = await requireUser(req, env);
-  const body: any = await req.json().catch(() => ({}));
-  const plan = planOf(body.plan);
-  const order = await paypalPost(env, '/v2/checkout/orders', {
-    intent: 'CAPTURE',
-    purchase_units: [{
-      amount: { currency_code: 'USD', value: priceFor(env, plan).toFixed(2) },
-      custom_id: `${uid}:${plan}`,
-      description: `TableWise Pro – ${PLAN_NAME[plan]}`,
-    }],
-  });
-  return { id: order.id };
-}
-
-/** Grants a pass from a completed PayPal capture (used by /paypal/capture and the webhook). */
-async function grantFromCapture(env: Env, capture: any, customId: string) {
-  const [uid, planRaw] = String(customId || '').split(':');
-  const plan = planOf(planRaw);
-  const value = Number(capture?.amount?.value);
-  if (!uid || capture?.status !== 'COMPLETED') return { ok: false };
-  if (capture.amount?.currency_code !== 'USD' || !(value >= priceFor(env, plan) - 0.01)) {
-    console.error('PayPal amount mismatch', JSON.stringify(capture));
-    return { ok: false };
-  }
-  return grantPass(env, uid, plan, `ppo_${capture.id}`, 'paypal', value, PLAN_NAME[plan]);
-}
-
-async function paypalCapture(req: Request, env: Env) {
-  const { uid } = await requireUser(req, env);
-  const body: any = await req.json().catch(() => ({}));
-  const id = String(body.orderId || '');
-  if (!/^[A-Z0-9]{10,40}$/.test(id)) throw new HttpError(400, 'Invalid order id');
-  const order = await paypalPost(env, `/v2/checkout/orders/${id}/capture`, {});
-  const unit = order.purchase_units?.[0];
-  const capture = unit?.payments?.captures?.[0];
-  if (!String(unit?.custom_id || '').startsWith(`${uid}:`)) throw new HttpError(403, 'This order belongs to another account');
-  const r = await grantFromCapture(env, capture, unit.custom_id);
-  if (!r.ok) throw new HttpError(409, 'Payment not completed.');
-  return { ok: true };
-}
-
-async function cryptoInvoice(req: Request, env: Env) {
+async function createCheckout(req: Request, env: Env) {
   const { uid } = await requireUser(req, env);
   const body: any = await req.json().catch(() => ({}));
   const plan = planOf(body.plan ?? (Number(body.months) === 12 ? 'year' : 'month'));
   const amount = priceFor(env, plan);
   const origin = new URL(req.url).origin;
+  const ref = newRef();
 
   const res = await fetch('https://api.nowpayments.io/v1/invoice', {
     method: 'POST',
@@ -308,19 +150,55 @@ async function cryptoInvoice(req: Request, env: Env) {
     body: JSON.stringify({
       price_amount: amount,
       price_currency: 'usd',
-      order_id: `${uid}:${plan}:${Date.now()}`,
+      order_id: `${uid}:${plan}:${ref}`,
       order_description: `TableWise Pro – ${PLAN_NAME[plan]}`,
       ipn_callback_url: `${origin}/crypto/webhook`,
-      success_url: `${env.APP_URL}/pro?paid=1`,
+      success_url: `${env.APP_URL}/pro?paid=${ref}`,
       cancel_url: `${env.APP_URL}/pro`,
     }),
   });
   const data: any = await res.json().catch(() => ({}));
   if (!res.ok || !data.invoice_url) {
     console.error('NOWPayments invoice error', res.status, JSON.stringify(data));
-    throw new HttpError(502, 'Could not start crypto checkout. Please try again.');
+    throw new HttpError(502, 'Could not open checkout. Please try again.');
   }
-  return { url: data.invoice_url };
+  await firestore(env).create('checkouts', ref, { uid, plan, amountUsd: amount, createdAt: new Date(), startedAt: null });
+  return { url: data.invoice_url, ref };
+}
+
+function holdMs(env: Env) {
+  return Math.max(5, Number(env.HOLD_MINUTES || 60)) * MIN;
+}
+
+/** Back from checkout: switch the pass on now; the IPN confirms it (or the hold kicks in by itself). */
+async function passStart(req: Request, env: Env) {
+  const { uid } = await requireUser(req, env);
+  const body: any = await req.json().catch(() => ({}));
+  const ref = String(body.ref || '');
+  if (!/^[a-f0-9]{24}$/.test(ref)) throw new HttpError(400, 'Invalid checkout reference');
+  const fs = firestore(env);
+  const co = await fs.get(`checkouts/${ref}`);
+  if (!co || co.uid !== uid) throw new HttpError(404, 'Checkout not found');
+  const created = co.createdAt instanceof Date ? co.createdAt.getTime() : 0;
+  if (Date.now() - created > 6 * 3_600_000) return { ok: false, status: 'expired' };
+
+  const user = await fs.get(`users/${uid}`);
+  if (!user) throw new HttpError(404, 'User not found');
+  const until = user.planExpiresAt instanceof Date ? user.planExpiresAt.getTime() : 0;
+  if (await fs.get(`payments/ref_${ref}`)) return { ok: true, status: 'paid' };
+  // Already on a paid pass: nothing to switch on – the payment stacks when it confirms.
+  if (user.plan === 'pro' && user.planSource === 'crypto' && until > Date.now()) return { ok: true, status: 'active' };
+  // One unconfirmed instant start per account: an earlier unpaid checkout blocks a second free hour.
+  if (user.pendingRef && user.pendingRef !== ref) return { ok: false, status: 'waiting' };
+  if (co.startedAt instanceof Date) return { ok: true, status: until > Date.now() ? 'pending' : 'hold' };
+
+  const now = new Date();
+  await fs.update(`users/${uid}`, {
+    plan: 'pro', planSource: 'pending', planExpiresAt: new Date(now.getTime() + holdMs(env)),
+    planName: String(co.plan || 'month'), pendingRef: ref, pendingPlan: String(co.plan || 'month'), pendingSince: now,
+  });
+  await fs.update(`checkouts/${ref}`, { startedAt: now });
+  return { ok: true, status: 'pending' };
 }
 
 async function cryptoWebhook(req: Request, env: Env) {
@@ -330,20 +208,40 @@ async function cryptoWebhook(req: Request, env: Env) {
   const expected = await hmacSha512Hex(env.NOWPAYMENTS_IPN_SECRET, JSON.stringify(sortKeysDeep(body)));
   if (!sig || !timingSafeEqual(sig.toLowerCase(), expected)) throw new HttpError(400, 'Invalid signature');
 
-  if (body.payment_status !== 'finished') return { ok: true, ignored: body.payment_status };
-
-  const [uid, planRaw] = String(body.order_id || '').split(':');
+  const [uid, planRaw, ref = ''] = String(body.order_id || '').split(':');
   const plan = planOf(planRaw);
   if (!uid) throw new HttpError(400, 'Missing order id');
+  const status = String(body.payment_status || '');
+  const fs = firestore(env);
+
+  if (status === 'confirming' || status === 'confirmed' || status === 'sending') {
+    // Payment seen on the network: keep the instant pass on while it confirms.
+    const user = await fs.get(`users/${uid}`);
+    if (user?.planSource === 'pending' || user?.planSource === 'hold') {
+      if (user.pendingRef === ref) {
+        await fs.update(`users/${uid}`, { plan: 'pro', planSource: 'pending', planExpiresAt: new Date(Date.now() + holdMs(env)) });
+      }
+    }
+    return { ok: true, extended: true };
+  }
+  if (status === 'failed' || status === 'expired' || status === 'refunded') {
+    const user = await fs.get(`users/${uid}`);
+    if (user?.planSource === 'pending' && user.pendingRef === ref) {
+      await fs.update(`users/${uid}`, { planSource: 'hold', planExpiresAt: new Date() });
+    }
+    return { ok: true, hold: true };
+  }
+  if (status !== 'finished') return { ok: true, ignored: status };
 
   // The invoice amount must match the plan price (in USD).
   const paidUsd = Number(body.price_amount);
   if (String(body.price_currency).toLowerCase() !== 'usd' || !(paidUsd >= priceFor(env, plan) - 0.01)) {
-    console.error('Crypto amount mismatch', JSON.stringify(body));
+    console.error('Payment amount mismatch', JSON.stringify(body));
     return { ok: true, ignored: 'amount mismatch' };
   }
-  await grantPass(env, uid, plan, `np_${body.payment_id}`, 'crypto', paidUsd,
+  const r = await grantPass(env, uid, plan, `np_${body.payment_id}`, 'crypto', paidUsd,
     `${PLAN_NAME[plan]} · ${body.pay_amount ?? ''} ${String(body.pay_currency || '').toUpperCase()}`);
+  if (ref && !(r as any).duplicate) await fs.create('payments', `ref_${ref}`, { uid, paymentId: String(body.payment_id), createdAt: new Date() }).catch(() => {});
   return { ok: true };
 }
 

@@ -1,4 +1,4 @@
-import { Component, OnDestroy, ViewChild, inject } from '@angular/core';
+import { Component, ElementRef, NgZone, OnDestroy, ViewChild, inject } from '@angular/core';
 import { DatePipe, DecimalPipe, NgClass, NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -11,9 +11,9 @@ import { ConfettiComponent } from '../../shared/confetti.component';
 import { NeuralFieldComponent } from '../../shared/neural-field.component';
 import { AccountService } from '../../core/account.service';
 import { EndReason, SessionsService } from '../../core/sessions.service';
-import { GAMES, GameDef, getBet, getGame, pct } from '../../core/games';
-import { NeuralMode, SESSION_LIMITS, SessionPlan, planNeural, planSession, round2, simulate } from '../../core/strategies';
-import { SYSTEMS, Signal, SignalEngine, SignalEvent, StopReason, SystemId, VOID_RESULT } from '../../core/signals';
+import { GAMES, GameDef, getBet, getGame } from '../../core/games';
+import { SESSION_LIMITS, SessionPlan, planNeural } from '../../core/strategies';
+import { Signal, SignalEngine, SignalEvent, SystemId, VOID_RESULT } from '../../core/signals';
 
 type Stage = 'checking' | 'locked' | 'excluded' | 'setup' | 'first' | 'live' | 'newtable' | 'done';
 
@@ -23,6 +23,8 @@ interface LiveState {
   casino: string;
   system: SystemId;
   plan: SessionPlan;
+  /** Link to the player's live table, opened beside the signals. */
+  tableUrl?: string;
   startedAt: number;
   nextCheckinAt: number;
   events: SignalEvent[];
@@ -54,6 +56,8 @@ export const SIDE_TONE: Record<string, string> = {
 })
 export class CoachPage implements OnDestroy {
   @ViewChild(NeuralFieldComponent) field?: NeuralFieldComponent;
+  @ViewChild('mini') miniEl?: ElementRef<HTMLElement>;
+  private zone = inject(NgZone);
   private account = inject(AccountService);
   private sessions = inject(SessionsService);
 
@@ -64,28 +68,28 @@ export class CoachPage implements OnDestroy {
   uid = '';
 
   games = GAMES;
-  systems = SYSTEMS;
   limits = SESSION_LIMITS;
-  pct = pct;
   quickAmounts = [100, 200, 500, 1000];
+  minuteOptions = [30, 45, 60];
 
-  gameId = 'roulette';
+  gameId = 'baccarat';
   system: SystemId = 'neural';
-  /** Neural Strategy settings: the book's, or a protected version with half the risk. */
-  mode: NeuralMode = 'book';
   casino = '';
+  tableUrl = '';
   casinoSuggestions = ['Evolution live tables', 'Ezugi', 'Pragmatic Play Live', 'Playtech Live', 'Other online casino', 'Land-based casino'];
   bankroll: number | null = null;
   minutes = 45;
-  pledge = false;
-  afford = false;
 
   live: LiveState | null = null;
   engine: SignalEngine | null = null;
   remaining = 0;
   endReason: EndReason | null = null;
   saveError = '';
-  stopSign: 'final' | 'checkin' | 'table' | 'choppy' | null = null;
+  stopSign: 'final' | 'checkin' | 'table' | null = null;
+  /** Floating signal window (Document Picture-in-Picture) over the casino. */
+  pipSupported = typeof window !== 'undefined' && 'documentPictureInPicture' in window;
+  pipOn = false;
+  private pipWin: Window | null = null;
   /** Short message while watching (e.g. a zero was ignored). */
   watchNote = '';
   /** Short "+8" / "-4" pop after each round. */
@@ -98,11 +102,11 @@ export class CoachPage implements OnDestroy {
   shownStake = 0;
   private countRaf = 0;
   private tick: any;
-  private costCache = new Map<string, number>();
 
   constructor() {
     try {
       this.casino = localStorage.getItem('tw.lastCasino') || '';
+      this.tableUrl = localStorage.getItem('tw.lastTableUrl') || '';
     } catch {}
     this.init();
   }
@@ -112,6 +116,7 @@ export class CoachPage implements OnDestroy {
     clearTimeout(this.flashTimer);
     clearTimeout(this.thinkTimer);
     cancelAnimationFrame(this.countRaf);
+    this.pipWin?.close();
   }
 
   private async init() {
@@ -140,7 +145,7 @@ export class CoachPage implements OnDestroy {
     if (saved && saved.v === 2 && saved.uid === this.uid) {
       this.live = saved;
       this.engine = SignalEngine.replay(this.makeEngine(saved), saved.events);
-      this.stage = this.engine.watching || (!saved.events.length && saved.system !== 'neural') ? 'first' : 'live';
+      this.stage = saved.events.length ? 'live' : 'first';
       this.countTo(this.engine.signal().stake);
       this.startTimer();
       return;
@@ -161,55 +166,32 @@ export class CoachPage implements OnDestroy {
     return getGame(this.gameId)!;
   }
 
-  get minuteOptions(): number[] {
-    return this.system === 'neural' ? [30, 45, 60] : [10, 15, 20];
-  }
-
-  setSystem(id: SystemId) {
-    this.system = id;
-    if (!this.minuteOptions.includes(this.minutes)) this.minutes = this.minuteOptions[1];
-  }
-
   get plan(): SessionPlan | null {
-    if (!this.bankroll || this.bankroll < 30) return null;
-    if (this.system === 'neural') return planNeural(this.game, this.bankroll, this.minutes, this.mode);
-    return planSession(this.game, this.bankroll, this.minutes);
+    if (!this.bankroll || this.bankroll < 50) return null;
+    return planNeural(this.game, this.bankroll, this.minutes);
   }
 
   sidesLabel(g: GameDef): string {
-    if (this.system !== 'flat' && g.sides) return g.sides.map((id) => getBet(g, id)!.label).join(' or ');
-    return getBet(g, g.bestBet)!.label;
-  }
-
-  expectedCost(p: SessionPlan): number {
-    const key = `${p.gameId}|${p.bankroll}|${p.minutes}|${this.system}|${p.mode}`;
-    if (!this.costCache.has(key)) {
-      const r = simulate({
-        game: this.game, betId: this.game.bestBet, strategy: this.system, bankroll: p.bankroll, unit: p.unit,
-        stopWin: p.stopWin, stopLoss: p.stopLoss, rounds: Math.min(p.maxRounds, 120), sessions: 3000,
-      });
-      this.costCache.set(key, round2(r.expectedCost));
-    }
-    return this.costCache.get(key)!;
+    return (g.sides ?? [g.bestBet]).map((id) => getBet(g, id)!.label).join(' or ');
   }
 
   start() {
     const plan = this.plan;
-    if (!plan || !this.pledge || !this.afford) return;
-    const casino = this.casino.trim().slice(0, 80) || 'Unspecified';
+    if (!plan) return;
+    const casino = this.casino.trim().slice(0, 80) || 'Live table';
+    const tableUrl = safeUrl(this.tableUrl);
     try {
-      localStorage.setItem('tw.lastCasino', casino);
+      localStorage.setItem('tw.lastCasino', this.casino.trim().slice(0, 80));
+      localStorage.setItem('tw.lastTableUrl', tableUrl);
     } catch {}
     const now = Date.now();
-    this.live = { v: 2, uid: this.uid, casino, system: this.system, plan, startedAt: now,
-      nextCheckinAt: now + (this.system === 'neural' ? 15 : SESSION_LIMITS.checkinMinutes) * MIN, events: [] };
+    this.live = { v: 2, uid: this.uid, casino, system: 'neural', plan, tableUrl, startedAt: now,
+      nextCheckinAt: now + 15 * MIN, events: [] };
     this.engine = this.makeEngine(this.live);
     this.endReason = null;
     this.stopSign = null;
     this.persist();
-    // Craps (book rule) needs no watching: straight to the first bet.
-    this.stage = this.system === 'neural' && !this.engine.watching ? 'live' : 'first';
-    if (this.stage === 'live') this.reveal();
+    this.stage = 'first';
     this.startTimer();
   }
 
@@ -231,24 +213,9 @@ export class CoachPage implements OnDestroy {
     return [sides[0], { id: null, label: v.label, tone: 'green' }, ...sides.slice(1)];
   }
 
-  /** First result(s) at a (new) table. The Neural Strategy watches two results before its first bet. */
+  /** The last result at a (new) table: the first signal follows it. */
   begin(side: string | null) {
     if (!this.live || !this.engine) return;
-    if (this.engine.system === 'neural' && this.stage === 'first') {
-      if (side === null) {
-        this.watchNote = `${this.voidLabel} doesn't count – tap the next result.`;
-        return;
-      }
-      this.watchNote = '';
-      this.live.events.push({ t: 'watch', side });
-      this.engine.observe(side);
-      this.persist();
-      if (this.engine.watching) return;
-      this.stage = 'live';
-      this.stopSign = null;
-      this.reveal();
-      return;
-    }
     const isNewTable = this.stage === 'newtable';
     this.live.events.push({ t: 'start', side });
     if (isNewTable) this.engine.changeTable(side);
@@ -257,6 +224,76 @@ export class CoachPage implements OnDestroy {
     this.stage = 'live';
     this.stopSign = null;
     this.reveal();
+  }
+
+  /** Opens the player's live table in a window beside the signals (asks for the link the first time). */
+  openTable() {
+    if (!this.live) return;
+    if (!this.live.tableUrl) {
+      const url = safeUrl(window.prompt('Paste the link to your live table:') || '');
+      if (!url) return;
+      this.live.tableUrl = url;
+      this.persist();
+      try {
+        localStorage.setItem('tw.lastTableUrl', url);
+      } catch {}
+    }
+    const w = Math.round(screen.availWidth * 0.68);
+    window.open(this.live.tableUrl, 'tw-live-table', `noopener,left=0,top=0,width=${w},height=${screen.availHeight}`);
+  }
+
+  /** Floats the signal + "what came" panel in a small always-on-top window (Chrome / Edge desktop). */
+  async togglePip() {
+    if (this.pipOn) {
+      this.pipWin?.close();
+      return;
+    }
+    const el = this.miniEl?.nativeElement;
+    const api = (window as any).documentPictureInPicture;
+    if (!el || !api) return;
+    const pip: Window = await api.requestWindow({ width: 380, height: 620 });
+    for (const sheet of Array.from(document.styleSheets)) {
+      try {
+        const css = Array.from(sheet.cssRules).map((r) => r.cssText).join('\n');
+        const style = pip.document.createElement('style');
+        style.textContent = css;
+        pip.document.head.appendChild(style);
+      } catch {
+        if (sheet.href) {
+          const link = pip.document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = sheet.href;
+          pip.document.head.appendChild(link);
+        }
+      }
+    }
+    for (const a of Array.from(document.documentElement.attributes)) pip.document.documentElement.setAttribute(a.name, a.value);
+    pip.document.body.className = 'tw-pip';
+    const own = pip.document.createElement('style');
+    own.textContent = 'body.tw-pip{margin:0;padding:12px;display:grid;gap:12px;background:var(--tw-bg);color:var(--tw-text);font-family:var(--tw-font);overflow:auto}' +
+      'body.tw-pip .mini{display:grid;gap:12px}body.tw-pip .signal-card{min-height:0}';
+    pip.document.head.appendChild(own);
+    const home = el.parentElement!;
+    const marker = document.createComment('mini');
+    home.insertBefore(marker, el);
+    pip.document.body.appendChild(el);
+    this.pipWin = pip;
+    this.pipOn = true;
+    pip.addEventListener('pagehide', () =>
+      this.zone.run(() => {
+        marker.parentNode?.insertBefore(el, marker);
+        marker.remove();
+        this.pipOn = false;
+        this.pipWin = null;
+      })
+    );
+  }
+
+  /** Short alert shown in the floating window when a sign needs the full view. */
+  get miniAlert(): string {
+    if (this.stopSign === 'table') return 'Fresh table time';
+    if (this.stopSign === 'checkin') return this.net > 0 ? "You're up – cash out?" : 'Time check';
+    return this.net > 0 ? 'Cash out now!' : 'Session complete';
   }
 
   get signal(): Signal | null {
@@ -288,8 +325,6 @@ export class CoachPage implements OnDestroy {
     const hit = this.engine.check();
     if (hit === 'change-table') {
       this.stopSign = 'table';
-    } else if (hit === 'choppy') {
-      this.stopSign = 'choppy';
     } else if (hit) {
       this.finish(hit);
     } else if (this.roundsPlayed >= this.live.plan.maxRounds) {
@@ -312,7 +347,7 @@ export class CoachPage implements OnDestroy {
 
   private countTo(target: number) {
     cancelAnimationFrame(this.countRaf);
-    const from = 0;
+    const from = this.shownStake;
     const start = performance.now();
     const step = (t: number) => {
       const k = Math.min(1, (t - start) / 500);
@@ -359,6 +394,12 @@ export class CoachPage implements OnDestroy {
     return Math.max(0, Math.min(100, Math.round((this.net / this.live.plan.stopWin) * 100)));
   }
 
+  /** How much of the safety limit is still unused. */
+  get safeLeft(): number {
+    if (!this.live) return 0;
+    return Math.max(0, Math.round((this.live.plan.stopLoss + this.net) * 100) / 100);
+  }
+
   /** Share of the safety limit already used, 0–100. */
   get riskPct(): number {
     if (!this.live) return 0;
@@ -370,9 +411,7 @@ export class CoachPage implements OnDestroy {
     return r.length ? Math.round((r.filter((x) => x.result === 'won').length / r.length) * 100) : 0;
   }
 
-  modeName(m: string): string {
-    return m === 'ATTACK' ? 'Momentum' : m === 'RETRENCH' ? 'Recovery' : '';
-  }
+
 
   private pop(text: string, kind: 'won' | 'lost' | 'void') {
     clearTimeout(this.flashTimer);
@@ -424,32 +463,6 @@ export class CoachPage implements OnDestroy {
 
   /* ---------- Discipline display ---------- */
 
-  get inProfitMode(): boolean {
-    return !!this.engine?.inBigProfit;
-  }
-
-  get streakLimit(): number {
-    return this.inProfitMode ? SESSION_LIMITS.profitLockLosses : SESSION_LIMITS.changeTableLosses;
-  }
-
-  get lights(): boolean[] {
-    const s = this.engine?.streak ?? 0;
-    return Array.from({ length: this.streakLimit }, (_, i) => i < s);
-  }
-
-  /** 0..100 position of the result between max loss (0) and profit target (100). */
-  get meter(): number {
-    if (!this.live) return 50;
-    const { stopLoss, stopWin } = this.live.plan;
-    return Math.max(0, Math.min(100, ((this.net + stopLoss) / (stopLoss + stopWin)) * 100));
-  }
-
-  get zeroAt(): number {
-    if (!this.live) return 50;
-    const { stopLoss, stopWin } = this.live.plan;
-    return (stopLoss / (stopLoss + stopWin)) * 100;
-  }
-
   /** Chips in the animated stack for the current bet. */
   get chipStack(): number[] {
     const s = this.signal;
@@ -472,9 +485,9 @@ export class CoachPage implements OnDestroy {
     return series.map((amount, i) => ({ amount, on: i === lvl, past: i < lvl }));
   }
 
-  /** Minutes between STOP check-ins: longer Neural sessions get fewer interruptions. */
+  /** Minutes between check-ins. */
   get checkinEvery(): number {
-    return this.live?.system === 'neural' ? 15 : SESSION_LIMITS.checkinMinutes;
+    return 15;
   }
 
   get toneOfBet(): string {
@@ -483,22 +496,13 @@ export class CoachPage implements OnDestroy {
 
   get hint(): string {
     if (!this.live || !this.engine || !this.signal) return '';
-    const p = this.live.plan;
-    const left = p.maxRounds - this.roundsPlayed;
-    if (this.signal.capped) return `Bet capped at ${this.signal.stake} – that's all that's left before your loss limit.`;
-    if (left <= 3) return `${left} round${left === 1 ? '' : 's'} left in this session.`;
-    if (this.signal.mode === 'NEURAL') {
-      if (this.signal.switched) return `Sides switched – ${this.signal.betLabel} is taking over this table.`;
-      if (this.net > 0) return `${this.targetPct}% of the way to your target. Stay with the series.`;
-      if (this.signal.level >= 5) return `Level ${this.signal.level} of 8. Stay calm and bet exactly this amount.`;
-      if (this.signal.pattern === 'alternating') return 'Alternating pattern – the bet follows the swing.';
-      return 'Repeating pattern – stay on this side.';
-    }
-    if (this.inProfitMode && this.engine.streak === 1) return `Strong profit. Protect it – the coach is watching the next result.`;
-    if (!this.inProfitMode && this.engine.streak === 2) return 'Stay calm. Follow the signal – the coach will tell you if this table turns cold.';
-    if (this.signal.mode === 'RETRENCH') return 'Recovery in progress. Stick to the amount shown.';
-    if (this.net > 0) return `${this.targetPct}% of the way to your profit target.`;
-    return 'Place this bet, wait for the result, then tap what came.';
+    const sig = this.signal;
+    if (sig.capped) return `Bet sized at ${sig.stake} to stay inside your safety limit.`;
+    if (this.net > 0 && this.targetPct >= 60) return `${this.targetPct}% of your target – almost there!`;
+    if (this.net > 0) return `${this.targetPct}% of the way to your target. Keep following the signal.`;
+    if (sig.change !== null && sig.change > 0) return 'The ladder steps up – this bet wins back more.';
+    if (sig.pattern === 'opposite') return 'The table is swinging – the signal swings with it.';
+    return `${sig.betLabel} is coming – the signal rides the run.`;
   }
 
   /* ---------- Timer ---------- */
@@ -537,49 +541,46 @@ export class CoachPage implements OnDestroy {
 
   /* ---------- STOP signs ---------- */
 
+  get checkinTitle(): string {
+    return this.net > 0 ? "YOU'RE UP – CASH OUT?" : 'TIME CHECK';
+  }
+
   get checkinReason(): string {
-    return this.net > 0 ? "Time check – you're up." : this.net < 0 ? "Time check – you're down." : 'Time check.';
+    return this.net > 0 ? `You're up ${this.pnlPct}% on your amount.` : 'Quick check-in.';
   }
 
   get checkinHint(): string {
     const mins = Math.ceil(this.remaining / 60);
-    if (this.net > 0) return 'The best moment to leave is while you are ahead. Stopping now keeps this profit.';
-    if (this.net < 0) return `Don't chase it. Stopping now keeps the loss small. If you continue, your limits stay on (${mins} min left).`;
-    return `Take a breath. Stop now, or continue for up to ${mins} more minutes.`;
+    if (this.net > 0) return 'A great moment to cash out on top. Or keep going – the coach keeps every bet sized for you.';
+    return `Stay with the plan for up to ${mins} more minutes – every bet stays inside your safety limit.`;
   }
 
   get finalReason(): string {
     switch (this.endReason) {
-      case 'stop-win': return 'Profit target reached.';
-      case 'profit-lock': return 'Two losses in a row after a profit.';
-      case 'stop-loss': return 'Loss limit reached.';
-      case 'change-table': return 'Three losses in a row.';
-      case 'time': return 'Time is up.';
-      case 'rounds': return 'Round limit reached.';
-      default: return 'Session over.';
+      case 'stop-win': return 'Target hit!';
+      case 'profit-lock': return "You're ahead – lock it in.";
+      case 'stop-loss': return 'Safety limit reached – the rest of your amount is kept for next time.';
+      case 'change-table': return 'Session complete.';
+      case 'time': return "Time's up.";
+      case 'rounds': return 'Full session played.';
+      default: return 'Session complete.';
     }
   }
 
   get finalTitle(): string {
-    return this.net > 0 ? 'STOP & CASH OUT' : 'STOP PLAYING NOW';
+    return this.net > 0 ? 'CASH OUT NOW' : 'SESSION COMPLETE';
   }
 
   get finalHint(): string {
-    if (this.net > 0) return `You're up ${this.pnlPct}% on your amount. Cash out and close the casino tab now – this is how profit is kept.`;
-    return 'Close the casino tab now. No switching tables, no starting again – the coach is locked until tomorrow.';
+    if (this.net > 0) return `You're up ${this.pnlPct}% on your amount. Cash out at the casino now – the win is yours.`;
+    return 'Close the casino tab for today. The coach is ready for a fresh session tomorrow.';
   }
 
   get endTitle(): string {
-    switch (this.endReason) {
-      case 'stop-win': return 'Target hit. You left a winner.';
-      case 'profit-lock': return this.net > 0 ? 'Profit kept. Well played.' : 'Session closed.';
-      case 'stop-loss': return 'Maximum loss reached. Today is done.';
-      case 'change-table': return 'Session ended after 3 losses.';
-      case 'time': return 'Time is up.';
-      case 'rounds': return 'Round limit reached.';
-      case 'checkin': return 'You stopped at the check-in. Good call.';
-      default: return 'Session ended.';
+    if (this.net > 0) {
+      return this.endReason === 'stop-win' ? 'Target hit. You cashed out a winner!' : 'You cashed out on top. Well played!';
     }
+    return this.endReason === 'stop-loss' ? 'Session complete – amount protected.' : 'Session complete.';
   }
 
   continuePlaying() {
@@ -650,5 +651,17 @@ export class CoachPage implements OnDestroy {
     try {
       localStorage.removeItem(LIVE_KEY);
     } catch {}
+  }
+}
+
+/** Only http(s) links can be opened as a live table. */
+function safeUrl(raw: string): string {
+  const v = (raw || '').trim();
+  if (!v) return '';
+  try {
+    const u = new URL(/^https?:\/\//i.test(v) ? v : `https://${v}`);
+    return u.protocol === 'https:' || u.protocol === 'http:' ? u.toString() : '';
+  } catch {
+    return '';
   }
 }

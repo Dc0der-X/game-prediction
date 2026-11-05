@@ -12,10 +12,11 @@ import { DecimalPipe, NgIf } from '@angular/common';
   imports: [NgIf, DecimalPipe],
   template: `
     <div class="backdrop" role="alertdialog" aria-modal="true" aria-labelledby="stop-title">
-      <div class="panel" [class.final]="kind === 'final'" [class.amber]="icon === 'switch'">
+      <div class="panel" [class.final]="kind === 'final'" [class.amber]="icon === 'switch'" [class.green]="icon === 'cash'">
         <div class="octagon" aria-hidden="true" *ngIf="icon === 'stop'"><span>STOP</span></div>
         <div class="switch" aria-hidden="true" *ngIf="icon === 'switch'">⇄</div>
-        <h2 id="stop-title">{{ title || (kind === 'final' ? 'STOP PLAYING NOW' : 'STOP PLAYING NOW?') }}</h2>
+        <div class="cash" aria-hidden="true" *ngIf="icon === 'cash'">$</div>
+        <h2 id="stop-title">{{ title || (kind === 'final' ? 'SESSION COMPLETE' : 'QUICK CHECK-IN') }}</h2>
         <p class="reason">{{ reason }}</p>
         <div class="net" *ngIf="net !== null" [class.pos]="net > 0" [class.neg]="net < 0">
           {{ net > 0 ? '+' : '' }}{{ net | number: '1.0-2' }}
@@ -43,6 +44,13 @@ import { DecimalPipe, NgIf } from '@angular/common';
     .panel.amber h2 { color: var(--tw-money); }
     .panel.amber .stop { background: transparent; color: var(--tw-muted); border: 1px solid var(--tw-line-strong); font-weight: 600; }
     .panel.amber .cont { background: var(--tw-money); color: #1a1205; border: 0; font-weight: 800; }
+    .panel.green { border-color: rgba(46, 204, 113, .7); }
+    .panel.green h2 { color: #6ff0a8; }
+    .panel.green .stop { background: #2ecc71; color: #04210f; border: 0; font-weight: 800; }
+    .panel.green .cont { background: transparent; color: var(--tw-muted); border: 1px solid var(--tw-line-strong); font-weight: 600; }
+    .cash { width: 120px; height: 120px; margin: 0 auto 14px; border-radius: 50%; display: grid; place-items: center;
+      font-size: 60px; font-weight: 900; color: #04210f; background: radial-gradient(circle at 35% 30%, #b9ffd6, #2ecc71);
+      box-shadow: 0 0 0 6px rgba(46,204,113,.18), 0 0 46px rgba(46,204,113,.5); animation: pulse 1.2s ease-in-out infinite alternate; }
     .switch { width: 120px; height: 120px; margin: 0 auto 14px; border-radius: 50%; display: grid; place-items: center;
       font-size: 56px; color: #1a1205; background: radial-gradient(circle at 35% 30%, #ffe3a3, var(--tw-money));
       box-shadow: 0 0 0 6px rgba(245,199,106,.18), 0 0 40px rgba(245,199,106,.45); animation: spin 2.4s linear infinite; }
@@ -58,7 +66,7 @@ import { DecimalPipe, NgIf } from '@angular/common';
     h2 { margin: 0 0 8px; font-family: var(--tw-font); font-weight: 900; font-size: 26px; color: #ff9b9b; letter-spacing: .02em; }
     .reason { margin: 0 0 8px; font-weight: 600; }
     .net { font-size: 38px; font-weight: 800; font-variant-numeric: tabular-nums; }
-    .net.pos { color: var(--tw-green); } .net.neg { color: var(--tw-red); }
+    .net.pos { color: var(--tw-green); } .net.neg { color: var(--tw-text); opacity: .85; }
     .hint { color: var(--tw-muted); font-size: 14px; margin: 8px 0 18px; }
     .actions { display: grid; gap: 8px; }
     button { height: 52px; border-radius: 999px; border: 0; font: inherit; font-weight: 800; font-size: 16px; cursor: pointer; }
@@ -73,7 +81,7 @@ import { DecimalPipe, NgIf } from '@angular/common';
 export class StopSignComponent {
   @Input() kind: 'final' | 'checkin' = 'final';
   @Input() title = '';
-  @Input() icon: 'stop' | 'switch' = 'stop';
+  @Input() icon: 'stop' | 'switch' | 'cash' = 'stop';
   @Input() reason = '';
   @Input() hint = '';
   @Input() net: number | null = null;

@@ -19,7 +19,7 @@ import { GoogleButtonComponent } from '../../shared/google-button.component';
       <div class="tw-page wrap">
         <div class="pitch">
           <p class="tw-eyebrow">{{ trialHours }} hours of full access, free</p>
-          <h1>Know your next bet. Know when to walk away.</h1>
+          <h1>Win smarter. Keep more.</h1>
           <ul>
             <li *ngFor="let f of features">{{ f }}</li>
           </ul>
@@ -42,7 +42,7 @@ import { GoogleButtonComponent } from '../../shared/google-button.component';
             <label class="tw-check"><input type="checkbox" name="age" [(ngModel)]="age" required />
               <span>I am 18 or older and gambling is legal where I live.</span></label>
             <label class="tw-check"><input type="checkbox" name="terms" [(ngModel)]="terms" required />
-              <span>I understand no system beats the house edge, and I agree to the <a routerLink="/terms">terms</a>.</span></label>
+              <span>I agree to the <a routerLink="/terms">terms</a>.</span></label>
             <div class="tw-error" *ngIf="error">{{ error }}</div>
             <ion-button expand="block" type="submit" [disabled]="busy || !f.valid || !age || !terms">
               {{ busy ? 'Creating account…' : 'Start my free trial' }}</ion-button>
@@ -68,14 +68,12 @@ import { GoogleButtonComponent } from '../../shared/google-button.component';
 export class SignupPage {
   private account = inject(AccountService);
   private router = inject(Router);
-  next = inject(ActivatedRoute).snapshot.queryParamMap.get('next') || '/lobby';
+  next = inject(ActivatedRoute).snapshot.queryParamMap.get('next') || '/coach';
   trialHours = PRICING.trialHours;
   features = PRO_FEATURES;
   name = '';
   email = '';
   password = '';
-  phone = '';
-  telegram = '';
   age = false;
   terms = false;
   busy = false;
@@ -103,8 +101,8 @@ export class SignupPage {
         name: this.name.trim(),
         email: this.email,
         password: this.password,
-        phone: this.phone.trim(),
-        telegram: this.telegram.trim(),
+        phone: '',
+        telegram: '',
       });
       this.router.navigateByUrl(safeNext(this.next));
     } catch (e) {

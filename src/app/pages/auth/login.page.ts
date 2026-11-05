@@ -52,7 +52,7 @@ import { GoogleButtonComponent } from '../../shared/google-button.component';
 export class LoginPage {
   private account = inject(AccountService);
   private router = inject(Router);
-  next = inject(ActivatedRoute).snapshot.queryParamMap.get('next') || '/lobby';
+  next = inject(ActivatedRoute).snapshot.queryParamMap.get('next') || '/coach';
   demo = environment.demoMode;
   email = '';
   password = '';
@@ -104,5 +104,5 @@ export class LoginPage {
 
 /** Only allow in-app redirects after login. */
 export function safeNext(next: string | null | undefined): string {
-  return next && next.startsWith('/') && !next.startsWith('//') ? next : '/lobby';
+  return next && next.startsWith('/') && !next.startsWith('//') ? next : '/coach';
 }

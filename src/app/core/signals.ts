@@ -3,21 +3,21 @@
  * stop rules. Used by the Session Coach (the player taps what came at their
  * real table) and by the practice tables.
  *
- * Systems
- *   neural    The Neural Strategy (from the book): watch 2 results, bet the
- *             repeating / alternating pattern with the 8-level series, switch
- *             sides after a level-5 loss. Quit at +1/3 of the session bankroll
- *             or when the session bankroll is gone; stop a choppy game early.
- *   original  The previous app's S/O + Attack/Retrench rule.
- *   flat      Same bet every round.
- * Every bet is capped so a session can never lose more than its loss limit.
+ * Every player gets Neural Signals: the SOS side rule (Same, Opposite, Same)
+ * with the 8-step ladder. The same session rules apply to everyone:
+ *   target reached          → cash out
+ *   well up, 2 losses       → cash out (keep the profit)
+ *   3 losses in a row       → move to a fresh table (ladder back to step 1)
+ *   safety limit reached    → session complete
+ * Every bet is capped so a session never goes past its safety limit.
+ * ('original' and 'flat' remain only so older saved sessions still load.)
  */
 import { GameDef, GameId, Outcome, getBet, sideOf } from './games';
 import { NeuralSystem, OriginalSystem, SESSION_LIMITS, StakeTracker, round2 } from './strategies';
 
 export type SystemId = 'neural' | 'original' | 'flat';
 export type RoundResult = 'won' | 'lost' | 'void';
-export type StopReason = 'stop-win' | 'stop-loss' | 'profit-lock' | 'change-table' | 'choppy';
+export type StopReason = 'stop-win' | 'stop-loss' | 'profit-lock' | 'change-table';
 
 export interface Signal {
   /** True while the system is still watching results (no bet yet). */
@@ -26,10 +26,12 @@ export interface Signal {
   betLabel: string;
   stake: number;
   mode: 'ATTACK' | 'RETRENCH' | 'FLAT' | 'NEURAL';
-  /** Neural Strategy level, 1–8. */
+  /** Ladder step, 1–8. */
   level: number;
-  pattern: 'watching' | 'repeating' | 'alternating' | '';
-  /** True right after a side switch (special step-down rules apply). */
+  pattern: 'same' | 'opposite' | '';
+  /** Change from the previous bet at this table: +3, -2, 0 (null for the first bet). */
+  change: number | null;
+  /** Kept for older screens; always false now. */
   switched: boolean;
   /** True when the system wanted more but the loss limit capped the bet. */
   capped: boolean;
@@ -46,16 +48,7 @@ export const VOID_RESULT: Record<GameId, { label: string; short: string; mult: n
 };
 
 export const SYSTEMS: { id: SystemId; name: string; summary: string }[] = [
-  {
-    id: 'neural',
-    name: 'Neural Strategy',
-    summary: 'Reads the pattern from the last results and sets the side and the amount for every bet.',
-  },
-  {
-    id: 'flat',
-    name: 'Flat',
-    summary: 'Same bet and amount every round. The lowest-cost option.',
-  },
+  { id: 'neural', name: 'Neural Signals', summary: 'Reads your table and gives you the side and the amount for every bet.' },
 ];
 
 export interface SignalRound {
@@ -73,9 +66,6 @@ export type SignalEvent =
   | { t: 'watch'; side: string | null }
   | { t: 'round'; side: string | null };
 
-/** Rounds after which an unprofitable Neural session counts as "choppy" (book: about 60 decisions). */
-export const CHOPPY_AFTER = 60;
-
 export class SignalEngine {
   private orig: OriginalSystem | null = null;
   private neural: NeuralSystem | null = null;
@@ -86,8 +76,8 @@ export class SignalEngine {
   streak = 0;
   /** Number of the current table (1 = first table this session). */
   table = 1;
-  /** The choppy-game warning is shown once per session. */
-  choppyShown = false;
+  /** Index in `rounds` where the current table started. */
+  tableStart = 0;
 
   constructor(
     public game: GameDef,
@@ -120,14 +110,15 @@ export class SignalEngine {
       this.orig.seed(lastSide);
     } else if (this.game.sides && this.system === 'neural') {
       this.neural = new NeuralSystem(this.unit, this.game);
-      if (lastSide) this.neural.observe(lastSide);
+      this.neural.seed(lastSide);
     }
     this.streak = 0;
+    this.tableStart = this.rounds.length;
   }
 
-  /** A result seen while the Neural Strategy is watching (before its first bet). */
+  /** Older saved sessions: a "watched" result now simply re-seeds the table. */
   observe(side: string | null) {
-    this.neural?.observe(side);
+    if (this.rounds.length === this.tableStart) this.start(side);
   }
 
   /** Player changed table: new pattern, fresh stake, streak cleared; money totals carry on. */
@@ -139,27 +130,27 @@ export class SignalEngine {
   /** The next instruction. */
   signal(): Signal {
     const base = { level: 0, pattern: '' as Signal['pattern'], switched: false };
-    if (this.neural?.watching) {
-      return { ...base, watching: true, betId: '', betLabel: '', stake: 0, mode: 'NEURAL', pattern: 'watching', capped: false };
-    }
     let betId = this.game.bestBet;
     let raw = this.unit;
     let mode: Signal['mode'] = 'FLAT';
     if (this.neural) {
-      betId = this.neural.bet(this.game.bestBet);
+      betId = this.neural.bet();
       raw = this.neural.next();
       mode = 'NEURAL';
       base.level = this.neural.level + 1;
-      base.pattern = this.neural.pattern as Signal['pattern'];
-      base.switched = this.neural.switched;
+      base.pattern = this.neural.pattern;
     } else if (this.orig) {
       betId = this.orig.bet(this.game.bestBet);
       raw = this.orig.next();
       mode = this.orig.state.mode as Signal['mode'];
     }
-    const room = this.stopLoss + this.net; // how much can still be lost before the loss limit
+    const room = this.stopLoss + this.net; // how much can still be lost before the safety limit
     const stake = round2(Math.max(0, Math.min(raw, room)));
-    return { ...base, watching: false, betId, betLabel: getBet(this.game, betId)?.label ?? betId, stake, mode, capped: raw > room };
+    const prev = this.rounds.length > this.tableStart ? this.rounds[this.rounds.length - 1].stake : null;
+    return {
+      ...base, watching: false, betId, betLabel: getBet(this.game, betId)?.label ?? betId, stake, mode,
+      capped: raw > room + 0.001, change: prev === null ? null : round2(stake - prev),
+    };
   }
 
   winMultiplier(betId: string) {
@@ -168,10 +159,6 @@ export class SignalEngine {
 
   /** Real play: the player taps which side came (null = zero / tie / triple / seven). */
   applySide(came: string | null): SignalRound | null {
-    if (this.watching) {
-      this.observe(came);
-      return null;
-    }
     const sig = this.signal();
     const result: RoundResult = came === null ? 'void' : came === sig.betId ? 'won' : 'lost';
     const voidMult = this.game.id === 'craps' && sig.betId === 'pass' ? -1 : VOID_RESULT[this.game.id].mult;
@@ -182,18 +169,14 @@ export class SignalEngine {
   /** Practice tables: a dealt outcome. Returns null while the system is still watching. */
   applyOutcome(o: Outcome): SignalRound | null {
     const came = sideOf(this.game, o);
-    if (this.watching) {
-      this.observe(came);
-      return null;
-    }
     const sig = this.signal();
     const result: RoundResult = came === null ? 'void' : came === sig.betId ? 'won' : 'lost';
     return this.push({ betId: sig.betId, stake: sig.stake, net: round2(sig.stake * this.game.settle(sig.betId, o)), result, came });
   }
 
   private push(r: SignalRound): SignalRound {
-    // Neural Strategy: ties change nothing; zero and other house results count as a lost bet.
-    this.neural?.recordResult(r.net > 0 ? true : r.net < 0 ? false : null);
+    // Ties change nothing; zero and other house results count as a lost bet for the ladder.
+    this.neural?.recordRound(r.net, r.result === 'void' ? null : r.result === 'won');
     this.orig?.recordResult(r.result === 'void' ? null : r.result === 'won');
     this.rounds.push(r);
     this.net = round2(this.net + r.net);
@@ -208,19 +191,11 @@ export class SignalEngine {
     return this.peak >= this.stopWin * SESSION_LIMITS.profitLockAt;
   }
 
-  /** Which stop rule (if any) applies now. */
+  /** Which session rule (if any) applies now. The same for every game and every player. */
   check(): StopReason | null {
-    if (this.net >= this.stopWin) return 'stop-win';
+    if (this.net >= this.stopWin - 0.001) return 'stop-win';
     if (this.net <= -this.stopLoss + 0.001) return 'stop-loss';
-    if (this.system === 'neural') {
-      // Book advice: a long, choppy game that is going nowhere is better called off.
-      if (!this.choppyShown && this.rounds.length >= CHOPPY_AFTER && this.net < this.stopWin * 0.25) {
-        this.choppyShown = true;
-        return 'choppy';
-      }
-      return null;
-    }
-    if (this.inBigProfit && this.streak >= SESSION_LIMITS.profitLockLosses) return 'profit-lock';
+    if (this.inBigProfit && this.net > 0 && this.streak >= SESSION_LIMITS.profitLockLosses) return 'profit-lock';
     if (this.streak >= SESSION_LIMITS.changeTableLosses) return 'change-table';
     return null;
   }
@@ -239,7 +214,6 @@ export class SignalEngine {
         engine.applySide(e.side);
       }
     }
-    if (engine.rounds.length >= CHOPPY_AFTER) engine.choppyShown = true;
     return engine;
   }
 }
