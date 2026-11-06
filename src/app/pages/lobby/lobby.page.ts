@@ -18,7 +18,7 @@ import { dealerFor } from '../../core/dealers';
         <section class="hero tw-card felt">
           <div>
             <p class="tw-eyebrow">Practice lobby</p>
-            <h1>Dealer tables, free play money.</h1>
+            <h1>Live dealer tables, free play money.</h1>
             <p class="tw-muted">
               A dealer, a betting timer and real round rhythm – just like a live casino – with the same signals and a training
               coach. Get the feel here, then take the signals to your real table.
@@ -36,19 +36,19 @@ import { dealerFor } from '../../core/dealers';
         <div class="tw-grid">
           <a class="table" *ngFor="let g of games; let i = index" [routerLink]="['/live', g.id]">
             <div class="img" [style.background-image]="'url(' + dealer(g).image + ')'"
-              [style.background-position]="dealer(g).focusX + '% 22%'" role="img" [attr.aria-label]="dealer(g).alt">
+              [style.background-position]="dealer(g).focusX + '% 22%'">
               <span class="dealer-tag">{{ dealer(g).tableName }}</span>
             </div>
             <div class="body">
               <div class="tw-row">
                 <h3>{{ g.name }}</h3>
                 <span class="tw-spacer"></span>
-                <span class="tw-pill practice">Play money</span>
+                <span class="tw-pill live"><i></i> LIVE</span>
               </div>
               <p class="tw-muted tw-small">{{ g.blurb }}</p>
-              <p class="tw-small"><strong>{{ dealer(g).tableTitle }}</strong></p>
+              <p class="tw-small">Dealer <strong>{{ dealer(g).name }}</strong></p>
               <p class="tw-small">Signals on <strong class="tw-gold">{{ sidesLabel(g) }}</strong></p>
-              <span class="play">Open table →</span>
+              <span class="play">Join the live table →</span>
             </div>
           </a>
         </div>
@@ -82,7 +82,8 @@ import { dealerFor } from '../../core/dealers';
       .body p { margin: 8px 0 0; }
       .play { display: inline-block; margin-top: 12px; color: var(--tw-gold); font-weight: 700; font-size: 14px; }
       .foot { margin-top: 32px; }
-      .tw-pill.practice { background: rgba(var(--tw-accent-rgb), .12); color: var(--tw-gold-2); border-color: rgba(var(--tw-accent-rgb), .45); font-weight: 700; }
+      .tw-pill.live { background: rgba(255, 59, 78, .15); color: #ff8a96; border-color: rgba(255, 59, 78, .5); font-weight: 800; letter-spacing: .08em; }
+      .tw-pill.live i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #ff3b4e; margin-right: 4px; box-shadow: 0 0 8px #ff3b4e; }
     `,
   ],
 })

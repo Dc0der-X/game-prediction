@@ -220,16 +220,3 @@ ion-button { --border-radius: 999px; font-weight: 600; text-transform: none; let
 /* ---------- Theme polish ---------- */
 .tw-card { box-shadow: var(--tw-shadow); }
 :root[data-tw-theme='clean'] .tw-card.felt { border-color: rgba(var(--tw-accent-rgb), .18); }
-
-/* Keyboard focus: always visible (gold ring in Elite Dark, blue in Clean Pro) */
-a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible,
-[role='button']:focus-visible, [tabindex]:focus-visible, ion-button.ion-focused, ion-button:focus-visible {
-  outline: 2px solid var(--tw-gold-2);
-  outline-offset: 2px;
-}
-
-/* Background network: present but quiet, so the table and the numbers stay in front */
-app-neural-field { opacity: 0.6; }
-
-/* Numbers line up in columns */
-.tw-mono, strong, .amt, .balance { font-variant-numeric: tabular-nums; }
