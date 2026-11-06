@@ -6,11 +6,12 @@ import { TopbarComponent } from '../../shared/topbar.component';
 import { GAMES, getBet } from '../../core/games';
 import { AccountService } from '../../core/account.service';
 import { dealerFor } from '../../core/dealers';
+import { GameEmblemComponent } from '../../shared/game-emblem.component';
 
 @Component({
   selector: 'app-lobby',
   standalone: true,
-  imports: [IonicModule, RouterLink, NgFor, NgIf, AsyncPipe, TopbarComponent],
+  imports: [IonicModule, RouterLink, NgFor, NgIf, AsyncPipe, TopbarComponent, GameEmblemComponent],
   template: `
     <app-topbar></app-topbar>
     <ion-content>
@@ -38,6 +39,7 @@ import { dealerFor } from '../../core/dealers';
             <div class="img" [style.background-image]="'url(' + dealer(g).image + ')'"
               [style.background-position]="dealer(g).focusX + '% 22%'">
               <span class="dealer-tag">{{ dealer(g).tableName }}</span>
+              <app-game-emblem class="emblem" [game]="g.id" [size]="42"></app-game-emblem>
             </div>
             <div class="body">
               <div class="tw-row">
@@ -71,6 +73,7 @@ import { dealerFor } from '../../core/dealers';
         border: 1px solid var(--tw-line); border-radius: var(--tw-radius); overflow: hidden;
         transition: transform .15s ease, border-color .15s ease; }
       .table:hover { transform: translateY(-3px); border-color: rgba(var(--tw-accent-rgb), .45); }
+      .emblem { position: absolute; top: 10px; left: 10px; z-index: 1; }
       .dealer-tag { position: absolute; left: 10px; bottom: 10px; z-index: 1; padding: 2px 9px; border-radius: 6px; font-size: 11px; font-weight: 800;
         letter-spacing: .12em; color: #1a1205; background: linear-gradient(180deg, #e9c873, #b8913c); }
       .img { height: 150px; background-size: cover; background-position: center; position: relative; }

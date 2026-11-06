@@ -3,18 +3,20 @@ import { NgIf } from '@angular/common';
 import { GameDef } from '../core/games';
 import { dealerFor } from '../core/dealers';
 import { pop, tilt } from './motion';
+import { GameEmblemComponent } from './game-emblem.component';
 
 /** A game as a dealer card: her photo, the game, a gold ring when picked. Leans toward the pointer. */
 @Component({
   selector: 'app-game-card',
   standalone: true,
-  imports: [NgIf],
+  imports: [NgIf, GameEmblemComponent],
   template: `
     <button #el type="button" class="gc" [class.on]="selected" [class.lg]="size === 'lg'" (click)="choose()"
       [attr.aria-pressed]="selected" [attr.aria-label]="game.name + ' with dealer ' + dealer.name">
       <img [src]="dealer.image" alt="" [style.object-position]="dealer.focusX + '% 22%'" loading="lazy" />
       <span class="shade"></span>
       <span class="shine"></span>
+      <app-game-emblem class="emblem" [game]="game.id" [size]="size === 'lg' ? 52 : 46"></app-game-emblem>
       <span class="txt">
         <strong>{{ game.name }}</strong>
         <small>{{ dealer.name }}'s table</small>
@@ -40,6 +42,8 @@ import { pop, tilt } from './motion';
     strong { font: 700 22px/1.1 var(--tw-serif); letter-spacing: -.01em; }
     small { font-size: 13px; color: rgba(255,255,255,.75); }
     .gc.on { box-shadow: 0 18px 40px rgba(0,0,0,.5), 0 0 0 2px #e3b965, 0 0 30px rgba(227,185,101,.35); }
+    .emblem { position: absolute; top: 12px; left: 12px; transition: transform .35s cubic-bezier(.2,.8,.2,1); }
+    .gc:hover .emblem, .gc.on .emblem { transform: rotate(-8deg) scale(1.06); }
     .check { position: absolute; top: 12px; right: 12px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
       background: linear-gradient(135deg, #f8df9c, #dcae52 50%, #b5852f); color: #1a1205; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
     .check svg { width: 18px; height: 18px; }
