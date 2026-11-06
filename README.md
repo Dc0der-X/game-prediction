@@ -74,23 +74,30 @@ Every player gets the same signals; there is no strategy to pick and nothing to 
    fits the amount twice; if none, the smallest whose first table (three bets) fits inside the 10% safety limit; if
    none, the app asks for a table with smaller chips or a bigger amount (e.g. $1 chips need 160+). Up one step after a miss; down one after a win, down two after
    two wins in a row or two of the last three. Every signal shows the change from the last bet (▲ +1 / ▼ −1.5 / = same).
-3. **Session rules (same for every game), final:** profit target **+5%** of the amount → cash out; **lock in
-   profit** – once halfway to the target, cash out as soon as half of the best point is given back; **3 misses in a
-   row → fresh table** (ladder back to step 1, totals carry on); **safety limit 10%** of the amount – no bet can go
-   past it; **30-minute sessions** with a breather check-in at 20 minutes, and after a session a kind nudge to stop for
-   the day (players can still play another). Signals for all five games – **Baccarat, Roulette, Dragon Tiger, Sic Bo and
-   Craps** (Dragon Tiger's ties cost half the bet, so it is the toughest of the five; the same rules keep it inside the limit).
+3. **Session rules (same for every game):** profit target **+5%** of the amount – a cue, not a wall: the player can
+   cash out, or **keep riding while it wins**, and the **first miss after the target cashes out** with the win locked in;
+   **3 misses in a row → fresh table** (ladder back to step 1, totals carry on); **safety limit 20%** of the amount with a
+   calm note at halfway (10%) – bets are never cut, the session only ends before a bet that could pass the limit; the
+   smallest playable amount still leaves room for two fresh tables; **30-minute sessions** with a breather check-in at
+   20 minutes, and after a session a kind nudge to stop for the day (players can still play another). Signals for all
+   five games – **Baccarat, Roulette, Dragon Tiger, Sic Bo and Craps**.
 
-Chosen from 1.6 million simulated sessions (12 stop designs × 5 games, $200, real game engines). Against the previous
-+10% / 20% / 45-minute rules the final ones end more sessions up (Baccarat 56% → 70%), halve the average cost, cap the
-worst session at −$20 and make the worst month in ten about 40% smaller. Final rules, 20,000 sessions per game:
+Chosen from 4.8 million simulated sessions (safety limit 10–30%, three table rules, four ways to handle a win;
+app's real signal engine, real game outcomes, 30-minute sessions), then checked on all five games with 40,000 sessions
+each. With a small amount (first bet 1.5% of it, e.g. Rs 30 on Rs 2,000) the old 10% limit ended about one session in
+four within its first 8 bets; the new rules almost never do, more sessions finish up and hot streaks run longer, at a
+slightly higher average cost (more play at a house game costs a little more):
 
-| Game | Sessions ending up | Avg winning session | Avg losing session | Average session | Weeks ahead | Months ahead |
+| Game | Cut short (≤ 8 bets) before → now | Sessions up before → now | Average session before → now | Best 5% | Worst 5% | Months ahead |
 |---|---|---|---|---|---|---|
-| Baccarat | 70% | +$5.49 | −$14.27 | −$0.43 | 49% | 42% |
-| Craps | 70% | +$5.38 | −$14.37 | −$0.57 | 47% | 39% |
-| Roulette | 64% | +$5.11 | −$11.66 | −$0.92 | 42% | 31% |
-| Sic Bo | 66% | +$5.19 | −$13.35 | −$1.02 | 40% | 29% |
+| Baccarat | 23% → **0.7%** | 56% → **69%** | -0.24% → -0.47% | +6.4% → **+9.0%** | -9.5% → -19.1% | 43% → 40% |
+| Roulette | 27% → **1.8%** | 56% → **64%** | -0.47% → -0.78% | +6.0% → **+8.5%** | -9.5% → -19.0% | 36% → 33% |
+| Dragon Tiger | 28% → **1.3%** | 54% → **68%** | -0.68% → -1.54% | +6.2% → **+8.8%** | -9.5% → -19.5% | 29% → 22% |
+| Sic Bo | 27% → **1.9%** | 56% → **66%** | -0.49% → -0.83% | +6.0% → **+8.5%** | -9.5% → -19.0% | 36% → 32% |
+| Craps | 26% → **1.5%** | 58% → **69%** | -0.22% → -0.46% | +6.0% → **+9.0%** | -9.5% → -19.0% | 45% → 40% |
+
+With a roomier amount (first bet 0.6% of it) nothing is ever cut short under either rule set and the results barely
+change. Every game keeps a house edge – the rules shape the experience and protect the amount, they cannot remove it.
 
 Averages stay slightly negative – no stop rule removes the house edge; the rules make wins frequent and losses small
 and capped. Code: `NeuralSystem` in `src/app/core/strategies.ts`, `SignalEngine` in

@@ -44,7 +44,7 @@ export interface Signal {
    *   fresh-table  – 3rd miss in a row: move to a fresh table, ladder back to step 1
    *   stop         – the next bet would not fit inside the safety limit: the session ends there
    */
-  ifMiss: 'continue' | 'fresh-table' | 'stop';
+  ifMiss: 'continue' | 'fresh-table' | 'stop' | 'cashout';
   /** The bet that would follow a miss (null when the session would stop). */
   ifMissStake: number | null;
   /** Money still available before the safety limit. */
@@ -88,6 +88,10 @@ export class SignalEngine {
   peak = 0;
   /** Losses in a row at the current table. */
   streak = 0;
+  /** The profit target has been reached at some point this session (riding the win since). */
+  targetReached = false;
+  /** Half of the safety limit has been used at some point (a calm notice, not a stop). */
+  halfwayReached = false;
   /** Number of the current table (1 = first table this session). */
   table = 1;
   /** Index in `rounds` where the current table started. */
@@ -172,7 +176,9 @@ export class SignalEngine {
       ifMissStake = this.neural ? this.neural.stakeAt(Math.min(7, this.neural.level + 1)) : raw;
       ifMiss = ifMissStake > roomAfterMiss + 0.001 ? 'stop' : 'continue';
     }
-    if (ifMiss === 'stop') ifMissStake = null;
+    // Target already hit: the player is riding the win – the next miss cashes out on top.
+    if (this.targetReached) ifMiss = 'cashout';
+    if (ifMiss === 'stop' || ifMiss === 'cashout') ifMissStake = null;
     return {
       ...base, watching: false, betId, betLabel: getBet(this.game, betId)?.label ?? betId, stake, mode,
       capped: raw > room + 0.001, change: prev === null ? null : round2(stake - prev),
@@ -220,6 +226,8 @@ export class SignalEngine {
     this.rounds.push(r);
     this.net = round2(this.net + r.net);
     this.peak = Math.max(this.peak, this.net);
+    if (this.net >= this.stopWin - 0.001) this.targetReached = true;
+    if (this.net <= -this.stopLoss / 2 + 0.001) this.halfwayReached = true;
     if (r.net < 0) this.streak++;
     else if (r.net > 0) this.streak = 0;
     return r;
@@ -232,10 +240,10 @@ export class SignalEngine {
 
   /** Which session rule (if any) applies now. The same for every game and every player. */
   check(): StopReason | null {
-    if (this.net >= this.stopWin - 0.001) return 'stop-win';
+    // Target hit → keep riding while it wins; the first miss after it cashes out on top.
+    const last = this.rounds[this.rounds.length - 1];
+    if (this.targetReached && last && last.net < 0) return 'stop-win';
     if (this.net <= -this.stopLoss + 0.001) return 'stop-loss';
-    // Lock in profit: halfway to the target, then half of the best point given back → cash out.
-    if (this.inBigProfit && this.net <= this.peak * (1 - SESSION_LIMITS.profitLockGiveBack)) return 'profit-lock';
     const room = this.stopLoss + this.net;
     if (this.streak >= SESSION_LIMITS.changeTableLosses) {
       // A fresh table only if its first bet still fits inside the safety limit.

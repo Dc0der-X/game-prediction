@@ -120,6 +120,19 @@
           <button class="tool" (click)="askingRestart = true">Change game / start over</button>
         </div>
 
+        <div class="notice" *ngIf="notice" [ngClass]="'n-' + notice" role="status">
+          <span class="n-ico" aria-hidden="true">{{ notice === 'target' ? '★' : '◐' }}</span>
+          <div class="n-txt" *ngIf="notice === 'target'">
+            <strong>Target hit – {{ net | money: cur : true }}!</strong>
+            <span>Cash out now, or keep riding while it wins. The first miss cashes you out with the win locked in.</span>
+          </div>
+          <div class="n-txt" *ngIf="notice === 'halfway'">
+            <strong>Halfway to your safety limit</strong>
+            <span>Stay calm and follow the signal – the ladder is built to win it back. You still have {{ safeLeft | money: cur }} of room.</span>
+          </div>
+          <button class="n-x" (click)="notice = null">Got it</button>
+        </div>
+
         <div class="grid">
           <!-- Signal + input: this block floats over the casino in the pop-out window -->
           <div class="mini" #mini>
@@ -155,6 +168,7 @@
                     <span *ngSwitchCase="'continue'">If this misses → next bet <b>{{ sig.ifMissStake ?? 0 | money: cur }}</b></span>
                     <span *ngSwitchCase="'fresh-table'">If this misses → <b>fresh table</b>, back to {{ sig.ifMissStake ?? 0 | money: cur }}</span>
                     <span *ngSwitchCase="'stop'">Last bet of this session – if it misses, you stop safely with {{ live.plan.bankroll - live.plan.stopLoss + (sig.room - sig.stake) | money: cur }} kept</span>
+                    <span *ngSwitchCase="'cashout'">Riding the win – if this misses, you cash out with <b>{{ net - sig.stake | money: cur : true }}</b></span>
                   </ng-container>
                 </div>
                 <p class="hint">{{ hint }}</p>

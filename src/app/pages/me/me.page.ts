@@ -104,7 +104,8 @@ import { staggerIn } from '../../shared/motion';
             <li><b>Tap what came</b> at your table – the signal gives the side and the exact bet.</li>
             <li><b>A miss</b> moves one step up the ladder; <b>a win</b> steps back down.</li>
             <li><b>3 misses in a row</b> – move to a fresh table, back to the first bet.</li>
-            <li><b>Target hit</b> – cash out. <b>Safety limit</b> – the session ends before any bet could pass it.</li>
+            <li><b>Target hit</b> – cash out, or keep riding while it wins; the first miss after it locks the win.</li>
+            <li><b>Safety limit</b> – a calm note at halfway; the session only ends before a bet that could pass it.</li>
           </ol>
         </section>
 

@@ -101,6 +101,8 @@ export class CoachPage implements OnDestroy {
   askingAnother = false;
   /** The "start over?" pop-up. */
   askingRestart = false;
+  /** A calm banner above the signal: target hit (keep riding) or halfway to the safety limit. */
+  notice: 'target' | 'halfway' | null = null;
   /** Game picked elsewhere (?game=) while a session was running: offered after "start over". */
   private pendingGame: string | null = null;
   /** The player chose to play another session today. */
@@ -206,9 +208,12 @@ export class CoachPage implements OnDestroy {
   /** ?game=roulette (from My TableWise): preselect it, or offer to change game if a session is running. */
   private applyGameParam(g = this.route.snapshot.queryParamMap.get('game')) {
     if (!g || !SIGNAL_GAMES.includes(g as any)) return;
+    // Use the choice once, then drop it from the address so coming back later doesn't replay it.
+    this.router.navigate([], { relativeTo: this.route, queryParams: { game: null }, queryParamsHandling: 'merge', replaceUrl: true });
     if (this.live && this.live.plan.gameId !== g) {
       this.pendingGame = g;
-      this.askingRestart = true;
+      if (!this.engine?.rounds.length) this.restart(); // nothing bet yet: just switch
+      else this.askingRestart = true; // bets placed: ask first (the session is saved)
     } else if (!this.live) {
       this.gameId = g;
     }
@@ -362,6 +367,7 @@ export class CoachPage implements OnDestroy {
     this.live = { v: 2, uid: this.uid, casino, system: 'neural', plan, tableUrl, startedAt: now,
       nextCheckinAt: now + 20 * MIN, events: [] };
     this.burstDone = false;
+    this.notice = null;
     this.engine = this.makeEngine(this.live);
     this.endReason = null;
     this.stopSign = null;
@@ -497,11 +503,24 @@ export class CoachPage implements OnDestroy {
   came(side: string | null) {
     if (!this.live || !this.engine || this.stage !== 'live' || this.stopSign || this.thinking) return;
     this.live.events.push({ t: 'round', side });
+    const t0 = this.engine.targetReached;
+    const h0 = this.engine.halfwayReached;
     const r = this.engine.applySide(side);
     this.persist();
     if (!r) return;
     this.pop(r.net !== 0 ? formatMoney(r.net, this.cur, true) : 'Push', r.result === 'won' ? 'won' : r.net < 0 ? 'lost' : 'void');
     this.buzz(r.result === 'won' ? 20 : r.net < 0 ? [40, 60, 40] : 10);
+
+    // Calm notices – they never stop the session.
+    if (!t0 && this.engine.targetReached) {
+      this.notice = 'target';
+      setTimeout(() => {
+        const card = document.querySelector<HTMLElement>('app-coach .signal-card');
+        if (card) coinBurst(card, 16, this.symbol.slice(0, 2) || '♠');
+      }, 120);
+    } else if (!h0 && this.engine.halfwayReached) {
+      this.notice = 'halfway';
+    }
 
     const hit = this.engine.check();
     if (hit === 'change-table') {
@@ -678,6 +697,7 @@ export class CoachPage implements OnDestroy {
   get hint(): string {
     if (!this.live || !this.engine || !this.signal) return '';
     const sig = this.signal;
+    if (this.engine.targetReached) return 'Riding the win – every win adds to it, the first miss cashes you out on top.';
     if (sig.ifMiss === 'stop') return 'Calm and exact – place this bet as shown.';
     if (this.net > 0 && this.targetPct >= 60) return `${this.targetPct}% of your target – almost there!`;
     if (this.net > 0) return `${this.targetPct}% of the way to your target. Keep following the signal.`;

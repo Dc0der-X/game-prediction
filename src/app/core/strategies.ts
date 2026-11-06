@@ -141,14 +141,15 @@ export function ladderFitsTable(unit: number, t: TableLimits): boolean {
  * Ladder size for today's amount at this table. Same book proportions (1.5 : 2.5 : 4 : 6 : 10.5 : 15 : 22.5 : 30),
  * scaled so every bet can be placed with the table's chips – e.g. $1 chips → 3, 5, 8, 12, 21, 30, 45, 60.
  *   1. the biggest size whose whole ladder fits in the amount twice over (as before);
- *   2. otherwise the smallest size whose first table (three bets) fits inside the 10% safety limit;
+ *   2. otherwise the smallest size whose first two tables (three bets each) fit inside the safety limit;
  *   3. otherwise the amount is too small for this table.
  */
 export function ladderFor(amount: number, t: TableLimits = DEFAULT_LIMITS): LadderFit {
   const units = tableUnits(t);
   const roomy = units.filter((u) => u * NEURAL_BANKROLL_UNITS * 2 <= amount + 1e-9);
   if (roomy.length) return { unit: roomy[roomy.length - 1], tight: false, needAmount: 0 };
-  const firstTable = (u: number) => (NEURAL_SERIES[0] + NEURAL_SERIES[1] + NEURAL_SERIES[2]) * u;
+  // Room for two fresh tables (3 bets each) inside the safety limit, so one bad start never ends a session.
+  const firstTable = (u: number) => 2 * (NEURAL_SERIES[0] + NEURAL_SERIES[1] + NEURAL_SERIES[2]) * u;
   const safety = amount * SESSION_LIMITS.safetyShare;
   const tight = units.find((u) => firstTable(u) <= safety + 1e-9);
   if (tight !== undefined) return { unit: tight, tight: true, needAmount: 0 };
@@ -529,9 +530,14 @@ export const SESSION_LIMITS = {
   profitLockLosses: 2,
   /** This many losses in a row: move to a fresh table. */
   changeTableLosses: 3,
-  /** Neural Signals: profit target and safety limit as shares of today's amount. */
+  /**
+   * Neural Signals: profit target and safety limit as shares of today's amount (chosen from 4.8M
+   * simulated sessions – see README "Session rules"). The target is a cue, not a wall: once it is hit
+   * the player keeps riding while it wins and cashes out at the first miss after it. Half the safety
+   * limit brings a calm notice, never a stop.
+   */
   targetShare: 0.05,
-  safetyShare: 0.1,
+  safetyShare: 0.2,
   /** Default session length in minutes. */
   sessionMinutes: 30,
   unitPct: 0.02,

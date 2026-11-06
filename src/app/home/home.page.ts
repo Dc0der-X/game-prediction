@@ -96,7 +96,7 @@ export class HomePage implements AfterViewInit, OnDestroy {
     },
     {
       q: 'Why does it tell me to cash out?',
-      a: 'Because the best sessions end on top. When your target is hit – or you are well up and the table cools – the coach tells you to cash out, so the win stays yours. Every bet also stays inside a safety limit, so one session never decides your week.',
+      a: 'Because the best sessions end on top. When your target is hit you can cash out – or keep riding while it wins, and the first miss after it cashes you out with the win locked in. Every bet stays inside a safety limit, so one session never decides your week.',
     },
     {
       q: 'How much does it cost?',
