@@ -3,7 +3,7 @@ import { FormBuilder, Validators } from '@angular/forms';
 import { Firestore, addDoc, collection } from '@angular/fire/firestore';
 import { AccountService } from '../core/account.service';
 import { environment } from 'src/environments/environment';
-import { GAMES, getBet, pct } from '../core/games';
+import { GAMES, SIGNAL_GAMES, getBet, pct } from '../core/games';
 import { FREE_FEATURES, PLANS, PRICING, PRO_FEATURES, perDay, savingVsDay } from '../core/pricing';
 import { FeedItem, SessionsService } from '../core/sessions.service';
 import { THEMES, ThemeService } from '../core/theme.service';
@@ -22,6 +22,7 @@ export class HomePage {
 
   menuOpen = false;
   games = GAMES;
+  signalGames = SIGNAL_GAMES.map((id) => getGame(id)!);
   rules = TABLE_RULES;
   pricing = PRICING;
   plans = PLANS;
@@ -46,7 +47,7 @@ export class HomePage {
     },
     {
       q: 'Which games does it work with?',
-      a: 'Roulette (red/black), Baccarat (player/banker), Dragon Tiger, Sic Bo (small/big) and Craps (pass/don\'t pass) – at any online or land-based casino.',
+      a: 'Baccarat (player/banker), Craps (pass/don\'t pass), Roulette (red/black) and Sic Bo (small/big) – at any online or land-based casino. Dragon Tiger is on the free practice tables.',
     },
     {
       q: 'Why does it tell me to cash out?',

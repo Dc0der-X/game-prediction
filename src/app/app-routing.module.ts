@@ -5,7 +5,7 @@ import { environment } from '../environments/environment';
 
 const routes: Routes = [
   { path: '', redirectTo: 'home', pathMatch: 'full' },
-  { path: 'home', data: { title: 'Win smarter. Keep more.', description: 'Signals for every bet at your live table – side, amount and the moment to cash out. Roulette, Baccarat, Craps, Dragon Tiger, Sic Bo. Free for 3 hours.' }, loadChildren: () => import('./home/home.module').then((m) => m.HomePageModule) },
+  { path: 'home', data: { title: 'Win smarter. Keep more.', description: 'Signals for every bet at your live table – side, amount and the moment to cash out. Baccarat, Craps, Roulette, Sic Bo. Free for 3 hours.' }, loadChildren: () => import('./home/home.module').then((m) => m.HomePageModule) },
   { path: 'terms', data: { title: 'Terms of Use', description: 'TableWise terms of use, payments and responsible play.' }, loadChildren: () => import('./terms/terms.module').then((m) => m.TermsPageModule) },
 
   // Open to everyone – practice is the hook.

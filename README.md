@@ -71,14 +71,25 @@ Every player gets the same signals; there is no strategy to pick and nothing to 
    from the amount: $1 up to $919 (bets 1.5 · 2.5 · 4 · 6 · 10.5 · 15 · 22.5 · 30), $5 from $920 (7.5 · 12.5 · 20 · 30 ·
    52.5 · 75 · 112.5 · 150), then $10, $25, $50, $100. Up one step after a miss; down one after a win, down two after
    two wins in a row or two of the last three. Every signal shows the change from the last bet (▲ +1 / ▼ −1.5 / = same).
-3. **Session rules (same for every game):** profit target **+10%** of the amount → cash out; once well up (60% of the
-   target), 2 misses in a row → cash out on top; **3 misses in a row → fresh table** (ladder back to step 1, totals
-   carry on); **safety limit 20%** of the amount – no bet can go past it. Check-in every 15 minutes, one session a day.
+3. **Session rules (same for every game), final:** profit target **+5%** of the amount → cash out; **lock in
+   profit** – once halfway to the target, cash out as soon as half of the best point is given back; **3 misses in a
+   row → fresh table** (ladder back to step 1, totals carry on); **safety limit 10%** of the amount – no bet can go
+   past it; **30-minute sessions**, one a day, check-in every 15 minutes. Signals for **Baccarat, Craps, Roulette and
+   Sic Bo**; Dragon Tiger is practice-only (ties cost half the bet – clearly the weakest game for players).
 
-Target and limit were chosen by simulation (8,000 sessions per game per setting, $200, $1 chip, 45 minutes):
-+10% / 20% gave the highest share of winning sessions on every game – Baccarat 55%, Craps 55%, Dragon Tiger 53%,
-Sic Bo 51%, Roulette 49% – with the smallest average cost (about −$1 to −$4 per $200 session). Averages stay
-slightly negative, as with any system on a house-edge game. Code: `NeuralSystem` in `src/app/core/strategies.ts`, `SignalEngine` in
+Chosen from 1.6 million simulated sessions (12 stop designs × 5 games, $200, real game engines). Against the previous
++10% / 20% / 45-minute rules the final ones end more sessions up (Baccarat 56% → 70%), halve the average cost, cap the
+worst session at −$20 and make the worst month in ten about 40% smaller. Final rules, 20,000 sessions per game:
+
+| Game | Sessions ending up | Avg winning session | Avg losing session | Average session | Weeks ahead | Months ahead |
+|---|---|---|---|---|---|---|
+| Baccarat | 70% | +$5.49 | −$14.27 | −$0.43 | 49% | 42% |
+| Craps | 70% | +$5.38 | −$14.37 | −$0.57 | 47% | 39% |
+| Roulette | 64% | +$5.11 | −$11.66 | −$0.92 | 42% | 31% |
+| Sic Bo | 66% | +$5.19 | −$13.35 | −$1.02 | 40% | 29% |
+
+Averages stay slightly negative – no stop rule removes the house edge; the rules make wins frequent and losses small
+and capped. Code: `NeuralSystem` in `src/app/core/strategies.ts`, `SignalEngine` in
 `src/app/core/signals.ts`.
 
 ---

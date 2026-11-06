@@ -279,6 +279,9 @@ function settleCraps(bet: string, o: Outcome): number {
 /* Game table                                                          */
 /* ------------------------------------------------------------------ */
 
+/** Games the Signal Room gives real-money signals for, best first (by simulated results). */
+export const SIGNAL_GAMES: GameId[] = ['baccarat', 'craps', 'roulette', 'sicbo'];
+
 export const GAMES: GameDef[] = [
   {
     id: 'baccarat',

@@ -445,24 +445,31 @@ export const TABLE_RULES = [
   { title: 'Enter your amount', text: 'Tell the coach what you are playing with today. It sets every bet, your profit target and your safety limit from it.' },
   { title: 'Tap what came', text: 'Tap the last result at your live table. The coach shows where to bet next and exactly how much – up or down from the last bet.' },
   { title: 'Ride the runs', text: 'When a side keeps coming, the signal goes with it. When the table swings, the signal swings with it.' },
-  { title: 'Cash out on top', text: 'Hit your target and cash out. Once you are well up, 2 misses in a row also means cash out – the profit is yours.' },
+  { title: 'Cash out on top', text: 'Hit your target and cash out. Once you are halfway there, giving back half of your best means cash out – the profit is yours.' },
   { title: 'Fresh table after 3', text: 'Three misses in a row: hop to a fresh table. The ladder starts again at step 1 and your totals carry on.' },
 ]
 
 export const SESSION_LIMITS = {
   /** A STOP check-in appears every this many minutes during a session. */
   checkinMinutes: 5,
-  /** After a big profit (this share of the target or more), 2 losses in a row ends the session. */
-  profitLockAt: 0.6,
+  /**
+   * Lock in profit: once the session has been up by this share of the target, cash out as soon as
+   * half of the best point is given back (chosen by simulation – see README "Session rules").
+   */
+  profitLockAt: 0.5,
+  profitLockGiveBack: 0.5,
+  /** Kept for older screens (misses shown on the practice table). */
   profitLockLosses: 2,
   /** This many losses in a row: move to a fresh table. */
   changeTableLosses: 3,
   /** Neural Signals: profit target and safety limit as shares of today's amount. */
-  targetShare: 0.1,
-  safetyShare: 0.2,
+  targetShare: 0.05,
+  safetyShare: 0.1,
+  /** Default session length in minutes. */
+  sessionMinutes: 30,
   unitPct: 0.02,
-  stopWinUnits: 5, // +10% of bankroll
-  stopLossUnits: 10, // -20% of bankroll
+  stopWinUnits: 5, // older plans only
+  stopLossUnits: 10, // older plans only
   minMinutes: 10,
   maxMinutes: 20,
   defaultMinutes: 15,

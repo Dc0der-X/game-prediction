@@ -46,5 +46,5 @@ export const PRO_FEATURES = [
   'Your session plan from the amount you bring',
   'Cash-out alerts the moment your target is hit',
   'Session history and your winnings wall',
-  'All 5 live games: Baccarat, Craps, Roulette, Sic Bo, Dragon Tiger',
+  'Signals for Baccarat, Craps, Roulette and Sic Bo'
 ];

@@ -6,7 +6,8 @@
  * Every player gets Neural Signals: the SOS side rule (Same, Opposite, Same)
  * with the 8-step ladder. The same session rules apply to everyone:
  *   target reached          → cash out
- *   well up, 2 losses       → cash out (keep the profit)
+ *   halfway up, then half   → cash out (keep the profit)
+ *   of the best given back
  *   3 losses in a row       → move to a fresh table (ladder back to step 1)
  *   safety limit reached    → session complete
  * Every bet is capped so a session never goes past its safety limit.
@@ -195,7 +196,8 @@ export class SignalEngine {
   check(): StopReason | null {
     if (this.net >= this.stopWin - 0.001) return 'stop-win';
     if (this.net <= -this.stopLoss + 0.001) return 'stop-loss';
-    if (this.inBigProfit && this.net > 0 && this.streak >= SESSION_LIMITS.profitLockLosses) return 'profit-lock';
+    // Lock in profit: halfway to the target, then half of the best point given back → cash out.
+    if (this.inBigProfit && this.net <= this.peak * (1 - SESSION_LIMITS.profitLockGiveBack)) return 'profit-lock';
     if (this.streak >= SESSION_LIMITS.changeTableLosses) return 'change-table';
     return null;
   }

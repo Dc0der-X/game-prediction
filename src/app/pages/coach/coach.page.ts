@@ -11,7 +11,7 @@ import { ConfettiComponent } from '../../shared/confetti.component';
 import { NeuralFieldComponent } from '../../shared/neural-field.component';
 import { AccountService } from '../../core/account.service';
 import { EndReason, SessionsService } from '../../core/sessions.service';
-import { GAMES, GameDef, getBet, getGame } from '../../core/games';
+import { GameDef, SIGNAL_GAMES, getBet, getGame } from '../../core/games';
 import { SESSION_LIMITS, SessionPlan, planNeural } from '../../core/strategies';
 import { Goal, goalProgress } from '../../core/goal';
 import { Signal, SignalEngine, SignalEvent, SystemId, VOID_RESULT } from '../../core/signals';
@@ -72,10 +72,11 @@ export class CoachPage implements OnDestroy {
   excludedUntil: Date | null = null;
   uid = '';
 
-  games = GAMES;
+  /** Real-money signals on the four best games (Dragon Tiger stays practice-only: its ties cost half the bet). */
+  games = SIGNAL_GAMES.map((id) => getGame(id)!);
   limits = SESSION_LIMITS;
   quickAmounts = [100, 200, 500, 1000];
-  minuteOptions = [30, 45, 60];
+  minuteOptions = [20, 30, 45];
 
   gameId = 'baccarat';
   system: SystemId = 'neural';
@@ -83,7 +84,7 @@ export class CoachPage implements OnDestroy {
   tableUrl = '';
   casinoSuggestions = ['Evolution live tables', 'Ezugi', 'Pragmatic Play Live', 'Playtech Live', 'Other online casino', 'Land-based casino'];
   bankroll: number | null = null;
-  minutes = 45;
+  minutes = SESSION_LIMITS.sessionMinutes;
 
   live: LiveState | null = null;
   engine: SignalEngine | null = null;
@@ -577,7 +578,7 @@ export class CoachPage implements OnDestroy {
   get finalReason(): string {
     switch (this.endReason) {
       case 'stop-win': return 'Target hit!';
-      case 'profit-lock': return "You're ahead – lock it in.";
+      case 'profit-lock': return this.net > 0 ? "You're ahead – lock it in." : 'Session complete.';
       case 'stop-loss': return 'Safety limit reached – the rest of your amount is kept for next time.';
       case 'change-table': return 'Session complete.';
       case 'time': return "Time's up.";
