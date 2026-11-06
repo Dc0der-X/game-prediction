@@ -3,8 +3,8 @@
   <div class="tw-page live tw-casino-floor" *ngIf="game">
     <div class="head">
       <div>
-        <p class="tw-eyebrow"><span class="live-dot"></span> Live practice · play money</p>
-        <h1>{{ game.name }} <small>Round {{ round }} · dealer {{ dealer.name }}</small></h1>
+        <p class="tw-eyebrow">Practice table · play money</p>
+        <h1>{{ game.name }} <small>Round {{ round }} · {{ dealer.tableTitle }}</small></h1>
       </div>
       <div class="balance">
         <span class="tw-muted tw-small">Balance</span>

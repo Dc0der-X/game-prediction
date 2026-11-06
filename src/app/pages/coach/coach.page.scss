@@ -7,7 +7,7 @@
     radial-gradient(60% 40% at 100% 100%, var(--tw-glow-3), transparent 70%),
     var(--tw-bg);
 }
-.field-wrap { position: fixed; inset: 0; z-index: 0; opacity: 0.9; }
+.field-wrap { position: fixed; inset: 0; z-index: 0; opacity: 0.75; }
 .front { position: relative; z-index: 1; }
 
 .center { text-align: center; padding: 36px 20px; }

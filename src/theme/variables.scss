@@ -3,42 +3,47 @@
 //   Clean Pro (light)    – white and royal blue: minimal, professional, trustworthy.
 // Areas that are always a casino floor (live studio, felt) stay dark in both themes.
 :root {
-  /* Brand tokens – Elite Dark */
-  --tw-bg: #09080a;
-  --tw-bg-2: #0f0d0c;
-  --tw-card: #141210;
-  --tw-card-2: #1d1a16;
-  --tw-felt: #15110d;
-  --tw-felt-2: #2a2116;
-  --tw-line: rgba(226, 184, 92, 0.13);
-  --tw-line-strong: rgba(226, 184, 92, 0.28);
-  --tw-text: #f7f2e8;
-  --tw-muted: #a99f8e;
-  --tw-gold: #e2b85c;
-  --tw-gold-2: #f5d791;
-  --tw-red: #ff4d6d;
-  --tw-blue: #4f7dff;
-  --tw-green: #2fe08f;
+  /* Brand tokens – Elite Dark (TableWise Elite Dark design system) */
+  --tw-bg: #090a0d;
+  --tw-bg-2: #101216;
+  --tw-card: #15191f;
+  --tw-card-2: #1b2028;
+  --tw-inset: #0d1015;
+  --tw-felt: #101216;
+  --tw-felt-2: #1b2028;
+  --tw-line: #303640;
+  --tw-line-strong: #555d68;
+  --tw-text: #f5f2eb;
+  --tw-muted: #b8b5ae;
+  --tw-faint: #858991;
+  --tw-gold: #d6ad62;
+  --tw-gold-2: #f0cf87;
+  --tw-gold-muted: #8d7040;
+  --tw-red: #f05261;
+  --tw-blue: #4b8deb;
+  --tw-green: #36b889;
+  --tw-warning: #e7a94b;
   --tw-black: #24262b;
   --tw-radius: 16px;
   --tw-font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --tw-display: 'Sora', 'Inter', system-ui, sans-serif;
   --tw-mono: 'JetBrains Mono', ui-monospace, monospace;
   --tw-violet: #8b6cff;
-  --tw-money: #f5c76a;
+  --tw-money: #f0cf87;
   /* Accent as r,g,b for glows: rgba(var(--tw-accent-rgb), .4) */
-  --tw-accent-rgb: 226, 184, 92;
+  --tw-accent-rgb: 214, 173, 98;
   /* "Ink" as r,g,b for soft overlays and hairlines: white on dark, navy on light */
   --tw-ink-rgb: 255, 255, 255;
   /* Text on accent-coloured buttons */
-  --tw-on-accent: #1a1205;
-  --tw-accent-grad: linear-gradient(180deg, #f0cc78, #c99a3f);
-  --tw-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
-  --tw-glow-2: rgba(226, 184, 92, 0.10);
-  --tw-glow-3: rgba(255, 214, 140, 0.06);
+  --tw-on-accent: #17130b;
+  --tw-accent-grad: linear-gradient(180deg, #e2bc72, #d6ad62);
+  --tw-shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
+  --tw-focus: 0 0 0 2px #090a0d, 0 0 0 4px #f0cf87;
+  --tw-glow-2: rgba(214, 173, 98, 0.08);
+  --tw-glow-3: rgba(240, 207, 135, 0.04);
   /* Glass panels, header bar, and soft status text (readable on the theme's background) */
-  --tw-glass: rgba(22, 19, 16, 0.78);
-  --tw-header-bg: rgba(9, 8, 10, 0.9);
+  --tw-glass: rgba(21, 25, 31, 0.86);
+  --tw-header-bg: rgba(16, 18, 22, 0.94);
   --tw-pos-text: #8ff0c0;
   --tw-neg-text: #ff9bab;
   --tw-info-text: #b9d3ff;
@@ -47,21 +52,21 @@
   /* Ionic base */
   --ion-font-family: var(--tw-font);
   --ion-background-color: var(--tw-bg);
-  --ion-background-color-rgb: 9, 8, 10;
+  --ion-background-color-rgb: 9, 10, 13;
   --ion-text-color: var(--tw-text);
-  --ion-text-color-rgb: 247, 242, 232;
+  --ion-text-color-rgb: 245, 242, 235;
   --ion-toolbar-background: var(--tw-bg);
   --ion-item-background: var(--tw-card);
   --ion-border-color: var(--tw-line);
-  --ion-placeholder-color: #7d7466;
+  --ion-placeholder-color: #858991;
 
   /** primary – gold **/
-  --ion-color-primary: #e2b85c;
-  --ion-color-primary-rgb: 226, 184, 92;
-  --ion-color-primary-contrast: #1a1205;
-  --ion-color-primary-contrast-rgb: 26, 18, 5;
-  --ion-color-primary-shade: #c7a251;
-  --ion-color-primary-tint: #e5bf6c;
+  --ion-color-primary: #d6ad62;
+  --ion-color-primary-rgb: 214, 173, 98;
+  --ion-color-primary-contrast: #17130b;
+  --ion-color-primary-contrast-rgb: 23, 19, 11;
+  --ion-color-primary-shade: #bc9856;
+  --ion-color-primary-tint: #dab572;
 
   /** secondary – felt green **/
   --ion-color-secondary: #13603f;
@@ -137,6 +142,8 @@
   --tw-gold: #1d4ed8; --tw-gold-2: #1e40af; --tw-accent-rgb: 29, 78, 216;
   --tw-red: #e11d48; --tw-blue: #2563eb; --tw-green: #059669; --tw-money: #b7791f; --tw-violet: #6d28d9;
   --tw-ink-rgb: 15, 23, 42;
+  --tw-inset: #f1f4f9; --tw-faint: #64748b; --tw-gold-muted: #93a4c8; --tw-warning: #b45309;
+  --tw-focus: 0 0 0 2px #ffffff, 0 0 0 4px #1d4ed8;
   --tw-on-accent: #ffffff;
   --tw-accent-grad: linear-gradient(180deg, #2b5ff0, #1d4ed8);
   --tw-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
@@ -155,12 +162,13 @@
 /* Casino floor: always dark, whatever the theme (live studio, felt tables, dealer frames). */
 .tw-casino-floor {
   --tw-ink-rgb: 255, 255, 255;
-  --tw-text: #f7f2e8; --tw-muted: #c9bfae;
-  --tw-gold: #e2b85c; --tw-gold-2: #f5d791; --tw-accent-rgb: 226, 184, 92; --tw-on-accent: #1a1205;
-  --tw-red: #ff4d6d; --tw-blue: #4f7dff; --tw-green: #2fe08f; --tw-money: #f5c76a;
-  --tw-card: #141210; --tw-card-2: #1d1a16; --tw-felt: #15110d; --tw-felt-2: #2a2116;
-  --tw-glass: rgba(22, 19, 16, 0.78);
+  --tw-text: #f5f2eb; --tw-muted: #b8b5ae; --tw-faint: #858991;
+  --tw-gold: #d6ad62; --tw-gold-2: #f0cf87; --tw-accent-rgb: 214, 173, 98; --tw-on-accent: #17130b;
+  --tw-accent-grad: linear-gradient(180deg, #e2bc72, #d6ad62); --tw-focus: 0 0 0 2px #090a0d, 0 0 0 4px #f0cf87;
+  --tw-red: #f05261; --tw-blue: #4b8deb; --tw-green: #36b889; --tw-money: #f0cf87;
+  --tw-card: #15191f; --tw-card-2: #1b2028; --tw-inset: #0d1015; --tw-felt: #101216; --tw-felt-2: #1b2028;
+  --tw-glass: rgba(21, 25, 31, 0.86);
   --tw-pos-text: #8ff0c0; --tw-neg-text: #ff9bab; --tw-info-text: #b9d3ff; --tw-warn-text: #ffe2a3;
-  --tw-line: rgba(226, 184, 92, 0.13); --tw-line-strong: rgba(226, 184, 92, 0.28);
+  --tw-line: #303640; --tw-line-strong: #555d68;
   color: var(--tw-text);
 }

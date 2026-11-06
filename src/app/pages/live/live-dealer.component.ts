@@ -21,16 +21,16 @@ import { CasinoDealer, DealerPhase } from '../../core/dealers';
       <div class="frame" [style.--fx]="dealer.focusX + '%'">
         <div class="cam-rig">
           <video *ngIf="clip; else still" [src]="clip" autoplay muted playsinline [loop]="phase === 'betting'"
-            [attr.aria-label]="dealer.role + ' ' + dealer.name" (error)="clipFailed = true"></video>
+            [attr.aria-label]="dealer.alt" (error)="clipFailed = true"></video>
           <ng-template #still>
-            <img *ngIf="!failed" [src]="dealer.image" [alt]="dealer.role + ' ' + dealer.name"
+            <img *ngIf="!failed" [src]="dealer.image" [alt]="dealer.alt"
               [style.object-position]="dealer.focusX + '% 30%'" (error)="failed = true" />
             <div *ngIf="failed" class="plate-only">{{ dealer.tableName }}</div>
           </ng-template>
         </div>
         <div class="sweep" *ngIf="phase === 'closing'"><span>No more bets</span></div>
         <div class="flash" *ngIf="phase === 'result'"></div>
-        <span class="cam"><i></i> LIVE</span>
+        <span class="cam"><i></i> PRACTICE</span>
         <span class="tag">{{ dealer.tableName }}</span>
       </div>
       <div class="bubble" *ngIf="line">{{ line }}</div>
@@ -69,9 +69,7 @@ import { CasinoDealer, DealerPhase } from '../../core/dealers';
     .plate-only { height: 100%; display: grid; place-items: center; color: #e9c873; font: 700 28px/1 Georgia, serif; letter-spacing: .12em; }
     .cam { position: absolute; top: 10px; left: 10px; z-index: 2; padding: 3px 8px; border-radius: 6px; background: rgba(0,0,0,.55);
       color: #fff; font-size: 11px; font-weight: 800; letter-spacing: .1em; }
-    .cam i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #ff3b4e; margin-right: 4px; box-shadow: 0 0 8px #ff3b4e;
-      animation: rec 1.6s ease-in-out infinite; }
-    @keyframes rec { 50% { opacity: .35; } }
+    .cam i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #f0cf87; margin-right: 4px; }
     .tag { position: absolute; bottom: 10px; left: 10px; z-index: 2; padding: 3px 10px; border-radius: 6px; background: linear-gradient(180deg, #e9c873, #b8913c);
       color: #1a1205; font-size: 12px; font-weight: 800; letter-spacing: .12em; }
     .bubble { position: absolute; left: 50%; top: -8px; transform: translate(-50%, -100%); z-index: 3; white-space: nowrap; padding: 8px 14px;
@@ -80,7 +78,7 @@ import { CasinoDealer, DealerPhase } from '../../core/dealers';
     .bubble::after { content: ''; position: absolute; left: 50%; bottom: -7px; border: 7px solid transparent; border-top-color: #fff; border-bottom: 0; transform: translateX(-50%); }
     @keyframes pop { from { transform: translate(-50%, -90%) scale(.9); opacity: 0; } }
     @media (prefers-reduced-motion: reduce) {
-      .cam-rig, img, .cam i, .sweep span, .flash { animation: none !important; transition: none !important; }
+      .cam-rig, img, .sweep span, .flash { animation: none !important; transition: none !important; }
       .cam-rig { transform: none !important; }
     }
   `],

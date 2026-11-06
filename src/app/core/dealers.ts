@@ -16,6 +16,10 @@ export interface CasinoDealer {
   role: string;
   visualIdentity: string;
   tableName: string;
+  /** Table title shown in the lobby and on the table ("Sofia's Table"). */
+  tableTitle: string;
+  /** Image description for screen readers. */
+  alt: string;
   /** Tables this dealer runs. */
   games: GameId[];
   /** Horizontal focus of the photo (object-position x, %): keeps her face centred when cropped. */
@@ -35,6 +39,8 @@ export const CASINO_DEALERS: CasinoDealer[] = [
     role: 'Casino Dealer',
     visualIdentity: 'Brunette, long dark hair, elegant black and gold casino uniform',
     tableName: 'SOFIA',
+    tableTitle: "Sofia's Table",
+    alt: 'Sofia, casino dealer in a black and gold uniform',
     games: ['roulette'],
     focusX: 50,
   },
@@ -45,6 +51,8 @@ export const CASINO_DEALERS: CasinoDealer[] = [
     role: 'Casino Dealer',
     visualIdentity: 'Brunette, wavy brown hair, elegant red casino uniform',
     tableName: 'MAYA',
+    tableTitle: "Maya's Table",
+    alt: 'Maya, casino dealer in a red casino uniform',
     games: ['baccarat'],
     focusX: 42,
   },
@@ -55,6 +63,8 @@ export const CASINO_DEALERS: CasinoDealer[] = [
     role: 'Casino Dealer',
     visualIdentity: 'Blonde hair, sophisticated black and gold casino uniform',
     tableName: 'ELENA',
+    tableTitle: "Elena's Table",
+    alt: 'Elena, casino dealer in a black and gold uniform',
     games: ['dragon-tiger'],
     focusX: 45,
   },
@@ -65,6 +75,8 @@ export const CASINO_DEALERS: CasinoDealer[] = [
     role: 'Casino Dealer',
     visualIdentity: 'Dark hair, elegant black and red casino uniform',
     tableName: 'LINA',
+    tableTitle: "Lina's Table",
+    alt: 'Lina, casino dealer in a black and red uniform',
     games: ['sicbo', 'craps'],
     focusX: 50,
   },
