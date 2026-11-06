@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 
-export type ThemeId = 'neon' | 'royal' | 'emerald' | 'ember';
+/** elite = Elite Dark (default), clean = Clean Pro (light). */
+export type ThemeId = 'elite' | 'clean';
 
 export interface ThemeOption {
   id: ThemeId;
@@ -10,26 +11,32 @@ export interface ThemeOption {
   swatch: [string, string];
 }
 
-/** Colour moods – people pick the one that feels like theirs. */
 export const THEMES: ThemeOption[] = [
-  { id: 'neon', name: 'Neon', feel: 'Calm focus', swatch: ['#060912', '#5ce1ff'] },
-  { id: 'royal', name: 'High Roller', feel: 'Luxury & status', swatch: ['#1a0f27', '#f2c869'] },
-  { id: 'emerald', name: 'Classic', feel: 'Casino comfort', swatch: ['#0d4a33', '#e8c26a'] },
-  { id: 'ember', name: 'Ember', feel: 'Bold energy', swatch: ['#3a1414', '#ff9b45'] },
+  { id: 'elite', name: 'Elite Dark', feel: 'Sleek and premium', swatch: ['#09080a', '#e2b85c'] },
+  { id: 'clean', name: 'Clean Pro', feel: 'Light and professional', swatch: ['#f4f6fb', '#1d4ed8'] },
 ];
 
 const KEY = 'tw.theme';
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
-  current: ThemeId = 'neon';
+  current: ThemeId = 'elite';
 
   constructor() {
     let saved: string | null = null;
     try {
       saved = localStorage.getItem(KEY);
     } catch {}
-    this.apply(THEMES.some((t) => t.id === saved) ? (saved as ThemeId) : 'neon');
+    // Older colour moods (neon, royal, emerald, ember) all move to Elite Dark.
+    this.apply(saved === 'clean' ? 'clean' : 'elite');
+  }
+
+  get theme(): ThemeOption {
+    return THEMES.find((t) => t.id === this.current)!;
+  }
+
+  toggle() {
+    this.set(this.current === 'elite' ? 'clean' : 'elite');
   }
 
   set(id: ThemeId) {
@@ -42,9 +49,9 @@ export class ThemeService {
   private apply(id: ThemeId) {
     this.current = id;
     const root = document.documentElement;
-    if (id === 'neon') root.removeAttribute('data-tw-theme');
+    if (id === 'elite') root.removeAttribute('data-tw-theme');
     else root.setAttribute('data-tw-theme', id);
     const bg = getComputedStyle(root).getPropertyValue('--tw-bg').trim();
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg || '#060912');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg || '#09080a');
   }
 }

@@ -93,12 +93,12 @@ import { round2 } from '../../core/strategies';
       background: radial-gradient(120% 120% at 0% 0%, rgba(var(--tw-accent-rgb), .22), transparent 60%), linear-gradient(160deg, var(--tw-felt-2), var(--tw-felt));
       border: 1px solid rgba(var(--tw-accent-rgb), .45); }
     @media (max-width: 640px) { .wall { grid-template-columns: 1fr; } }
-    .won { font-family: var(--tw-mono); font-size: clamp(44px, 9vw, 72px); font-weight: 800; line-height: 1; color: #8ff0c0;
+    .won { font-family: var(--tw-mono); font-size: clamp(44px, 9vw, 72px); font-weight: 800; line-height: 1; color: var(--tw-pos-text);
       text-shadow: 0 0 30px rgba(47, 224, 143, .45); }
     .trophies { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
     .trophies div { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 12px 6px; border-radius: 14px; background: rgba(0,0,0,.25); }
     .trophies strong { font-family: var(--tw-mono); font-size: 22px; color: var(--tw-gold-2); }
-    .trophies span { font-size: 12px; color: rgba(255,255,255,.75); }
+    .trophies span { font-size: 12px; color: rgba(var(--tw-ink-rgb), .75); }
     .chart-card, .list { margin-top: 16px; }
     .chart { width: 100%; height: 180px; display: block; }
     .chart .zero { stroke: var(--tw-line-strong); stroke-dasharray: 4 4; stroke-width: 1; vector-effect: non-scaling-stroke; }

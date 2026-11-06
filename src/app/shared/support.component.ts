@@ -36,10 +36,10 @@ import { environment } from 'src/environments/environment';
     </div>
   `,
   styles: [`
-    .wrap { position: fixed; z-index: 900; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px));
+    .wrap { position: fixed; z-index: 900; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(max(16px, env(safe-area-inset-bottom, 0px)) + var(--tw-tabbar-h, 0px));
       display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
     .fab { height: 52px; min-width: 52px; padding: 0 16px; border-radius: 999px; border: 0; cursor: pointer; display: flex; align-items: center; gap: 8px;
-      background: var(--tw-gold); color: #031019; font: 800 15px/1 var(--tw-font); box-shadow: 0 10px 30px rgba(0,0,0,.45), 0 0 24px rgba(var(--tw-accent-rgb), .35); }
+      background: var(--tw-gold); color: var(--tw-on-accent); font: 800 15px/1 var(--tw-font); box-shadow: 0 10px 30px rgba(0,0,0,.45), 0 0 24px rgba(var(--tw-accent-rgb), .35); }
     .fab span { font-size: 20px; }
     .panel { width: 290px; padding: 16px; border-radius: 18px; background: var(--tw-card); border: 1px solid var(--tw-line-strong);
       box-shadow: 0 24px 60px rgba(0,0,0,.55); display: grid; gap: 8px; animation: up .18s ease-out; }

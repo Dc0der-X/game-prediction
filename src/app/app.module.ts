@@ -5,6 +5,7 @@ import { IonicModule, IonicRouteStrategy } from '@ionic/angular';
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
 import { SupportComponent } from './shared/support.component';
+import { TabbarComponent } from './shared/tabbar.component';
 import { environment } from '../environments/environment';
 import { getApp, initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { provideAuth, getAuth, connectAuthEmulator } from '@angular/fire/auth';
@@ -37,6 +38,7 @@ const FIREBASE = [
     IonicModule.forRoot({ mode: 'ios' }),
     AppRoutingModule,
     SupportComponent,
+    TabbarComponent,
     // The browser-only demo build runs without Firebase.
     ...(environment.demoMode ? [] : FIREBASE),
   ],

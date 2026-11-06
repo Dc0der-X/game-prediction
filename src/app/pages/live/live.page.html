@@ -1,6 +1,6 @@
 <app-topbar></app-topbar>
 <ion-content class="live-bg">
-  <div class="tw-page live" *ngIf="game">
+  <div class="tw-page live tw-casino-floor" *ngIf="game">
     <div class="head">
       <div>
         <p class="tw-eyebrow"><span class="live-dot"></span> Live practice · play money</p>
@@ -16,7 +16,7 @@
 
     <div class="layout">
       <!-- ===== Studio ===== -->
-      <section class="studio">
+      <section class="studio tw-casino-floor">
         <div class="backdrop" aria-hidden="true"></div>
         <div class="dealer-spot"><app-live-dealer [dealer]="dealer" [line]="line" [phase]="phase"></app-live-dealer></div>
 

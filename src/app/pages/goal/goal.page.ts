@@ -142,9 +142,9 @@ interface Pt { x: number; y: number }
     .quick { display: flex; gap: 8px; margin: -4px 0 14px; }
     .quick button { flex: 1; height: 40px; border-radius: 999px; border: 1px solid var(--tw-line-strong); background: transparent;
       color: var(--tw-text); font: 700 15px var(--tw-font); cursor: pointer; }
-    .quick button.on { background: var(--tw-gold); color: #031019; border-color: var(--tw-gold); }
+    .quick button.on { background: var(--tw-gold); color: var(--tw-on-accent); border-color: var(--tw-gold); }
     .go { display: inline-flex; align-items: center; justify-content: center; height: 52px; padding: 0 26px; border-radius: 999px; border: 0;
-      background: linear-gradient(135deg, var(--tw-gold-2), var(--tw-gold)); color: #031019; font: 800 16px var(--tw-font);
+      background: linear-gradient(135deg, var(--tw-gold-2), var(--tw-gold)); color: var(--tw-on-accent); font: 800 16px var(--tw-font);
       text-decoration: none; cursor: pointer; box-shadow: 0 12px 30px rgba(var(--tw-accent-rgb), .3); }
     .go[disabled] { opacity: .5; cursor: default; }
     .link { background: none; border: 0; color: var(--tw-gold); font: inherit; cursor: pointer; padding: 0; }
@@ -157,7 +157,7 @@ interface Pt { x: number; y: number }
     .real { fill: none; stroke: var(--tw-green); stroke-width: 3.5; }
     .dot { fill: var(--tw-green); }
     .end { fill: var(--tw-gold-2); }
-    .goal-line { stroke: rgba(255,255,255,.18); stroke-dasharray: 3 5; }
+    .goal-line { stroke: rgba(var(--tw-ink-rgb), .18); stroke-dasharray: 3 5; }
     .mini-steps { display: grid; gap: 4px; font-family: var(--tw-mono); font-size: 13px; }
     .mini-steps div { display: grid; grid-template-columns: 44px 1fr 1fr 1fr; gap: 8px; color: var(--tw-muted); }
     .mini-steps b { color: var(--tw-green); }
@@ -165,14 +165,14 @@ interface Pt { x: number; y: number }
     .bal { font: 800 46px/1.05 var(--tw-mono); color: var(--tw-gold-2); }
     .gain { color: var(--tw-green); font-weight: 700; font-size: 14px; }
     .ring { --p: 0; width: 92px; height: 92px; border-radius: 50%; flex: none; display: grid; place-items: center;
-      background: conic-gradient(var(--tw-green) calc(var(--p) * 1%), rgba(255,255,255,.08) 0); }
+      background: conic-gradient(var(--tw-green) calc(var(--p) * 1%), rgba(var(--tw-ink-rgb), .08) 0); }
     .ring span { width: 72px; height: 72px; border-radius: 50%; background: var(--tw-card); display: grid; place-items: center;
       font: 800 20px var(--tw-mono); }
-    .bar { height: 10px; border-radius: 999px; background: rgba(255,255,255,.07); overflow: hidden; margin: 16px 0; }
+    .bar { height: 10px; border-radius: 999px; background: rgba(var(--tw-ink-rgb), .07); overflow: hidden; margin: 16px 0; }
     .bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #1db87a, var(--tw-green));
       box-shadow: 0 0 14px rgba(47,224,143,.5); transition: width .6s ease; }
     .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-    .stats div { display: flex; flex-direction: column; padding: 10px; border-radius: 12px; background: rgba(255,255,255,.04); }
+    .stats div { display: flex; flex-direction: column; padding: 10px; border-radius: 12px; background: rgba(var(--tw-ink-rgb), .04); }
     .stats strong { font: 800 22px var(--tw-mono); } .stats span { font-size: 12px; color: var(--tw-muted); }
     .step-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 6px 0 18px; }
     .step-line div { display: flex; flex-direction: column; }

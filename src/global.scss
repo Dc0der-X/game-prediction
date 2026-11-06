@@ -62,7 +62,7 @@ a { color: var(--tw-gold); }
 
 .tw-card.felt {
   background:
-    radial-gradient(120% 90% at 50% 0%, rgba(255, 255, 255, 0.07), transparent 60%),
+    radial-gradient(120% 90% at 50% 0%, rgba(var(--tw-ink-rgb), 0.07), transparent 60%),
     linear-gradient(180deg, var(--tw-felt-2), var(--tw-felt));
   border-color: rgba(var(--tw-accent-rgb), 0.25);
 }
@@ -98,8 +98,8 @@ a { color: var(--tw-gold); }
   white-space: nowrap;
 }
 .tw-pill.gold { background: rgba(var(--tw-accent-rgb), 0.14); border-color: rgba(var(--tw-accent-rgb), 0.4); color: var(--tw-gold-2); }
-.tw-pill.green { background: rgba(52, 181, 120, 0.14); border-color: rgba(52, 181, 120, 0.4); color: #7fe0b0; }
-.tw-pill.red { background: rgba(224, 82, 82, 0.14); border-color: rgba(224, 82, 82, 0.4); color: #f39b9b; }
+.tw-pill.green { background: rgba(52, 181, 120, 0.14); border-color: rgba(52, 181, 120, 0.4); color: var(--tw-pos-text); }
+.tw-pill.red { background: rgba(224, 82, 82, 0.14); border-color: rgba(224, 82, 82, 0.4); color: var(--tw-neg-text); }
 
 /* ---------- Stats ---------- */
 .tw-stats {
@@ -159,7 +159,7 @@ ion-button { --border-radius: 999px; font-weight: 600; text-transform: none; let
 .tone-black { background: var(--tw-black) !important; color: #fff !important; }
 .tone-green { background: var(--tw-green) !important; color: #fff !important; }
 .tone-blue { background: var(--tw-blue) !important; color: #fff !important; }
-.tone-gold { background: var(--tw-gold) !important; color: #031019 !important; }
+.tone-gold { background: var(--tw-gold) !important; color: var(--tw-on-accent) !important; }
 
 /* ---------- Playing cards ---------- */
 .tw-cardface {
@@ -208,3 +208,15 @@ ion-button { --border-radius: 999px; font-weight: 600; text-transform: none; let
 @media (prefers-reduced-motion: reduce) {
   .tw-cardface, .tw-die { animation: none; }
 }
+
+/* ---------- Phone tab bar (shared/tabbar.component) ---------- */
+:root { --tw-tabbar-h: 0px; }
+@media (max-width: 720px) {
+  html.tw-tabbar-on { --tw-tabbar-h: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  html.tw-tabbar-on .tw-page { padding-bottom: calc(64px + var(--tw-tabbar-h)); }
+  html.tw-tabbar-on app-topbar .tabs { display: none; }
+}
+
+/* ---------- Theme polish ---------- */
+.tw-card { box-shadow: var(--tw-shadow); }
+:root[data-tw-theme='clean'] .tw-card.felt { border-color: rgba(var(--tw-accent-rgb), .18); }

@@ -115,7 +115,7 @@ import { environment } from 'src/environments/environment';
     .plan-year { background: linear-gradient(160deg, rgba(245, 199, 106, .14), var(--tw-card) 55%); }
     .plan-month { background: linear-gradient(160deg, rgba(var(--tw-accent-rgb), .12), var(--tw-card) 55%); }
     .badge { position: absolute; top: -11px; left: 18px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 800;
-      letter-spacing: .06em; text-transform: uppercase; background: var(--tw-gold); color: #031019; }
+      letter-spacing: .06em; text-transform: uppercase; background: var(--tw-gold); color: var(--tw-on-accent); }
     .plan-year .badge { background: var(--tw-money); color: #1a1205; }
     .name { font-weight: 700; font-size: 17px; }
     .price { font-family: var(--tw-display); font-size: 46px; font-weight: 800; line-height: 1; }
@@ -132,7 +132,7 @@ import { environment } from 'src/environments/environment';
     .checkout ul { padding-left: 18px; line-height: 1.8; margin: 0; }
     .pay-label { font-size: 13px; color: var(--tw-muted); margin: 0 0 8px; font-weight: 600; }
     .pay-btn { width: 100%; max-width: 380px; height: 54px; border-radius: 999px; border: 0; cursor: pointer;
-      background: linear-gradient(135deg, var(--tw-gold-2), var(--tw-gold)); color: #031019; font: inherit; font-size: 17px; font-weight: 800;
+      background: linear-gradient(135deg, var(--tw-gold-2), var(--tw-gold)); color: var(--tw-on-accent); font: inherit; font-size: 17px; font-weight: 800;
       box-shadow: 0 12px 30px rgba(var(--tw-accent-rgb), .3); }
     .pay-btn[disabled] { opacity: .6; cursor: default; }
     .instant { margin: 10px 0 0; }

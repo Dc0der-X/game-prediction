@@ -74,7 +74,7 @@ import { dealerFor } from '../../core/dealers';
       .dealer-tag { position: absolute; left: 10px; bottom: 10px; z-index: 1; padding: 2px 9px; border-radius: 6px; font-size: 11px; font-weight: 800;
         letter-spacing: .12em; color: #1a1205; background: linear-gradient(180deg, #e9c873, #b8913c); }
       .img { height: 150px; background-size: cover; background-position: center; position: relative; }
-      .img::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(10,19,16,.9)); }
+      .img::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, var(--tw-card)); }
       .rank { position: absolute; top: 10px; left: 10px; z-index: 1; background: rgba(0,0,0,.6);
         padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
       .body { padding: 14px 16px 16px; }

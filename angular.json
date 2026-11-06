@@ -122,7 +122,7 @@
                   "output": "assets/icon"
                 },
                 {
-                  "glob": "{menu-outline,person-circle-outline}.svg",
+                  "glob": "{menu-outline,person-circle-outline,person-circle,sunny-outline,moon-outline,radio-button-on,radio-button-on-outline,flag,flag-outline,grid,grid-outline,time,time-outline}.svg",
                   "input": "node_modules/ionicons/dist/ionicons/svg",
                   "output": "./svg"
                 },
