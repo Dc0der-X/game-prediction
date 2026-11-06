@@ -5,6 +5,7 @@ import { IonicModule } from '@ionic/angular';
 import { TopbarComponent } from '../../shared/topbar.component';
 import { GAMES, getBet } from '../../core/games';
 import { AccountService } from '../../core/account.service';
+import { dealerFor } from '../../core/dealers';
 
 @Component({
   selector: 'app-lobby',
@@ -34,7 +35,10 @@ import { AccountService } from '../../core/account.service';
         <h2 class="section">Tables</h2>
         <div class="tw-grid">
           <a class="table" *ngFor="let g of games; let i = index" [routerLink]="['/live', g.id]">
-            <div class="img" [style.background-image]="'url(' + g.image + ')'"></div>
+            <div class="img" [style.background-image]="'url(' + dealer(g).image + ')'"
+              [style.background-position]="dealer(g).focusX + '% 22%'">
+              <span class="dealer-tag">{{ dealer(g).tableName }}</span>
+            </div>
             <div class="body">
               <div class="tw-row">
                 <h3>{{ g.name }}</h3>
@@ -42,6 +46,7 @@ import { AccountService } from '../../core/account.service';
                 <span class="tw-pill live"><i></i> LIVE</span>
               </div>
               <p class="tw-muted tw-small">{{ g.blurb }}</p>
+              <p class="tw-small">Dealer <strong>{{ dealer(g).name }}</strong></p>
               <p class="tw-small">Signals on <strong class="tw-gold">{{ sidesLabel(g) }}</strong></p>
               <span class="play">Join the live table →</span>
             </div>
@@ -66,7 +71,9 @@ import { AccountService } from '../../core/account.service';
         border: 1px solid var(--tw-line); border-radius: var(--tw-radius); overflow: hidden;
         transition: transform .15s ease, border-color .15s ease; }
       .table:hover { transform: translateY(-3px); border-color: rgba(var(--tw-accent-rgb), .45); }
-      .img { height: 130px; background-size: cover; background-position: center; position: relative; }
+      .dealer-tag { position: absolute; left: 10px; bottom: 10px; z-index: 1; padding: 2px 9px; border-radius: 6px; font-size: 11px; font-weight: 800;
+        letter-spacing: .12em; color: #1a1205; background: linear-gradient(180deg, #e9c873, #b8913c); }
+      .img { height: 150px; background-size: cover; background-position: center; position: relative; }
       .img::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(10,19,16,.9)); }
       .rank { position: absolute; top: 10px; left: 10px; z-index: 1; background: rgba(0,0,0,.6);
         padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
@@ -83,6 +90,10 @@ import { AccountService } from '../../core/account.service';
 export class LobbyPage {
   access$ = inject(AccountService).access$;
   games = GAMES;
+
+  dealer(g: (typeof GAMES)[number]) {
+    return dealerFor(g.id);
+  }
 
   sidesLabel(g: (typeof GAMES)[number]) {
     return (g.sides ?? [g.bestBet]).map((id) => getBet(g, id)!.label).join(' / ');

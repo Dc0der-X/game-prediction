@@ -5,6 +5,7 @@ import { IonicModule } from '@ionic/angular';
 import { Subscription } from 'rxjs';
 import { TopbarComponent } from '../../shared/topbar.component';
 import { LiveDealerComponent } from './live-dealer.component';
+import { CasinoDealer, dealerFor } from '../../core/dealers';
 import { Card, GameDef, Outcome, RANKS, RED_NUMBERS, SUITS, getBet, getGame, isRedSuit, sideOf } from '../../core/games';
 import { NEURAL_BANKROLL_UNITS, SESSION_LIMITS, round2 } from '../../core/strategies';
 import { SignalEngine } from '../../core/signals';
@@ -15,7 +16,6 @@ const BALANCE_KEY = 'tw.practiceBalance';
 const START_BALANCE = 1000;
 /** European wheel, clockwise from 0. */
 const WHEEL = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
-const DEALERS = ['Sofia', 'Maya', 'Elena', 'Lina'];
 
 /** How each game is played – shown in the Rules tab. */
 const RULES: Record<string, string[]> = {
@@ -66,7 +66,7 @@ export class LivePage implements OnDestroy {
   game!: GameDef;
   RANKS = RANKS;
   SUITS = SUITS;
-  dealer = DEALERS[0];
+  dealer!: CasinoDealer;
   line = '';
 
   // Round state
@@ -114,7 +114,7 @@ export class LivePage implements OnDestroy {
       }
       this.game = g;
       this.rules = RULES[g.id] ?? [];
-      this.dealer = DEALERS[Math.floor(Math.random() * DEALERS.length)];
+      this.dealer = dealerFor(g.id);
       this.newSignals(null);
       this.history = [];
       this.startRound();
@@ -328,9 +328,7 @@ export class LivePage implements OnDestroy {
     this.engine.applyOutcome(o);
     const hit = this.engine.check();
     if (hit === 'change-table') {
-      const next = DEALERS[(DEALERS.indexOf(this.dealer) + 1) % DEALERS.length];
-      this.sessionNote = `3 misses in a row – fresh table. ${next} takes over; the ladder starts again at 1.5.`;
-      this.dealer = next;
+      this.sessionNote = `3 misses in a row – fresh table: in real play move to another table. The ladder starts again at 1.5.`;
       this.engine.changeTable(sideOf(this.game, o));
     } else if (hit) {
       const n = this.engine.net;

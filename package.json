@@ -6,7 +6,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "prebuild": "node scripts/dealer-manifest.mjs",
+    "prebuild": "node scripts/check-dealers.mjs",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
@@ -15,7 +15,7 @@
     "start:emulators": "ng serve --configuration emulators --proxy-config proxy.emulators.json --host 0.0.0.0 --disable-host-check",
     "emulators": "firebase emulators:start --only auth,firestore --project demo-tablewise",
     "seed:emulators": "node scripts/seed-emulators.mjs",
-    "prebuild:demo": "node scripts/dealer-manifest.mjs",
+    "prebuild:demo": "node scripts/check-dealers.mjs",
     "build:demo": "ng build --configuration demo",
     "test:rules": "firebase emulators:exec --only firestore --project demo-tablewise \"node --test --test-force-exit test/rules.test.mjs\""
   },

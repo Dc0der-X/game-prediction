@@ -19,7 +19,7 @@
 .backdrop { position: absolute; inset: 0 0 66% 0; pointer-events: none;
   background: radial-gradient(60% 90% at 50% 0%, rgba(255, 214, 140, .22), transparent 70%),
     repeating-linear-gradient(90deg, rgba(255,255,255,.03) 0 2px, transparent 2px 60px); }
-.dealer-spot { position: relative; width: min(240px, 42%); margin: 34px auto -6px; z-index: 2; }
+.dealer-spot { position: relative; width: min(460px, 88%); margin: 48px auto 6px; z-index: 2; }
 .status { position: absolute; top: 14px; right: 14px; z-index: 3; display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px;
   border-radius: 999px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.15); font-size: 13px; letter-spacing: .06em;
   &.ph-closing, &.ph-dealing { padding-left: 12px; border-color: rgba(255, 77, 109, .6); }
@@ -136,7 +136,7 @@
 
 @media (max-width: 560px) {
   .status { position: relative; top: auto; right: auto; width: fit-content; margin: 0 auto; }
-  .dealer-spot { width: 46%; margin-top: 52px; }
+  .dealer-spot { width: 100%; margin-top: 56px; }
   .wheel-wrap { width: min(250px, 72vw); }
   .card { width: 46px; height: 66px; font-size: 18px; }
   .chip { width: 38px; height: 38px; font-size: 12px; }

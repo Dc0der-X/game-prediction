@@ -1,11 +1,14 @@
-# Dealer photos
+# Casino dealers
 
-The live practice tables use real dealer photos from this folder (otherwise an illustrated dealer).
-Either option works – the build finds the files by itself (scripts/dealer-manifest.mjs):
+The official visual references for the four dealers. Each is shown on her own at her own tables
+(registry: `src/app/core/dealers.ts`), never as a collage and never replaced by another picture.
 
-1. **One group photo** – `team.png` (or .jpg / .webp): four dealers side by side in equal panels,
-   left to right **Sofia, Maya, Elena, Lina**. Each dealer is cropped out automatically.
-2. **One photo per dealer** – `sofia.jpg`, `maya.jpg`, `elena.jpg`, `lina.jpg` (portrait, about 3:4,
-   face in the upper third). A single photo wins over the group photo for that dealer.
+| Dealer | File | Tables |
+|---|---|---|
+| Sofia | `sofia_casino_dealer.png` | Roulette |
+| Maya  | `maya_casino_dealer.png`  | Baccarat |
+| Elena | `elena_casino_dealer.png` | Dragon Tiger |
+| Lina  | `lina_casino_dealer.png`  | Sic Bo, Craps |
 
-Use images you have the rights to (your own AI images, your own photos, or licensed stock).
+`scripts/check-dealers.mjs` runs before every build and stops it if an image is missing.
+To change a dealer's look, replace her file with a new image of the same name (landscape, about 3:2).

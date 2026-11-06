@@ -137,7 +137,7 @@
                   "output": "assets"
                 },
                 {
-                  "glob": "*.{jpg,jpeg,png,webp,json}",
+                  "glob": "*.{png,mp4,webm}",
                   "input": "src/assets/dealers",
                   "output": "assets/dealers"
                 }

@@ -4,7 +4,7 @@
     <div class="head">
       <div>
         <p class="tw-eyebrow"><span class="live-dot"></span> Live practice · play money</p>
-        <h1>{{ game.name }} <small>Round {{ round }} · dealer {{ dealer }}</small></h1>
+        <h1>{{ game.name }} <small>Round {{ round }} · dealer {{ dealer.name }}</small></h1>
       </div>
       <div class="balance">
         <span class="tw-muted tw-small">Balance</span>
@@ -18,7 +18,7 @@
       <!-- ===== Studio ===== -->
       <section class="studio">
         <div class="backdrop" aria-hidden="true"></div>
-        <div class="dealer-spot"><app-live-dealer [name]="dealer" [line]="line" [working]="phase === 'dealing'"></app-live-dealer></div>
+        <div class="dealer-spot"><app-live-dealer [dealer]="dealer" [line]="line" [phase]="phase"></app-live-dealer></div>
 
         <div class="status" [ngClass]="'ph-' + phase">
           <svg viewBox="0 0 50 50" class="ring" *ngIf="phase === 'betting'"><circle cx="25" cy="25" r="22" class="track" />

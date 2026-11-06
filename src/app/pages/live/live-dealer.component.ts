@@ -1,122 +1,104 @@
-import { Component, Input, OnChanges } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { NgIf } from '@angular/common';
+import { CasinoDealer, DealerPhase } from '../../core/dealers';
 
 /**
- * Live-table dealer. Uses a real photo when one is in src/assets/dealers (see dealers.json):
- *   - one photo per dealer: sofia.jpg / maya.png / elena.webp / lina.jpg
- *   - or one 4-panel group photo team.(jpg|png|webp): Sofia, Maya, Elena, Lina left to right
- * Otherwise an illustrated croupier (SVG). The dealer "speaks" through a bubble.
+ * Live-table dealer, filmed like a live casino stream: the dealer's own photo from the character
+ * registry with a camera that follows the round –
+ *   betting  slow push-in while bets are placed
+ *   closing  quick move to the dealer's face + "No more bets" sweep
+ *   dealing  camera drops to the table (her hands) and drifts with the action
+ *   result   pulls back to the full shot with a soft light
+ * If a short video clip is listed for her in the registry for a phase, it plays instead.
+ * Never distorted (object-fit: cover); if the photo cannot load her name plate is shown instead.
  */
 @Component({
   selector: 'app-live-dealer',
   standalone: true,
   imports: [NgIf],
   template: `
-    <div class="dealer" [class.working]="working">
-      <img *ngIf="photo && !panel" class="photo" [src]="photo" [alt]="'Dealer ' + name" (error)="photo = null" />
-      <div *ngIf="photo && panel" class="photo panel" role="img" [attr.aria-label]="'Dealer ' + name"
-        [style.background-image]="'url(' + photo + ')'" [style.background-position]="panel"></div>
-      <svg *ngIf="!photo" viewBox="0 0 220 230" role="img" [attr.aria-label]="'Dealer ' + name">
-        <defs>
-          <linearGradient id="skin" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#f1c7a3" /><stop offset="1" stop-color="#d9a57f" /></linearGradient>
-          <linearGradient id="hair" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#3b2418" /><stop offset="1" stop-color="#1e120b" /></linearGradient>
-          <linearGradient id="vest" x1="0" x2="1"><stop offset="0" stop-color="#16181d" /><stop offset="1" stop-color="#262a33" /></linearGradient>
-        </defs>
-        <!-- hair back + bun -->
-        <ellipse cx="110" cy="58" rx="44" ry="48" fill="url(#hair)" />
-        <circle cx="110" cy="14" r="17" fill="url(#hair)" />
-        <!-- neck -->
-        <rect x="98" y="92" width="24" height="24" rx="8" fill="url(#skin)" />
-        <!-- body: shirt, waistcoat, bow tie -->
-        <path d="M40 230 C42 160 70 120 110 116 C150 120 178 160 180 230 Z" fill="#f5f6f8" />
-        <path d="M58 230 C62 175 80 140 100 128 L110 160 L120 128 C140 140 158 175 162 230 Z" fill="url(#vest)" />
-        <circle cx="110" cy="172" r="3" fill="#c9a24a" /><circle cx="110" cy="190" r="3" fill="#c9a24a" /><circle cx="110" cy="208" r="3" fill="#c9a24a" />
-        <path d="M96 118 L110 124 L96 132 Z M124 118 L110 124 L124 132 Z" fill="#b3192e" /><circle cx="110" cy="124" r="4" fill="#8f1224" />
-        <!-- name badge -->
-        <rect x="128" y="160" width="30" height="11" rx="2" fill="#c9a24a" /><text x="143" y="168.5" font-size="7" text-anchor="middle" fill="#1a1205" font-family="sans-serif" font-weight="700">{{ name.toUpperCase() }}</text>
-        <!-- arms -->
-        <g class="arm left"><path d="M52 190 C40 200 38 214 60 222 L92 214" stroke="#f5f6f8" stroke-width="16" fill="none" stroke-linecap="round" /><circle cx="94" cy="213" r="8" fill="url(#skin)" /></g>
-        <g class="arm right"><path d="M168 190 C180 200 182 214 160 222 L128 214" stroke="#f5f6f8" stroke-width="16" fill="none" stroke-linecap="round" /><circle cx="126" cy="213" r="8" fill="url(#skin)" /></g>
-        <!-- face -->
-        <ellipse cx="110" cy="66" rx="33" ry="38" fill="url(#skin)" />
-        <path d="M77 60 C80 30 140 26 143 60 C135 44 118 38 104 40 C92 42 82 50 77 60 Z" fill="url(#hair)" />
-        <g class="eyes"><ellipse cx="97" cy="66" rx="4" ry="4.5" fill="#2b1d16" /><ellipse cx="123" cy="66" rx="4" ry="4.5" fill="#2b1d16" />
-          <circle cx="98.4" cy="64.6" r="1.2" fill="#fff" /><circle cx="124.4" cy="64.6" r="1.2" fill="#fff" /></g>
-        <path d="M90 56 Q97 52 104 56 M116 56 Q123 52 130 56" stroke="#3b2418" stroke-width="2" fill="none" stroke-linecap="round" />
-        <path d="M108 72 Q110 80 112 72" stroke="#c48b66" stroke-width="1.6" fill="none" />
-        <path d="M100 86 Q110 93 120 86" stroke="#a8434f" stroke-width="3" fill="none" stroke-linecap="round" />
-        <circle cx="90" cy="80" r="5" fill="#e79a8f" opacity=".35" /><circle cx="130" cy="80" r="5" fill="#e79a8f" opacity=".35" />
-      </svg>
+    <div class="dealer" *ngIf="dealer" [class]="'dealer ph-' + phase">
+      <div class="frame" [style.--fx]="dealer.focusX + '%'">
+        <div class="cam-rig">
+          <video *ngIf="clip; else still" [src]="clip" autoplay muted playsinline [loop]="phase === 'betting'"
+            [attr.aria-label]="dealer.role + ' ' + dealer.name" (error)="clipFailed = true"></video>
+          <ng-template #still>
+            <img *ngIf="!failed" [src]="dealer.image" [alt]="dealer.role + ' ' + dealer.name"
+              [style.object-position]="dealer.focusX + '% 30%'" (error)="failed = true" />
+            <div *ngIf="failed" class="plate-only">{{ dealer.tableName }}</div>
+          </ng-template>
+        </div>
+        <div class="sweep" *ngIf="phase === 'closing'"><span>No more bets</span></div>
+        <div class="flash" *ngIf="phase === 'result'"></div>
+        <span class="cam"><i></i> LIVE</span>
+        <span class="tag">{{ dealer.tableName }}</span>
+      </div>
       <div class="bubble" *ngIf="line">{{ line }}</div>
     </div>
   `,
   styles: [`
-    .dealer { position: relative; width: 100%; max-width: 230px; margin: 0 auto; }
-    svg { display: block; width: 100%; height: auto; filter: drop-shadow(0 18px 30px rgba(0,0,0,.45)); }
-    .eyes { animation: blink 5s infinite; transform-origin: 110px 66px; }
-    @keyframes blink { 0%, 95%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
-    .arm { transition: transform .4s ease; }
-    .working .arm.right { animation: deal 1s ease-in-out infinite; transform-origin: 168px 190px; }
-    .working .arm.left { animation: deal 1s ease-in-out infinite .5s; transform-origin: 52px 190px; }
-    @keyframes deal { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-9deg) translateY(-4px); } }
-    .photo { display: block; width: 100%; aspect-ratio: 3 / 4; object-fit: cover; object-position: top center; border-radius: 18px 18px 0 0;
-      -webkit-mask-image: linear-gradient(180deg, #000 78%, transparent); mask-image: linear-gradient(180deg, #000 78%, transparent);
-      filter: drop-shadow(0 18px 30px rgba(0,0,0,.45)); animation: breathe 5s ease-in-out infinite; transform-origin: 50% 100%; }
+    .dealer { position: relative; width: 100%; margin: 0 auto; }
+    .frame { position: relative; width: 100%; aspect-ratio: 3 / 2; border-radius: 16px; overflow: hidden; background: #120c08;
+      border: 1px solid rgba(201, 162, 74, .45); box-shadow: 0 22px 50px rgba(0,0,0,.55); transition: border-color .4s ease, box-shadow .4s ease; }
+    img, video { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+    /* The camera: one transform per phase, eased between phases like a real camera operator. */
+    .cam-rig { width: 100%; height: 100%; transform-origin: var(--fx) 35%;
+      transition: transform 1.1s cubic-bezier(.3, .7, .2, 1), transform-origin 1.1s ease; }
+    .ph-betting .cam-rig { animation: push 15s linear forwards; }
+    .ph-betting img { animation: breathe 6s ease-in-out infinite; transform-origin: 50% 70%; }
+    .ph-closing .cam-rig { transform: scale(1.16); transform-origin: var(--fx) 4%; transition-duration: .55s; }
+    .ph-dealing .cam-rig { transform-origin: var(--fx) 92%; animation: table 3.2s ease-in-out infinite; transform: scale(1.14); }
+    .ph-result .cam-rig { transform: scale(1); }
+    @keyframes push { from { transform: scale(1); } to { transform: scale(1.06); } }
     @keyframes breathe { 50% { transform: scale(1.012); } }
-    .panel { background-repeat: no-repeat; background-size: 400% auto; }
-    .working .photo { animation: lean 1.6s ease-in-out infinite; }
-    @keyframes lean { 50% { transform: translateY(2px) rotate(-.6deg); } }
-    .bubble { position: absolute; left: 50%; top: -6px; transform: translate(-50%, -100%); white-space: nowrap; padding: 8px 14px;
+    @keyframes table { 0%, 100% { transform: scale(1.14) translateX(0); } 50% { transform: scale(1.17) translateX(-1.5%); } }
+
+    .ph-closing .frame { border-color: rgba(255, 77, 109, .8); box-shadow: 0 0 0 2px rgba(255, 77, 109, .35), 0 22px 50px rgba(0,0,0,.55); }
+    .ph-result .frame { border-color: rgba(233, 200, 115, .9); }
+    .sweep { position: absolute; left: 0; right: 0; bottom: 18%; z-index: 1; display: grid; place-items: center; pointer-events: none; }
+    .sweep span { padding: 6px 18px; border-radius: 8px; background: rgba(150, 18, 40, .88); color: #fff; font-weight: 800; letter-spacing: .14em;
+      text-transform: uppercase; font-size: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.4); animation: sweep .55s cubic-bezier(.2, .8, .2, 1); }
+    @keyframes sweep { from { transform: translateX(-120%) skewX(-12deg); opacity: 0; } }
+    .flash { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(70% 60% at var(--fx) 30%, rgba(255, 226, 150, .45), transparent 70%);
+      animation: flash 1.4s ease-out forwards; }
+    @keyframes flash { from { opacity: 1; } to { opacity: 0; } }
+
+    .frame::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(180deg, transparent 72%, rgba(6, 41, 26, .55)); }
+    .plate-only { height: 100%; display: grid; place-items: center; color: #e9c873; font: 700 28px/1 Georgia, serif; letter-spacing: .12em; }
+    .cam { position: absolute; top: 10px; left: 10px; z-index: 2; padding: 3px 8px; border-radius: 6px; background: rgba(0,0,0,.55);
+      color: #fff; font-size: 11px; font-weight: 800; letter-spacing: .1em; }
+    .cam i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #ff3b4e; margin-right: 4px; box-shadow: 0 0 8px #ff3b4e;
+      animation: rec 1.6s ease-in-out infinite; }
+    @keyframes rec { 50% { opacity: .35; } }
+    .tag { position: absolute; bottom: 10px; left: 10px; z-index: 2; padding: 3px 10px; border-radius: 6px; background: linear-gradient(180deg, #e9c873, #b8913c);
+      color: #1a1205; font-size: 12px; font-weight: 800; letter-spacing: .12em; }
+    .bubble { position: absolute; left: 50%; top: -8px; transform: translate(-50%, -100%); z-index: 3; white-space: nowrap; padding: 8px 14px;
       border-radius: 14px; background: #fff; color: #121418; font-weight: 700; font-size: 14px; box-shadow: 0 10px 24px rgba(0,0,0,.35);
       animation: pop .25s ease-out; }
     .bubble::after { content: ''; position: absolute; left: 50%; bottom: -7px; border: 7px solid transparent; border-top-color: #fff; border-bottom: 0; transform: translateX(-50%); }
     @keyframes pop { from { transform: translate(-50%, -90%) scale(.9); opacity: 0; } }
-    @media (prefers-reduced-motion: reduce) { .eyes, .working .arm { animation: none; } }
+    @media (prefers-reduced-motion: reduce) {
+      .cam-rig, img, .cam i, .sweep span, .flash { animation: none !important; transition: none !important; }
+      .cam-rig { transform: none !important; }
+    }
   `],
 })
 export class LiveDealerComponent implements OnChanges {
-  @Input() name = 'Sofia';
+  @Input() dealer!: CasinoDealer;
   @Input() line = '';
-  @Input() working = false;
-  /** Photo URL for this dealer, or null for the illustrated dealer. */
-  photo: string | null = null;
-  /** For the 4-panel group photo: which part of it shows this dealer (CSS background-position). */
-  panel: string | null = null;
+  @Input() phase: DealerPhase = 'betting';
+  failed = false;
+  clipFailed = false;
 
-  ngOnChanges() {
-    const key = this.name.toLowerCase();
-    dealerPhotos().then((list) => {
-      if (this.name.toLowerCase() !== key) return; // dealer changed meanwhile
-      const own = list.find((f) => f.split('.')[0] === key);
-      const team = list.find((f) => f.split('.')[0] === 'team');
-      const i = TEAM_ORDER.indexOf(key);
-      if (own) {
-        this.photo = `assets/dealers/${own}`;
-        this.panel = null;
-      } else if (team && i >= 0) {
-        this.photo = `assets/dealers/${team}`;
-        this.panel = `${(i / 3) * 100}% ${TEAM_TOP}%`;
-      } else {
-        this.photo = null;
-        this.panel = null;
-      }
-    });
+  /** Video clip for the current phase, if the registry lists one for this dealer. */
+  get clip(): string | null {
+    return this.clipFailed ? null : this.dealer?.clips?.[this.phase] ?? null;
   }
-}
 
-/** Left-to-right order of the dealers in the group photo. */
-const TEAM_ORDER = ['sofia', 'maya', 'elena', 'lina'];
-/** Vertical crop of the group photo: 0 = top edge, 100 = bottom (keeps face to hands in view). */
-const TEAM_TOP = 22;
-
-let photoList: Promise<string[]> | null = null;
-/** The dealer photos that exist (assets/dealers/dealers.json, e.g. ["sofia.jpg"]). Loaded once. */
-function dealerPhotos(): Promise<string[]> {
-  if (!photoList) {
-    photoList = fetch('assets/dealers/dealers.json')
-      .then((r) => (r.ok ? r.json() : []))
-      .then((l) => (Array.isArray(l) ? l.filter((x) => typeof x === 'string') : []))
-      .catch(() => []);
+  ngOnChanges(ch: SimpleChanges) {
+    if (ch['dealer']) this.failed = false;
+    if (ch['dealer'] || ch['phase']) this.clipFailed = false;
   }
-  return photoList;
 }
