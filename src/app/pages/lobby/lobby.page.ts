@@ -17,9 +17,10 @@ import { AccountService } from '../../core/account.service';
         <section class="hero tw-card felt">
           <div>
             <p class="tw-eyebrow">Practice lobby</p>
-            <h1>Warm up with free play money.</h1>
+            <h1>Live dealer tables, free play money.</h1>
             <p class="tw-muted">
-              Same signals as the Signal Room, unlimited chips. Get the feel here, then take the signals to your live table.
+              A dealer, a betting timer and real round rhythm – just like a live casino – with the same signals and a training
+              coach. Get the feel here, then take the signals to your real table.
             </p>
           </div>
           <div class="hero-cta" *ngIf="access$ | async as a">
@@ -32,17 +33,17 @@ import { AccountService } from '../../core/account.service';
 
         <h2 class="section">Tables</h2>
         <div class="tw-grid">
-          <a class="table" *ngFor="let g of games; let i = index" [routerLink]="['/table', g.id]">
+          <a class="table" *ngFor="let g of games; let i = index" [routerLink]="['/live', g.id]">
             <div class="img" [style.background-image]="'url(' + g.image + ')'"></div>
             <div class="body">
               <div class="tw-row">
                 <h3>{{ g.name }}</h3>
                 <span class="tw-spacer"></span>
-                <span class="tw-pill green">Signals on</span>
+                <span class="tw-pill live"><i></i> LIVE</span>
               </div>
               <p class="tw-muted tw-small">{{ g.blurb }}</p>
               <p class="tw-small">Signals on <strong class="tw-gold">{{ sidesLabel(g) }}</strong></p>
-              <span class="play">Enter table →</span>
+              <span class="play">Join the live table →</span>
             </div>
           </a>
         </div>
@@ -74,6 +75,8 @@ import { AccountService } from '../../core/account.service';
       .body p { margin: 8px 0 0; }
       .play { display: inline-block; margin-top: 12px; color: var(--tw-gold); font-weight: 700; font-size: 14px; }
       .foot { margin-top: 32px; }
+      .tw-pill.live { background: rgba(255, 59, 78, .15); color: #ff8a96; border-color: rgba(255, 59, 78, .5); font-weight: 800; letter-spacing: .08em; }
+      .tw-pill.live i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #ff3b4e; margin-right: 4px; box-shadow: 0 0 8px #ff3b4e; }
     `,
   ],
 })

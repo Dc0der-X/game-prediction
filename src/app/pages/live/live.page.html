@@ -1,0 +1,171 @@
+<app-topbar></app-topbar>
+<ion-content class="live-bg">
+  <div class="tw-page live" *ngIf="game">
+    <div class="head">
+      <div>
+        <p class="tw-eyebrow"><span class="live-dot"></span> Live practice · play money</p>
+        <h1>{{ game.name }} <small>Round {{ round }} · dealer {{ dealer }}</small></h1>
+      </div>
+      <div class="balance">
+        <span class="tw-muted tw-small">Balance</span>
+        <strong>{{ balance | number: '1.0-2' }}</strong>
+        <button class="link" (click)="resetBalance()">Top up to 1,000</button>
+        <a class="link" [routerLink]="['/table', game.id]">Quick mode (no dealer) →</a>
+      </div>
+    </div>
+
+    <div class="layout">
+      <!-- ===== Studio ===== -->
+      <section class="studio">
+        <div class="backdrop" aria-hidden="true"></div>
+        <div class="dealer-spot"><app-live-dealer [name]="dealer" [line]="line" [working]="phase === 'dealing'"></app-live-dealer></div>
+
+        <div class="status" [ngClass]="'ph-' + phase">
+          <svg viewBox="0 0 50 50" class="ring" *ngIf="phase === 'betting'"><circle cx="25" cy="25" r="22" class="track" />
+            <circle cx="25" cy="25" r="22" class="bar" [attr.stroke-dashoffset]="ringOffset" /></svg>
+          <span class="secs" *ngIf="phase === 'betting'">{{ left }}</span>
+          <strong>{{ phaseLabel() }}</strong>
+        </div>
+
+        <!-- Table surface -->
+        <div class="felt" [ngSwitch]="game.id">
+          <!-- Roulette wheel -->
+          <div *ngSwitchCase="'roulette'" class="wheel-wrap">
+            <div class="pointer" aria-hidden="true"></div>
+            <svg viewBox="-110 -110 220 220" class="wheel" [style.transform]="'rotate(' + wheelDeg + 'deg)'">
+              <circle r="106" fill="#4a2b14" />
+              <g *ngFor="let p of wheelPockets; trackBy: trackIdx" [attr.transform]="'rotate(' + p.angle + ')'">
+                <path d="M -9.4 -100 L 9.4 -100 L 5.8 -62 L -5.8 -62 Z" [attr.class]="'pocket ' + p.tone" />
+                <text y="-88" text-anchor="middle" class="pn">{{ p.n }}</text>
+              </g>
+              <circle r="60" fill="#2c1a0c" />
+              <circle r="44" fill="#c9a24a" />
+              <circle r="14" fill="#7a5a1e" />
+              <path d="M0 -40 L0 40 M-40 0 L40 0" stroke="#7a5a1e" stroke-width="5" stroke-linecap="round" />
+            </svg>
+            <div class="ball-orbit" [style.transform]="'rotate(' + ballDeg + 'deg)'" [class.settled]="ballSettled"><i></i></div>
+            <div class="win-num" *ngIf="phase === 'result' && outcome" [ngClass]="'tone-' + outcome.tone">{{ outcome.data.n }}</div>
+          </div>
+
+          <!-- Baccarat -->
+          <div *ngSwitchCase="'baccarat'" class="hands">
+            <div class="hand" [class.win]="phase === 'result' && outcome?.data.winner === 'P'">
+              <span class="who blue">PLAYER · {{ total('P') }}</span>
+              <div class="cards"><div *ngFor="let c of cardsOf('P'); trackBy: trackIdx" class="card" [class.red]="isRed(c)">
+                {{ RANKS[c.rank] }}<span>{{ SUITS[c.suit] }}</span></div></div>
+            </div>
+            <div class="hand" [class.win]="phase === 'result' && outcome?.data.winner === 'B'">
+              <span class="who red">BANKER · {{ total('B') }}</span>
+              <div class="cards"><div *ngFor="let c of cardsOf('B'); trackBy: trackIdx" class="card" [class.red]="isRed(c)">
+                {{ RANKS[c.rank] }}<span>{{ SUITS[c.suit] }}</span></div></div>
+            </div>
+            <div class="shoe" aria-hidden="true"></div>
+          </div>
+
+          <!-- Dragon Tiger -->
+          <div *ngSwitchCase="'dragon-tiger'" class="hands">
+            <div class="hand" [class.win]="phase === 'result' && outcome?.data.winner === 'D'">
+              <span class="who red">DRAGON</span>
+              <div class="cards"><div *ngFor="let c of cardsOf('D')" class="card big" [class.red]="isRed(c)">{{ RANKS[c.rank] }}<span>{{ SUITS[c.suit] }}</span></div></div>
+            </div>
+            <div class="hand" [class.win]="phase === 'result' && outcome?.data.winner === 'T'">
+              <span class="who blue">TIGER</span>
+              <div class="cards"><div *ngFor="let c of cardsOf('T')" class="card big" [class.red]="isRed(c)">{{ RANKS[c.rank] }}<span>{{ SUITS[c.suit] }}</span></div></div>
+            </div>
+          </div>
+
+          <!-- Sic Bo -->
+          <div *ngSwitchCase="'sicbo'" class="dice-wrap">
+            <div class="dome" [class.shaking]="shaking">
+              <div class="die" *ngFor="let d of dice; let i = index; trackBy: trackIdx" [style.animation-delay.ms]="i * 60">{{ d }}</div>
+            </div>
+            <div class="sum" *ngIf="phase === 'result' && outcome">Total {{ outcome.data.total }}</div>
+          </div>
+
+          <!-- Craps -->
+          <div *ngSwitchCase="'craps'" class="craps">
+            <span class="puck" [class.on]="crapsPoint">{{ crapsPoint ? 'ON ' + crapsPoint : 'OFF' }}</span>
+            <div class="rolls">
+              <span class="pair" *ngFor="let r of crapsRolls; trackBy: trackIdx"><i class="die mini">{{ r[0] }}</i><i class="die mini">{{ r[1] }}</i></span>
+            </div>
+          </div>
+
+          <div class="result-banner" *ngIf="phase === 'result' && roundNet !== null" [class.pos]="roundNet > 0" [class.neg]="roundNet < 0">
+            {{ roundNet > 0 ? 'You win +' + (roundNet | number: '1.0-2') : roundNet < 0 ? (roundNet | number: '1.0-2') : 'Push – stake back' }}
+          </div>
+        </div>
+
+        <!-- Bet spots -->
+        <div class="spots">
+          <button *ngFor="let b of game.bets" class="spot" [ngClass]="'st-' + betTone(b.id)" (click)="place(b.id)"
+                  [disabled]="phase !== 'betting'" [class.signalled]="signalsOn && signal?.betId === b.id">
+            <span class="tag" *ngIf="signalsOn && signal?.betId === b.id">SIGNAL</span>
+            <span class="lbl">{{ b.label }}</span><span class="pays">{{ b.pays }}</span>
+            <span class="stake" *ngIf="bets[b.id]">{{ bets[b.id] | number: '1.0-2' }}</span>
+          </button>
+        </div>
+
+        <!-- Chips + actions -->
+        <div class="rack">
+          <div class="chips" role="radiogroup" aria-label="Chip value">
+            <button *ngFor="let c of chips" class="chip" [ngClass]="'c' + c" [class.on]="chip === c" (click)="chip = c" role="radio" [attr.aria-checked]="chip === c">{{ c }}</button>
+          </div>
+          <div class="acts">
+            <button class="act" (click)="clearBets()" [disabled]="phase !== 'betting' || !totalBet">Clear</button>
+            <button class="act" (click)="rebet()" [disabled]="phase !== 'betting'">Rebet</button>
+            <button class="act main" (click)="dealNow()" [disabled]="phase !== 'betting'">{{ totalBet ? 'Bet ' + (totalBet | number: '1.0-2') + ' · Ready' : 'Ready' }}</button>
+          </div>
+        </div>
+
+        <!-- Road -->
+        <div class="road" aria-label="Last results">
+          <span *ngFor="let h of history; trackBy: trackIdx" class="bead" [ngClass]="'tone-' + h.tone">{{ h.tag }}</span>
+          <span class="tw-muted tw-small" *ngIf="!history.length">Results of this table appear here.</span>
+        </div>
+      </section>
+
+      <!-- ===== Side panel ===== -->
+      <aside class="side">
+        <div class="tabs">
+          <button [class.on]="tab === 'signal'" (click)="tab = 'signal'">Signals & coach</button>
+          <button [class.on]="tab === 'rules'" (click)="tab = 'rules'">How to play</button>
+        </div>
+
+        <ng-container *ngIf="tab === 'signal'">
+          <div class="panel sig" *ngIf="signalsOn && signal as s">
+            <p class="tw-eyebrow">Next signal · step {{ s.level }}/8</p>
+            <div class="do">Bet <strong>{{ s.stake | number: '1.0-2' }}</strong> on <strong>{{ s.betLabel }}</strong>
+              <span class="chg" *ngIf="s.change !== null" [class.up]="s.change > 0">{{ s.change > 0 ? '▲ +' + (s.change | number: '1.0-2') : s.change < 0 ? '▼ ' + (s.change | number: '1.0-2') : '= same' }}</span></div>
+            <button class="follow" (click)="followSignal()" [disabled]="phase !== 'betting'">Follow the signal</button>
+            <div class="meta tw-small">Signal session <strong [class.tw-pos]="engine.net > 0">{{ engine.net > 0 ? '+' : '' }}{{ engine.net | number: '1.0-2' }}</strong>
+              · target +{{ engine.stopWin }} · safety {{ engine.stopLoss }} · table {{ engine.table }}</div>
+          </div>
+          <div class="panel note" *ngIf="sessionNote">{{ sessionNote }}</div>
+          <div class="panel coach" *ngIf="training && coachTip"><span class="ico">🎓</span><span>{{ coachTip }}</span></div>
+          <div class="toggles">
+            <label><input type="checkbox" [checked]="signalsOn" (change)="signalsOn = !signalsOn" /> Show signals</label>
+            <label><input type="checkbox" [checked]="training" (change)="training = !training" /> Training coach</label>
+            <label>Betting time
+              <select (change)="betSeconds = +$any($event.target).value">
+                <option value="15" selected>15 s (live pace)</option><option value="25">25 s (learning)</option><option value="8">8 s (fast)</option>
+              </select></label>
+          </div>
+          <a class="tw-small" routerLink="/coach">Ready for a real table? Open the Signal Room →</a>
+        </ng-container>
+
+        <div class="panel rules" *ngIf="tab === 'rules'">
+          <p class="tw-eyebrow">{{ game.name }} rules</p>
+          <ol><li *ngFor="let r of rules">{{ r }}</li></ol>
+          <p class="tw-eyebrow">How a live round runs</p>
+          <ol>
+            <li><strong>Place your bets</strong> – the timer counts down. Tap a chip, then a bet spot.</li>
+            <li><strong>No more bets</strong> – nothing can be changed now.</li>
+            <li>The dealer {{ game.id === 'roulette' ? 'spins the wheel' : game.id === 'sicbo' || game.id === 'craps' ? 'shakes the dice' : 'deals the cards' }}.</li>
+            <li>The result is announced and paid. The next round starts a few seconds later.</li>
+          </ol>
+          <p class="tw-small tw-muted">Play money only – practise the rhythm and the signals here, then take them to your live table.</p>
+        </div>
+      </aside>
+    </div>
+  </div>
+</ion-content>

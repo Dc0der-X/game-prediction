@@ -11,6 +11,7 @@ const routes: Routes = [
   // Open to everyone – practice is the hook.
   { path: 'lobby', data: { title: 'Free practice tables', description: 'Play Roulette, Baccarat, Craps, Dragon Tiger and Sic Bo free with play money and see live signals.' }, loadComponent: () => import('./pages/lobby/lobby.page').then((m) => m.LobbyPage) },
   { path: 'table/:game', data: { title: 'Practice table', description: 'Free play-money casino table with live signals.' }, loadComponent: () => import('./pages/table/table.page').then((m) => m.TablePage) },
+  { path: 'live/:game', data: { title: 'Live practice table', description: 'Practise live-dealer Baccarat, Roulette, Craps, Sic Bo and Dragon Tiger with play money: real round timing, dealer, signals and a training coach.' }, loadComponent: () => import('./pages/live/live.page').then((m) => m.LivePage) },
   { path: 'rules', data: { title: 'How TableWise works', description: 'How Neural Signals work: tap what came, bet what the signal shows, cash out on top.' }, loadComponent: () => import('./pages/rules/rules.page').then((m) => m.RulesPage) },
 
   // Accounts
