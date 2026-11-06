@@ -170,6 +170,13 @@
                       <em>{{ betPct | number: '1.0-1' }}% of your amount</em></div>
                   </div>
                 </div>
+                <div class="if-miss" [ngClass]="'im-' + sig.ifMiss">
+                  <ng-container [ngSwitch]="sig.ifMiss">
+                    <span *ngSwitchCase="'continue'">If this misses → next bet <b>{{ sig.ifMissStake | number: '1.0-2' }}</b></span>
+                    <span *ngSwitchCase="'fresh-table'">If this misses → <b>fresh table</b>, back to {{ sig.ifMissStake | number: '1.0-2' }}</span>
+                    <span *ngSwitchCase="'stop'">Last bet of this session – if it misses, you stop safely with {{ live.plan.bankroll - live.plan.stopLoss + (sig.room - sig.stake) | number: '1.0-2' }} kept</span>
+                  </ng-container>
+                </div>
                 <p class="hint">{{ hint }}</p>
               </ng-container>
 

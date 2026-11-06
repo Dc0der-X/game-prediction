@@ -187,6 +187,11 @@ export class NeuralSystem implements Staker {
     return neuralStake(this.base, this.level);
   }
 
+  /** The ladder bet at a given step (0 = first step). */
+  stakeAt(level: number): number {
+    return neuralStake(this.base, level);
+  }
+
   record(net: number, outcome?: Outcome) {
     const came = outcome ? sideOf(this.game, outcome) : null;
     this.recordRound(net, came === null ? null : came === this.bet());

@@ -115,6 +115,7 @@
             <div class="tw-small sig-meta">
               Session <strong [class.tw-pos]="sigNet > 0" [class.tw-neg]="sigNet < 0">{{ sigNet > 0 ? '+' : '' }}{{ sigNet | number: '1.0-2' }}</strong>
               · target <span class="tw-pos">+{{ stopWin }}</span> · safety limit {{ stopLoss }}
+              · {{ sig.ifMiss === 'continue' ? 'if it misses: next ' + (sig.ifMissStake | number: '1.0-2') : sig.ifMiss === 'fresh-table' ? 'if it misses: fresh table' : 'last bet if it misses' }}
             </div>
           </div>
           <ion-button (click)="playSignal()" [disabled]="dealing || !!stopSign">

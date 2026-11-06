@@ -149,7 +149,7 @@ jobs:
           SUPPORT_WHATSAPP: ${{ vars.SUPPORT_WHATSAPP }}
         run: node scripts/configure-env.mjs
       - name: Build
-        run: npx ng build --configuration production
+        run: node scripts/dealer-manifest.mjs && npx ng build --configuration production
       - name: Deploy to Firebase
         env:
           PROJECT: ${{ steps.cfg.outputs.project_id }}

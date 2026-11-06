@@ -1,5 +1,5 @@
 import { Component, ElementRef, NgZone, OnDestroy, ViewChild, inject } from '@angular/core';
-import { DatePipe, DecimalPipe, NgClass, NgFor, NgIf } from '@angular/common';
+import { DatePipe, DecimalPipe, NgClass, NgFor, NgIf, NgSwitch, NgSwitchCase } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
@@ -50,7 +50,7 @@ export const SIDE_TONE: Record<string, string> = {
 @Component({
   selector: 'app-coach',
   standalone: true,
-  imports: [IonicModule, FormsModule, RouterLink, NgIf, NgFor, NgClass, DecimalPipe, DatePipe,
+  imports: [IonicModule, FormsModule, RouterLink, NgIf, NgFor, NgClass, NgSwitch, NgSwitchCase, DecimalPipe, DatePipe,
     TopbarComponent, StopSignComponent, ConfettiComponent, NeuralFieldComponent],
   templateUrl: './coach.page.html',
   styleUrls: ['./coach.page.scss'],
@@ -517,7 +517,7 @@ export class CoachPage implements OnDestroy {
   get hint(): string {
     if (!this.live || !this.engine || !this.signal) return '';
     const sig = this.signal;
-    if (sig.capped) return `Bet sized at ${sig.stake} to stay inside your safety limit.`;
+    if (sig.ifMiss === 'stop') return 'Calm and exact – place this bet as shown.';
     if (this.net > 0 && this.targetPct >= 60) return `${this.targetPct}% of your target – almost there!`;
     if (this.net > 0) return `${this.targetPct}% of the way to your target. Keep following the signal.`;
     if (sig.change !== null && sig.change > 0) return 'The ladder steps up – this bet wins back more.';
@@ -579,7 +579,7 @@ export class CoachPage implements OnDestroy {
     switch (this.endReason) {
       case 'stop-win': return 'Target hit!';
       case 'profit-lock': return this.net > 0 ? "You're ahead – lock it in." : 'Session complete.';
-      case 'stop-loss': return 'Safety limit reached – the rest of your amount is kept for next time.';
+      case 'stop-loss': return 'Safety limit reached – the next ladder bet would not fit, so the session ends here and the rest of your amount is kept.';
       case 'change-table': return 'Session complete.';
       case 'time': return "Time's up.";
       case 'rounds': return 'Full session played.';

@@ -135,6 +135,11 @@
                   "glob": "og-image.png",
                   "input": "src/assets",
                   "output": "assets"
+                },
+                {
+                  "glob": "*.{jpg,jpeg,png,webp,json}",
+                  "input": "src/assets/dealers",
+                  "output": "assets/dealers"
                 }
               ],
               "budgets": [

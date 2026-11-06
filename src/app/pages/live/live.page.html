@@ -137,6 +137,10 @@
             <div class="do">Bet <strong>{{ s.stake | number: '1.0-2' }}</strong> on <strong>{{ s.betLabel }}</strong>
               <span class="chg" *ngIf="s.change !== null" [class.up]="s.change > 0">{{ s.change > 0 ? '▲ +' + (s.change | number: '1.0-2') : s.change < 0 ? '▼ ' + (s.change | number: '1.0-2') : '= same' }}</span></div>
             <button class="follow" (click)="followSignal()" [disabled]="phase !== 'betting'">Follow the signal</button>
+            <div class="if-miss tw-small" [ngClass]="'im-' + s.ifMiss">
+              {{ s.ifMiss === 'continue' ? 'If this misses → next bet ' + (s.ifMissStake | number: '1.0-2') :
+                 s.ifMiss === 'fresh-table' ? 'If this misses → fresh table, back to ' + (s.ifMissStake | number: '1.0-2') :
+                 'Last bet of this session – if it misses, the session ends safely' }}</div>
             <div class="meta tw-small">Signal session <strong [class.tw-pos]="engine.net > 0">{{ engine.net > 0 ? '+' : '' }}{{ engine.net | number: '1.0-2' }}</strong>
               · target +{{ engine.stopWin }} · safety {{ engine.stopLoss }} · table {{ engine.table }}</div>
           </div>

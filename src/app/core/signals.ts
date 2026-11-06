@@ -10,7 +10,9 @@
  *   of the best given back
  *   3 losses in a row       → move to a fresh table (ladder back to step 1)
  *   safety limit reached    → session complete
- * Every bet is capped so a session never goes past its safety limit.
+ * Bets are never cut down: before each bet the coach checks that the bet fits inside the safety
+ * limit, and the session ends BEFORE a ladder bet that would not fit. Each signal says in advance
+ * what happens if it misses (next bet / fresh table / session ends).
  * ('original' and 'flat' remain only so older saved sessions still load.)
  */
 import { GameDef, GameId, Outcome, getBet, sideOf } from './games';
@@ -34,8 +36,19 @@ export interface Signal {
   change: number | null;
   /** Kept for older screens; always false now. */
   switched: boolean;
-  /** True when the system wanted more but the loss limit capped the bet. */
+  /** Kept for older screens; bets are never cut down any more (the session stops first). */
   capped: boolean;
+  /**
+   * What happens if THIS bet misses, known before it is placed:
+   *   continue     – the next ladder bet still fits inside the safety limit
+   *   fresh-table  – 3rd miss in a row: move to a fresh table, ladder back to step 1
+   *   stop         – the next bet would not fit inside the safety limit: the session ends there
+   */
+  ifMiss: 'continue' | 'fresh-table' | 'stop';
+  /** The bet that would follow a miss (null when the session would stop). */
+  ifMissStake: number | null;
+  /** Money still available before the safety limit. */
+  room: number;
 }
 
 /** What a zero / tie / triple / seven does to an even-money bet in each game. */
@@ -145,13 +158,38 @@ export class SignalEngine {
       raw = this.orig.next();
       mode = this.orig.state.mode as Signal['mode'];
     }
-    const room = this.stopLoss + this.net; // how much can still be lost before the safety limit
+    const room = round2(this.stopLoss + this.net); // how much can still be lost before the safety limit
+    // Safety net only – check() ends the session before a bet that would not fit.
     const stake = round2(Math.max(0, Math.min(raw, room)));
     const prev = this.rounds.length > this.tableStart ? this.rounds[this.rounds.length - 1].stake : null;
+    const roomAfterMiss = room - stake;
+    let ifMiss: Signal['ifMiss'];
+    let ifMissStake: number | null;
+    if (this.streak + 1 >= SESSION_LIMITS.changeTableLosses) {
+      ifMissStake = this.firstStake();
+      ifMiss = ifMissStake > roomAfterMiss + 0.001 ? 'stop' : 'fresh-table';
+    } else {
+      ifMissStake = this.neural ? this.neural.stakeAt(Math.min(7, this.neural.level + 1)) : raw;
+      ifMiss = ifMissStake > roomAfterMiss + 0.001 ? 'stop' : 'continue';
+    }
+    if (ifMiss === 'stop') ifMissStake = null;
     return {
       ...base, watching: false, betId, betLabel: getBet(this.game, betId)?.label ?? betId, stake, mode,
       capped: raw > room + 0.001, change: prev === null ? null : round2(stake - prev),
+      ifMiss, ifMissStake, room,
     };
+  }
+
+  /** The first ladder bet (what a fresh table starts with). */
+  private firstStake(): number {
+    return this.neural ? this.neural.stakeAt(0) : this.unit;
+  }
+
+  /** The ladder's next bet before any safety check. */
+  private rawNext(): number {
+    if (this.neural) return this.neural.next();
+    if (this.orig) return this.orig.next();
+    return this.unit;
   }
 
   winMultiplier(betId: string) {
@@ -198,7 +236,13 @@ export class SignalEngine {
     if (this.net <= -this.stopLoss + 0.001) return 'stop-loss';
     // Lock in profit: halfway to the target, then half of the best point given back → cash out.
     if (this.inBigProfit && this.net <= this.peak * (1 - SESSION_LIMITS.profitLockGiveBack)) return 'profit-lock';
-    if (this.streak >= SESSION_LIMITS.changeTableLosses) return 'change-table';
+    const room = this.stopLoss + this.net;
+    if (this.streak >= SESSION_LIMITS.changeTableLosses) {
+      // A fresh table only if its first bet still fits inside the safety limit.
+      return this.firstStake() > room + 0.001 ? 'stop-loss' : 'change-table';
+    }
+    // The next ladder bet would not fit inside the safety limit: end the session before it.
+    if (this.rawNext() > room + 0.001) return 'stop-loss';
     return null;
   }
 

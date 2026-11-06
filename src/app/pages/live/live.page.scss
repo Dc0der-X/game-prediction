@@ -145,3 +145,7 @@
   .wheel, .ball-orbit { transition-duration: .01s; }
   .dome.shaking { animation: none; }
 }
+
+.if-miss { margin: 10px 0 0; padding: 6px 10px; border-radius: 10px; background: rgba(255,255,255,.07);
+  &.im-fresh-table { background: rgba(245,199,106,.16); color: #ffe2a3; }
+  &.im-stop { background: rgba(47,224,143,.14); color: #a8f5cd; } }

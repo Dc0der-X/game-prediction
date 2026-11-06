@@ -1,9 +1,11 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnChanges } from '@angular/core';
 import { NgIf } from '@angular/common';
 
 /**
- * Illustrated live-table dealer (pure SVG, no photos): a croupier in a white shirt, black waistcoat
- * and bow tie. Blinks, follows the round with small arm movements, and "speaks" through a bubble.
+ * Live-table dealer. Uses a real photo when one is in src/assets/dealers (see dealers.json):
+ *   - one photo per dealer: sofia.jpg / maya.png / elena.webp / lina.jpg
+ *   - or one 4-panel group photo team.(jpg|png|webp): Sofia, Maya, Elena, Lina left to right
+ * Otherwise an illustrated croupier (SVG). The dealer "speaks" through a bubble.
  */
 @Component({
   selector: 'app-live-dealer',
@@ -11,7 +13,10 @@ import { NgIf } from '@angular/common';
   imports: [NgIf],
   template: `
     <div class="dealer" [class.working]="working">
-      <svg viewBox="0 0 220 230" role="img" [attr.aria-label]="'Dealer ' + name">
+      <img *ngIf="photo && !panel" class="photo" [src]="photo" [alt]="'Dealer ' + name" (error)="photo = null" />
+      <div *ngIf="photo && panel" class="photo panel" role="img" [attr.aria-label]="'Dealer ' + name"
+        [style.background-image]="'url(' + photo + ')'" [style.background-position]="panel"></div>
+      <svg *ngIf="!photo" viewBox="0 0 220 230" role="img" [attr.aria-label]="'Dealer ' + name">
         <defs>
           <linearGradient id="skin" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#f1c7a3" /><stop offset="1" stop-color="#d9a57f" /></linearGradient>
           <linearGradient id="hair" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#3b2418" /><stop offset="1" stop-color="#1e120b" /></linearGradient>
@@ -54,6 +59,13 @@ import { NgIf } from '@angular/common';
     .working .arm.right { animation: deal 1s ease-in-out infinite; transform-origin: 168px 190px; }
     .working .arm.left { animation: deal 1s ease-in-out infinite .5s; transform-origin: 52px 190px; }
     @keyframes deal { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-9deg) translateY(-4px); } }
+    .photo { display: block; width: 100%; aspect-ratio: 3 / 4; object-fit: cover; object-position: top center; border-radius: 18px 18px 0 0;
+      -webkit-mask-image: linear-gradient(180deg, #000 78%, transparent); mask-image: linear-gradient(180deg, #000 78%, transparent);
+      filter: drop-shadow(0 18px 30px rgba(0,0,0,.45)); animation: breathe 5s ease-in-out infinite; transform-origin: 50% 100%; }
+    @keyframes breathe { 50% { transform: scale(1.012); } }
+    .panel { background-repeat: no-repeat; background-size: 400% auto; }
+    .working .photo { animation: lean 1.6s ease-in-out infinite; }
+    @keyframes lean { 50% { transform: translateY(2px) rotate(-.6deg); } }
     .bubble { position: absolute; left: 50%; top: -6px; transform: translate(-50%, -100%); white-space: nowrap; padding: 8px 14px;
       border-radius: 14px; background: #fff; color: #121418; font-weight: 700; font-size: 14px; box-shadow: 0 10px 24px rgba(0,0,0,.35);
       animation: pop .25s ease-out; }
@@ -62,8 +74,49 @@ import { NgIf } from '@angular/common';
     @media (prefers-reduced-motion: reduce) { .eyes, .working .arm { animation: none; } }
   `],
 })
-export class LiveDealerComponent {
+export class LiveDealerComponent implements OnChanges {
   @Input() name = 'Sofia';
   @Input() line = '';
   @Input() working = false;
+  /** Photo URL for this dealer, or null for the illustrated dealer. */
+  photo: string | null = null;
+  /** For the 4-panel group photo: which part of it shows this dealer (CSS background-position). */
+  panel: string | null = null;
+
+  ngOnChanges() {
+    const key = this.name.toLowerCase();
+    dealerPhotos().then((list) => {
+      if (this.name.toLowerCase() !== key) return; // dealer changed meanwhile
+      const own = list.find((f) => f.split('.')[0] === key);
+      const team = list.find((f) => f.split('.')[0] === 'team');
+      const i = TEAM_ORDER.indexOf(key);
+      if (own) {
+        this.photo = `assets/dealers/${own}`;
+        this.panel = null;
+      } else if (team && i >= 0) {
+        this.photo = `assets/dealers/${team}`;
+        this.panel = `${(i / 3) * 100}% ${TEAM_TOP}%`;
+      } else {
+        this.photo = null;
+        this.panel = null;
+      }
+    });
+  }
+}
+
+/** Left-to-right order of the dealers in the group photo. */
+const TEAM_ORDER = ['sofia', 'maya', 'elena', 'lina'];
+/** Vertical crop of the group photo: 0 = top edge, 100 = bottom (keeps face to hands in view). */
+const TEAM_TOP = 22;
+
+let photoList: Promise<string[]> | null = null;
+/** The dealer photos that exist (assets/dealers/dealers.json, e.g. ["sofia.jpg"]). Loaded once. */
+function dealerPhotos(): Promise<string[]> {
+  if (!photoList) {
+    photoList = fetch('assets/dealers/dealers.json')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((l) => (Array.isArray(l) ? l.filter((x) => typeof x === 'string') : []))
+      .catch(() => []);
+  }
+  return photoList;
 }
