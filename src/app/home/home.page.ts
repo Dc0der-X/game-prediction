@@ -92,7 +92,7 @@ export class HomePage implements AfterViewInit, OnDestroy {
     },
     {
       q: 'Which games does it work with?',
-      a: 'Baccarat (player/banker), Craps (pass/don\'t pass), Roulette (red/black) and Sic Bo (small/big) – at any online or land-based casino. Dragon Tiger is on the free practice tables.',
+      a: 'Baccarat (player/banker), Roulette (red/black), Dragon Tiger (dragon/tiger), Sic Bo (small/big) and Craps (pass/don\'t pass) – at any online or land-based casino.',
     },
     {
       q: 'Why does it tell me to cash out?',

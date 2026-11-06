@@ -77,8 +77,9 @@ Every player gets the same signals; there is no strategy to pick and nothing to 
 3. **Session rules (same for every game), final:** profit target **+5%** of the amount → cash out; **lock in
    profit** – once halfway to the target, cash out as soon as half of the best point is given back; **3 misses in a
    row → fresh table** (ladder back to step 1, totals carry on); **safety limit 10%** of the amount – no bet can go
-   past it; **30-minute sessions**, one a day, check-in every 15 minutes. Signals for **Baccarat, Craps, Roulette and
-   Sic Bo**; Dragon Tiger is practice-only (ties cost half the bet – clearly the weakest game for players).
+   past it; **30-minute sessions** with a breather check-in at 20 minutes, and after a session a kind nudge to stop for
+   the day (players can still play another). Signals for all five games – **Baccarat, Roulette, Dragon Tiger, Sic Bo and
+   Craps** (Dragon Tiger's ties cost half the bet, so it is the toughest of the five; the same rules keep it inside the limit).
 
 Chosen from 1.6 million simulated sessions (12 stop designs × 5 games, $200, real game engines). Against the previous
 +10% / 20% / 45-minute rules the final ones end more sessions up (Baccarat 56% → 70%), halve the average cost, cap the

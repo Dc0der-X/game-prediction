@@ -78,7 +78,7 @@ export class CoachPage implements OnDestroy {
   excludedUntil: Date | null = null;
   uid = '';
 
-  /** Real-money signals on the four best games (Dragon Tiger stays practice-only: its ties cost half the bet). */
+  /** Real-money signals on all five games, each with its own dealer. */
   games = SIGNAL_GAMES.map((id) => getGame(id)!);
   limits = SESSION_LIMITS;
   quickAmounts = [100, 200, 500, 1000];

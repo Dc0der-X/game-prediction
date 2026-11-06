@@ -11,7 +11,7 @@
 - Personal colour themes (Neon, High Roller, Classic, Ember).
 
 ## Games
-Signals: Baccarat (player/banker), Craps (pass/don't pass), Roulette (red/black), Sic Bo (small/big). Practice also includes Dragon Tiger.
+Signals: Baccarat (player/banker), Roulette (red/black), Dragon Tiger (dragon/tiger), Sic Bo (small/big), Craps (pass/don't pass).
 
 ## Pricing (USD)
 - Free: 3 hours of full access after sign-up, no card. Practice tables free forever.
