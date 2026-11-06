@@ -4,12 +4,11 @@ import { environment } from 'src/environments/environment';
 import { PlanId } from './pricing';
 
 /**
- * Checkout (card or crypto through one hosted checkout page).
+ * Checkout through PayGate.to: card (Visa, Mastercard, Apple Pay, Google Pay) or crypto.
  *
- * The browser only starts a checkout and tells the worker the buyer is back. The worker
- * (/payments-worker, free Cloudflare Worker) switches the pass on straight away for up to
- * 60 minutes while the payment confirms; only the payment provider's signed confirmation
- * grants the full pass. No confirmation → the pass goes on hold by itself.
+ * The browser only starts a checkout (and can say "I've paid"). The worker (/payments-worker,
+ * free Cloudflare Worker) grants the pass only from PayGate's RSA-signed payment callback;
+ * "I've paid" switches it on for up to 60 minutes meanwhile, then it pauses by itself.
  */
 @Injectable({ providedIn: 'root' })
 export class PaymentsService {
@@ -35,10 +34,9 @@ export class PaymentsService {
     return data as T;
   }
 
-  /** Creates a hosted checkout for a pass and returns its URL. */
-  async checkout(plan: PlanId): Promise<string> {
-    const res = await this.call<{ url: string }>('/checkout', { plan });
-    return res.url;
+  /** Creates a PayGate.to checkout (card or crypto) for a pass. */
+  checkout(plan: PlanId, method: 'card' | 'crypto'): Promise<{ url: string; ref: string }> {
+    return this.call<{ url: string; ref: string }>('/checkout', { plan, method });
   }
 
   /**

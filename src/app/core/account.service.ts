@@ -38,7 +38,7 @@ export interface Profile {
   /** Written only by Cloud Functions (or an admin). */
   plan?: 'pro' | null;
   /** 'pending' = switched on at checkout, payment still confirming; 'hold' = payment not received. */
-  planSource?: 'paypal' | 'crypto' | 'admin' | 'pending' | 'hold';
+  planSource?: 'paypal' | 'crypto' | 'paygate' | 'admin' | 'pending' | 'hold';
   planName?: 'day' | 'month' | 'year';
   /** Set by the payments worker: true = this account gets the free hours (max 2 per network). */
   trialOk?: boolean;

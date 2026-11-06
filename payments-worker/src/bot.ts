@@ -48,7 +48,7 @@ What you know:
 - How to start: sign up at ${env.APP_URL}/signup (Google sign-in works) → 3 hours of full access free, no card. Then open the Signal Room, pick the game, enter today's amount, tap the last result, and follow the signals.
 - The signals ride runs: when a side keeps coming, the signal goes with it; when the table swings, it swings with it. Bets step up and down on an 8-step ladder sized from the player's amount. After 3 misses in a row the coach says to hop to a fresh table. Every bet stays inside a safety limit, and the coach says when to cash out on top.
 - Free practice tables with play money: ${env.APP_URL}/lobby
-- Passes (pay once, never auto-renew): Day $${env.PRICE_DAY_USD}, Monthly $${env.PRICE_MONTH_USD} (most popular), Yearly $${env.PRICE_YEAR_USD} (best value). Pay by card or crypto at ${env.APP_URL}/pro. The pass switches on the moment they're back from checkout; if a payment isn't received within 60 minutes it pauses and switches back on by itself once it arrives.
+- Passes (pay once, never auto-renew): Day $${env.PRICE_DAY_USD}, Monthly $${env.PRICE_MONTH_USD} (most popular), Yearly $${env.PRICE_YEAR_USD} (best value). Pay by card (Visa, Mastercard, Apple Pay, Google Pay) or crypto at ${env.APP_URL}/pro – checkout opens in a new tab. The pass switches on by itself as soon as the payment arrives, usually within minutes. Tapping "I've paid" switches it on right away; if no payment arrives within 60 minutes it pauses and comes back by itself once it does. Card checkouts are handled by licensed partners who may ask for a quick ID check.
 - Free hours are limited to 2 accounts per network.
 
 Rules:

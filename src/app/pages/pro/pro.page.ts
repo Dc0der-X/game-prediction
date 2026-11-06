@@ -61,10 +61,33 @@ import { environment } from 'src/environments/environment';
             </div>
             <div class="pay">
               <div class="tw-error" *ngIf="error">{{ error }}</div>
-              <p class="pay-label">Card or crypto – BTC, ETH, USDT and 100+ more</p>
-              <button class="pay-btn" (click)="pay()" [disabled]="busy || (!payments.configured && !demo)">
-                {{ busy ? 'Opening checkout…' : 'Get my ' + plan.name + ' – \$' + plan.usd }}</button>
-              <p class="tw-small tw-muted instant">⚡ Your pass switches on the moment you're back from checkout.</p>
+              <ng-container *ngIf="!waitingRef; else waiting">
+                <button class="pay-btn" (click)="pay('card')" [disabled]="!!busy || (!payments.configured && !demo)">
+                  {{ busy === 'card' ? 'Opening checkout…' : 'Pay by card – \$' + plan.usd }}</button>
+                <p class="tw-small tw-muted methods">Visa · Mastercard · Apple Pay · Google Pay · bank transfer</p>
+                <button class="pay-btn alt" (click)="pay('crypto')" [disabled]="!!busy || (!payments.configured && !demo)">
+                  {{ busy === 'crypto' ? 'Opening checkout…' : 'Pay with crypto – \$' + plan.usd }}</button>
+                <p class="tw-small tw-muted methods">BTC · ETH · USDT · USDC and more</p>
+                <p class="tw-small tw-muted instant">⚡ Your pass switches on automatically the moment your payment arrives.</p>
+              </ng-container>
+              <ng-template #waiting>
+                <div class="wait" *ngIf="!(access$ | async)?.isPaid || (access$ | async)?.paymentPending">
+                  <div class="spin" aria-hidden="true"></div>
+                  <div>
+                    <strong>Finish your payment in the new tab</strong>
+                    <p class="tw-small tw-muted">This page switches your pass on by itself as soon as the payment arrives –
+                      usually a few minutes.</p>
+                  </div>
+                </div>
+                <div class="tw-note good" *ngIf="(access$ | async)?.isPaid && !(access$ | async)?.paymentPending">
+                  Payment received – your pass is on! <a routerLink="/coach">Go to the Signal Room →</a>
+                </div>
+                <div class="tw-row wait-actions">
+                  <button class="link" (click)="paid()" [disabled]="!!busy">I've paid – switch my pass on now</button>
+                  <a class="link" *ngIf="checkoutUrl" [href]="checkoutUrl" target="_blank" rel="noopener">Reopen checkout</a>
+                  <button class="link muted" (click)="waitingRef = ''">Choose another way to pay</button>
+                </div>
+              </ng-template>
               <p class="tw-note" *ngIf="demo">Demo: no real payment – the pass switches on instantly and "confirms" after a few seconds.</p>
               <p class="tw-note" *ngIf="!payments.configured && !demo">Checkout is not configured yet. Admin: set <code>payments.apiUrl</code> (README → Payments).</p>
               <p class="secure">🔒 Secure hosted checkout. We never see your card or wallet keys.</p>
@@ -113,6 +136,17 @@ import { environment } from 'src/environments/environment';
       box-shadow: 0 12px 30px rgba(var(--tw-accent-rgb), .3); }
     .pay-btn[disabled] { opacity: .6; cursor: default; }
     .instant { margin: 10px 0 0; }
+    .methods { margin: 6px 0 14px; }
+    .pay-btn.alt { background: var(--tw-card-2); color: var(--tw-text); border: 1px solid var(--tw-line-strong); box-shadow: none; }
+    .wait { display: flex; gap: 14px; align-items: center; padding: 14px; border-radius: 14px; background: var(--tw-card-2);
+      border: 1px solid var(--tw-line-strong); max-width: 420px; }
+    .wait p { margin: 4px 0 0; }
+    .spin { width: 28px; height: 28px; flex: none; border-radius: 50%; border: 3px solid rgba(var(--tw-accent-rgb), .25);
+      border-top-color: var(--tw-gold); animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .wait-actions { gap: 16px; margin-top: 12px; flex-wrap: wrap; }
+    .link { background: none; border: 0; padding: 0; color: var(--tw-gold); font: inherit; font-size: 14px; cursor: pointer; text-decoration: none; }
+    .link.muted { color: var(--tw-muted); }
     .tw-note.good { border-color: rgba(46, 204, 113, .5); }
     .secure { font-size: 12px; color: var(--tw-muted); margin-top: 12px; }
     .fine { margin-top: 18px; max-width: 760px; }
@@ -131,9 +165,12 @@ export class ProPage {
   savingVsDay = savingVsDay;
   demo = environment.demoMode;
   selected: PlanId = 'month';
-  busy = false;
+  busy: '' | 'card' | 'crypto' | 'start' = '';
   error = '';
   startNote = '';
+  /** Checkout opened in a new tab and not confirmed yet. */
+  waitingRef = '';
+  checkoutUrl = '';
 
   constructor() {
     const ref = inject(ActivatedRoute).snapshot.queryParamMap.get('paid');
@@ -149,23 +186,45 @@ export class ProPage {
     this.error = '';
   }
 
-  async pay() {
+  /** Opens PayGate.to in a new tab; this page waits and switches the pass on when the payment lands. */
+  async pay(method: 'card' | 'crypto') {
     this.error = '';
+    this.startNote = '';
     if (this.demo) {
       this.account.demoStartPass(this.selected);
       this.router.navigateByUrl('/coach');
       return;
     }
-    this.busy = true;
+    this.busy = method;
+    // Open the tab now (in the click) so pop-up blockers allow it, then point it at the checkout.
+    const tab = window.open('', '_blank');
     try {
-      window.location.href = await this.payments.checkout(this.selected);
+      const { url, ref } = await this.payments.checkout(this.selected, method);
+      this.waitingRef = ref;
+      this.checkoutUrl = url;
+      if (tab) {
+        tab.opener = null;
+        tab.location.href = url;
+      } else {
+        window.location.href = url;
+      }
     } catch (e: any) {
+      tab?.close();
       this.error = e.message;
-      this.busy = false;
+    } finally {
+      this.busy = '';
     }
   }
 
-  /** Back from checkout: switch the pass on now, then send the player to their table. */
+  /** "I've paid": switch the pass on now; the payment confirms it. */
+  async paid() {
+    if (!this.waitingRef) return;
+    this.busy = 'start';
+    await this.start(this.waitingRef);
+    this.busy = '';
+  }
+
+  /** Switch the pass on now, then send the player to their table. */
   private async start(ref: string) {
     try {
       const status = await this.payments.startPass(ref);

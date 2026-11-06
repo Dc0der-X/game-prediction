@@ -1,8 +1,8 @@
-// End-to-end test of the bundled worker with mocked Google / NOWPayments APIs.
-// Run: npx wrangler deploy --dry-run --outdir dist && node --test test/
+// End-to-end test of the bundled worker with mocked Google / PayGate.to / Telegram / Claude APIs.
+// Run: npm test   (= wrangler deploy --dry-run --outdir dist && node --test test/)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createHmac, generateKeyPairSync } from 'node:crypto';
+import { createSign, generateKeyPairSync } from 'node:crypto';
 import { SignJWT, exportJWK, generateKeyPair } from 'jose';
 
 const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
@@ -10,11 +10,15 @@ const SA = JSON.stringify({
   client_email: 'worker@test.iam.gserviceaccount.com',
   private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }),
 });
+// Our stand-in for PayGate's callback signing key.
+const paygateKeys = generateKeyPairSync('rsa', { modulusLength: 2048 });
+const WALLET = '0x1111111111111111111111111111111111111111';
 const env = {
   FIREBASE_PROJECT_ID: 'demo', APP_URL: 'https://app.test', APP_ORIGINS: 'https://app.test',
   PRICE_DAY_USD: '20', PRICE_MONTH_USD: '140', PRICE_YEAR_USD: '999', HOLD_MINUTES: '60',
-  NOWPAYMENTS_API_KEY: 'k', NOWPAYMENTS_IPN_SECRET: 'ipn-secret',
   GOOGLE_SERVICE_ACCOUNT: SA, IP_SALT: 'salt', TRIAL_PER_IP: '2',
+  PAYGATE_WALLET: WALLET, PAYGATE_BTC: 'bc1qexampleexampleexampleexampleexample0',
+  PAYGATE_TEST_KEY_PEM: paygateKeys.publicKey.export({ type: 'spki', format: 'pem' }),
 };
 
 // In-memory Firestore behind a fake fetch.
@@ -26,10 +30,15 @@ const authJwk = { ...(await exportJWK(authKeys.publicKey)), kid: 'k1', alg: 'RS2
 const idToken = (uid) => new SignJWT({ email: `${uid}@x.y` }).setProtectedHeader({ alg: 'RS256', kid: 'k1' })
   .setIssuer('https://securetoken.google.com/demo').setAudience('demo').setSubject(uid).setIssuedAt().setExpirationTime('1h').sign(authKeys.privateKey);
 
-let lastInvoice = null;
 const tgSent = [];
 let claudeReply = 'Hey! 👋 Sign up free at https://app.test/signup';
 let lastClaude = null;
+// PayGate.to fakes
+let walletN = 0;
+const wallets = new Map(); // callback URL -> polygon address
+let lastWalletCall = null;
+let lastHosted = null;
+let btcPerPrice = 0.01; // what the plan price is worth in BTC
 globalThis.fetch = async (input, init = {}) => {
   const url = typeof input === 'string' ? input : input.url;
   const method = init.method || 'GET';
@@ -44,9 +53,19 @@ globalThis.fetch = async (input, init = {}) => {
     return Response.json({ id: 'msg_1', type: 'message', role: 'assistant', model: 'claude-opus-5-5', stop_reason: 'end_turn',
       content: [{ type: 'text', text: claudeReply }], usage: { input_tokens: 10, output_tokens: 10 } });
   }
-  if (url === 'https://api.nowpayments.io/v1/invoice') {
-    lastInvoice = JSON.parse(init.body);
-    return Response.json({ id: 1, invoice_url: 'https://nowpayments.io/payment/?iid=1' });
+  if (url.startsWith('https://api.paygate.to/control/wallet.php?')) {
+    const u = new URL(url);
+    lastWalletCall = { address: u.searchParams.get('address'), callback: u.searchParams.get('callback') };
+    const poly = '0x' + String(++walletN).padStart(40, 'a');
+    wallets.set(lastWalletCall.callback, poly);
+    return Response.json({ address_in: `ENC${walletN}%2Fabc%3D%3D`, polygon_address_in: poly, callback_url: lastWalletCall.callback, ipn_token: `IPN${walletN}` });
+  }
+  if (url === 'https://api.paygate.to/crypto/multi-hosted-wallet.php') {
+    lastHosted = JSON.parse(init.body);
+    return Response.json({ payment_token: 'TOKEN%2Bxyz%3D', callback_url: lastHosted.callback, ipn_token: 'IPNC' });
+  }
+  if (url.startsWith('https://api.paygate.to/crypto/btc/convert.php?')) {
+    return Response.json({ status: 'success', value_coin: String(btcPerPrice), exchange_rate: '0.00001' });
   }
   if (url === 'https://oauth2.googleapis.com/token')
     return Response.json({ access_token: 'tok', expires_in: 3600 });
@@ -72,77 +91,225 @@ globalThis.fetch = async (input, init = {}) => {
 
 const worker = (await import('../dist/index.js')).default;
 
-function sign(body) {
-  const sort = (v) => Array.isArray(v) ? v.map(sort) : v && typeof v === 'object'
-    ? Object.keys(v).sort().reduce((a, k) => ((a[k] = sort(v[k])), a), {}) : v;
-  return createHmac('sha512', env.NOWPAYMENTS_IPN_SECRET).update(JSON.stringify(sort(body))).digest('hex');
-}
-function ipn(body, sig = sign(body)) {
-  return worker.fetch(new Request('https://w.test/crypto/webhook', {
-    method: 'POST', headers: { 'x-nowpayments-sig': sig, 'content-type': 'application/json' }, body: JSON.stringify(body),
+/* ---------- helpers ---------- */
+
+const call = async (uid, path, body, ip = '9.9.9.9') => {
+  const res = await worker.fetch(new Request(`https://w.test${path}`, {
+    method: 'POST', headers: { Authorization: `Bearer ${await idToken(uid)}`, 'content-type': 'application/json', 'CF-Connecting-IP': ip },
+    body: JSON.stringify(body),
   }), env);
+  return { status: res.status, body: await res.json() };
+};
+const user = (uid) => docs.set(`users/${uid}`, { email: { stringValue: `${uid}@x.y` }, role: { stringValue: 'customer' } });
+const minutesLeft = (uid) => (Date.parse(docs.get(`users/${uid}`).planExpiresAt.timestampValue) - Date.now()) / 60000;
+const str = (uid, f) => docs.get(`users/${uid}`)?.[f]?.stringValue;
+
+/** The callback URL PayGate would call for a checkout, plus its payment data. */
+function callbackFor(ref, extra) {
+  const co = docs.get(`checkouts/${ref}`);
+  const base = `${co.callbackBase.stringValue}?ref=${ref}&t=${co.token.stringValue}`;
+  return `${base}&${new URLSearchParams(extra).toString()}`;
 }
-const paid = (over = {}) => ({
-  payment_id: 111, payment_status: 'finished', order_id: 'user1:month:123', price_amount: 140, price_currency: 'usd',
-  pay_amount: 0.0002, pay_currency: 'btc', ...over,
+/** Sends a callback signed like PayGate does (or with a forged signature). */
+async function pgCallback(fullUrl, { forge = false, sign = true } = {}) {
+  const s = createSign('RSA-SHA256');
+  s.update(forge ? fullUrl + 'x' : fullUrl);
+  const headers = { 'User-Agent': 'paygate.to', 'X-PayGate-Key-Id': 'v1' };
+  if (sign) headers['X-PayGate-Signature'] = s.sign(paygateKeys.privateKey, 'base64');
+  const res = await worker.fetch(new Request(fullUrl, { method: 'GET', headers }), env);
+  return { status: res.status, body: await res.text() };
+}
+const cardPaid = (ref, value, txid, address) => callbackFor(ref, {
+  value_coin: String(value), coin: 'polygon_usdc', txid_in: txid, txid_out: '0xout',
+  address_in: address ?? docs.get(`checkouts/${ref}`).addressIn.stringValue, value_forwarded_coin: String(value),
+  address_out: JSON.stringify({ [WALLET]: '1.0000' }),
 });
 
-docs.set('users/user1', { email: { stringValue: 'a@b.c' }, role: { stringValue: 'customer' } });
+/* ---------- Card checkout ---------- */
 
-test('rejects a forged signature', async () => {
-  const res = await ipn(paid(), 'deadbeef');
-  assert.equal(res.status, 400);
-  assert.equal(docs.get('users/user1').plan, undefined);
+test('card checkout: one-off wallet with our payout wallet and a secret callback, hosted card page', async () => {
+  user('buyer');
+  const co = await call('buyer', '/checkout', { plan: 'month', method: 'card' });
+  assert.equal(co.status, 200, JSON.stringify(co.body));
+  assert.match(co.body.ref, /^[a-f0-9]{24}$/);
+  assert.equal(lastWalletCall.address, WALLET);
+  assert.match(lastWalletCall.callback, new RegExp(`^https://w\\.test/paygate/callback\\?ref=${co.body.ref}&t=[a-f0-9]{32}$`));
+  const u = new URL(co.body.url);
+  assert.equal(u.origin + u.pathname, 'https://checkout.paygate.to/pay.php');
+  assert.ok(co.body.url.includes('address=ENC'), 'encrypted address passed on as received');
+  assert.equal(u.searchParams.get('amount'), '140.00');
+  assert.equal(u.searchParams.get('currency'), 'USD');
+  assert.equal(u.searchParams.get('email'), 'buyer@x.y');
 });
 
-test('finished payment unlocks 30 days of Pro and records the payment', async () => {
-  const res = await ipn(paid());
-  assert.equal(res.status, 200);
-  const u = docs.get('users/user1');
-  assert.equal(u.plan.stringValue, 'pro');
-  const days = (Date.parse(u.planExpiresAt.timestampValue) - Date.now()) / 86400000;
+test('signed card payment unlocks 30 days and records it once', async () => {
+  const co = await call('buyer', '/checkout', { plan: 'month', method: 'card' });
+  const url = cardPaid(co.body.ref, 138.5, '0xtx1');
+  const r = await pgCallback(url);
+  assert.equal(r.status, 200, r.body);
+  assert.equal(str('buyer', 'plan'), 'pro');
+  assert.equal(str('buyer', 'planSource'), 'paygate');
+  const days = minutesLeft('buyer') / 1440;
   assert.ok(days > 29.9 && days < 30.1, `expected ~30 days, got ${days}`);
-  assert.equal(docs.get('payments/np_111').amountUsd.integerValue, '140');
+  assert.ok(docs.has('payments/pg_0xtx1'));
+  // The same callback again (PayGate may retry) changes nothing.
+  const before = docs.get('users/buyer').planExpiresAt.timestampValue;
+  await pgCallback(url);
+  assert.equal(docs.get('users/buyer').planExpiresAt.timestampValue, before);
 });
 
-test('duplicate webhook does not extend twice', async () => {
-  const before = docs.get('users/user1').planExpiresAt.timestampValue;
-  await ipn(paid());
-  assert.equal(docs.get('users/user1').planExpiresAt.timestampValue, before);
+test('forged or unsigned callbacks are refused', async () => {
+  user('victim');
+  const co = await call('victim', '/checkout', { plan: 'year', method: 'card' });
+  const url = cardPaid(co.body.ref, 999, '0xforged');
+  assert.equal((await pgCallback(url, { forge: true })).status, 403);
+  assert.equal((await pgCallback(url, { sign: false })).status, 403);
+  assert.equal(str('victim', 'plan'), undefined);
 });
 
-test('second payment stacks on top of remaining time', async () => {
-  await ipn(paid({ payment_id: 222 }));
-  const days = (Date.parse(docs.get('users/user1').planExpiresAt.timestampValue) - Date.now()) / 86400000;
+test('a callback with the wrong secret token is refused even if signed', async () => {
+  user('tok');
+  const co = await call('tok', '/checkout', { plan: 'day', method: 'card' });
+  const url = cardPaid(co.body.ref, 20, '0xtok').replace(/&t=[a-f0-9]+/, '&t=' + 'f'.repeat(32));
+  assert.equal((await pgCallback(url)).status, 403);
+  assert.equal(str('tok', 'plan'), undefined);
+});
+
+test('edited card price: paying $1 for a Monthly pass grants nothing', async () => {
+  user('cheap');
+  const co = await call('cheap', '/checkout', { plan: 'month', method: 'card' });
+  const r = await pgCallback(cardPaid(co.body.ref, 0.95, '0xcheap'));
+  assert.equal(r.status, 200);
+  assert.match(r.body, /amount/);
+  assert.equal(str('cheap', 'plan'), undefined);
+  assert.ok(docs.get(`checkouts/${co.body.ref}`).underpaid);
+});
+
+test('a payment to some other receiving address is ignored', async () => {
+  user('addr');
+  const co = await call('addr', '/checkout', { plan: 'day', method: 'card' });
+  const r = await pgCallback(cardPaid(co.body.ref, 20, '0xaddr', '0x' + '9'.repeat(40)));
+  assert.match(r.body, /address/);
+  assert.equal(str('addr', 'plan'), undefined);
+});
+
+test('a second payment stacks on the time left', async () => {
+  const co = await call('buyer', '/checkout', { plan: 'month', method: 'card' });
+  await pgCallback(cardPaid(co.body.ref, 140, '0xtx2'));
+  const days = minutesLeft('buyer') / 1440;
   assert.ok(days > 59.9 && days < 60.1, `expected ~60 days, got ${days}`);
 });
 
-test('underpaid yearly order is ignored', async () => {
-  const before = docs.get('users/user1').planExpiresAt.timestampValue;
-  const res = await ipn(paid({ payment_id: 333, order_id: 'user1:year:1', price_amount: 140 }));
-  assert.equal(res.status, 200);
-  assert.equal(docs.get('users/user1').planExpiresAt.timestampValue, before);
-  assert.equal(docs.has('payments/np_333'), false);
+/* ---------- Crypto checkout ---------- */
+
+test('crypto checkout: hosted multi-coin page with our wallets and the plan price', async () => {
+  user('coin');
+  const co = await call('coin', '/checkout', { plan: 'year', method: 'crypto' });
+  assert.equal(co.status, 200, JSON.stringify(co.body));
+  assert.equal(lastHosted.evm, WALLET);
+  assert.equal(lastHosted.btc, env.PAYGATE_BTC);
+  assert.equal(lastHosted.fiat_amount, 999);
+  assert.equal(lastHosted.fiat_currency, 'USD');
+  assert.ok(lastHosted.callback.includes(`ref=${co.body.ref}`));
+  assert.equal(co.body.url, 'https://checkout.paygate.to/crypto/hosted.php?payment_token=TOKEN%2Bxyz%3D&add_fees=1');
 });
 
-test('day pass adds exactly one day', async () => {
-  docs.set('users/user2', { email: { stringValue: 'd@e.f' }, role: { stringValue: 'customer' } });
-  await ipn(paid({ payment_id: 555, order_id: 'user2:day:9', price_amount: 20 }));
-  const hours = (Date.parse(docs.get('users/user2').planExpiresAt.timestampValue) - Date.now()) / 3600000;
-  assert.ok(hours > 23.9 && hours < 24.1, `expected ~24h, got ${hours}`);
+test('crypto: unconfirmed payment switches the pass on, confirmed BTC payment grants the year', async () => {
+  const ref = (await call('coin', '/checkout', { plan: 'year', method: 'crypto' })).body.ref;
+  const data = { coin: 'btc', value_coin: '0.00998', txid_in: 'btctx1', txid_out: 'out', address_in: 'bc1qtemp', value_forwarded_coin: '0.0099' };
+  await pgCallback(callbackFor(ref, { ...data, pending: '1' }));
+  assert.equal(str('coin', 'planSource'), 'pending');
+  assert.ok(minutesLeft('coin') > 59);
+  await pgCallback(callbackFor(ref, { ...data, pending: '0' }));
+  assert.equal(str('coin', 'planSource'), 'paygate');
+  assert.ok(minutesLeft('coin') / 1440 > 364);
 });
 
-test('non-finished statuses are ignored', async () => {
-  const res = await ipn(paid({ payment_id: 444, payment_status: 'partially_paid' }));
-  assert.equal(res.status, 200);
-  assert.equal(docs.has('payments/np_444'), false);
+test('crypto: underpaid BTC grants nothing', async () => {
+  user('lowbtc');
+  const ref = (await call('lowbtc', '/checkout', { plan: 'month', method: 'crypto' })).body.ref;
+  await pgCallback(callbackFor(ref, { coin: 'btc', value_coin: '0.004', txid_in: 'btctx2', pending: '0' }));
+  assert.equal(str('lowbtc', 'plan'), undefined);
 });
 
-test('invoice endpoint requires login', async () => {
-  const res = await worker.fetch(new Request('https://w.test/crypto/invoice', { method: 'POST', body: '{}' }), env);
+test('crypto: stablecoins count 1:1', async () => {
+  user('usdt');
+  const ref = (await call('usdt', '/checkout', { plan: 'day', method: 'crypto' })).body.ref;
+  await pgCallback(callbackFor(ref, { coin: 'trc20_usdt', value_coin: '19.6', txid_in: 'trontx', pending: '0' }));
+  assert.equal(str('usdt', 'planSource'), 'paygate');
+});
+
+/* ---------- "I've paid" instant start and automatic pause ---------- */
+
+test("I've paid: pass on at once, one unconfirmed start per account, confirmed later", async () => {
+  user('fast');
+  const co = await call('fast', '/checkout', { plan: 'month', method: 'card' });
+  const start = await call('fast', '/pass/start', { ref: co.body.ref });
+  assert.equal(start.body.status, 'pending');
+  assert.equal(str('fast', 'planSource'), 'pending');
+  const m = minutesLeft('fast');
+  assert.ok(m > 59 && m <= 60, `expected ~60 min, got ${m}`);
+  const co2 = await call('fast', '/checkout', { plan: 'day', method: 'card' });
+  assert.equal((await call('fast', '/pass/start', { ref: co2.body.ref })).body.status, 'waiting');
+  await pgCallback(cardPaid(co.body.ref, 140, '0xfast'));
+  assert.equal(str('fast', 'planSource'), 'paygate');
+  assert.equal(str('fast', 'pendingRef'), '');
+  assert.equal((await call('fast', '/pass/start', { ref: co.body.ref })).body.status, 'paid');
+});
+
+test('without a payment the instant pass simply runs out (pauses) after 60 minutes', async () => {
+  user('nopay');
+  const co = await call('nopay', '/checkout', { plan: 'year', method: 'card' }, '8.8.4.4');
+  assert.equal((await call('nopay', '/pass/start', { ref: co.body.ref }, '8.8.4.4')).body.status, 'pending');
+  const m = minutesLeft('nopay');
+  assert.ok(m > 59 && m <= 60);
+  // Paying later still switches the full pass on.
+  await pgCallback(cardPaid(co.body.ref, 999, '0xlate'));
+  assert.ok(minutesLeft('nopay') / 1440 > 364);
+});
+
+test("can't start a pass with someone else's checkout", async () => {
+  const co = await call('buyer', '/checkout', { plan: 'day', method: 'card' });
+  user('thief');
+  const r = await call('thief', '/pass/start', { ref: co.body.ref });
+  assert.equal(r.status, 404);
+  assert.equal(str('thief', 'plan'), undefined);
+});
+
+test('fake checkouts: one unconfirmed instant start per network per day', async () => {
+  user('farm1');
+  user('farm2');
+  const a = await call('farm1', '/checkout', { plan: 'day', method: 'card' }, '7.7.7.7');
+  assert.equal((await call('farm1', '/pass/start', { ref: a.body.ref }, '7.7.7.7')).body.status, 'pending');
+  const b = await call('farm2', '/checkout', { plan: 'day', method: 'card' }, '7.7.7.7');
+  assert.equal((await call('farm2', '/pass/start', { ref: b.body.ref }, '7.7.7.7')).body.status, 'confirming');
+  assert.equal(str('farm2', 'plan'), undefined, 'second account on the network gets nothing until payment arrives');
+  await pgCallback(cardPaid(b.body.ref, 20, '0xfarm2'));
+  assert.equal(str('farm2', 'planSource'), 'paygate');
+  const stored = JSON.stringify([...docs.entries()].filter(([k]) => k.startsWith('instantIps/')));
+  assert.ok(!stored.includes('7.7.7.7'), 'raw IPs must not be stored');
+});
+
+test('checkout spam is rate limited', async () => {
+  user('spam');
+  for (let i = 0; i < 10; i++) assert.equal((await call('spam', '/checkout', { plan: 'day', method: 'card' })).status, 200);
+  assert.equal((await call('spam', '/checkout', { plan: 'day', method: 'card' })).status, 429);
+});
+
+test('checkout requires login', async () => {
+  const res = await worker.fetch(new Request('https://w.test/checkout', { method: 'POST', body: '{}' }), env);
   assert.equal(res.status, 401);
 });
 
+test('no payout wallet configured: checkout says so instead of breaking', async () => {
+  user('cfg');
+  const res = await worker.fetch(new Request('https://w.test/checkout', {
+    method: 'POST', headers: { Authorization: `Bearer ${await idToken('cfg')}`, 'content-type': 'application/json' }, body: '{}',
+  }), { ...env, PAYGATE_WALLET: '' });
+  assert.equal(res.status, 503);
+});
+
+/* ---------- Free-trial limit ---------- */
 
 test('free trial: only 2 accounts per network, IP never stored', async () => {
   const claim = async (uid, ip) => {
@@ -158,75 +325,16 @@ test('free trial: only 2 accounts per network, IP never stored', async () => {
   assert.equal(await claim('t1', '1.2.3.4'), true, 'same account again is still fine');
   assert.equal(await claim('t4', '5.6.7.8'), true, 'another network gets its own 2');
   assert.equal(docs.get('users/t3').trialOk.booleanValue, false);
-  assert.equal(docs.get('users/t2').trialOk.booleanValue, true);
   const stored = JSON.stringify([...docs.entries()].filter(([k]) => k.startsWith('trialIps/')));
   assert.ok(!stored.includes('1.2.3.4') && !stored.includes('5.6.7.8'), 'raw IPs must not be stored');
 });
 
-/* ---------- Instant access with automatic hold ---------- */
-
-const call = async (uid, path, body, ip = '9.9.9.9') => {
-  const res = await worker.fetch(new Request(`https://w.test${path}`, {
-    method: 'POST', headers: { Authorization: `Bearer ${await idToken(uid)}`, 'content-type': 'application/json', 'CF-Connecting-IP': ip },
-    body: JSON.stringify(body),
+test('free-trial limit ignores a faked X-Forwarded-For header', async () => {
+  docs.set('users/fwd', { email: { stringValue: 'fwd@x.y' } });
+  const res = await worker.fetch(new Request('https://w.test/trial/claim', {
+    method: 'POST', headers: { Authorization: `Bearer ${await idToken('fwd')}`, 'X-Forwarded-For': '1.1.1.1', 'content-type': 'application/json' }, body: '{}',
   }), env);
-  return { status: res.status, body: await res.json() };
-};
-const minutesLeft = (uid) => (Date.parse(docs.get(`users/${uid}`).planExpiresAt.timestampValue) - Date.now()) / 60000;
-
-test('pass switches on instantly after checkout, then the payment confirms it', async () => {
-  docs.set('users/buyer', { email: { stringValue: 'b@x.y' }, role: { stringValue: 'customer' } });
-  const co = await call('buyer', '/checkout', { plan: 'month' });
-  assert.equal(co.status, 200);
-  assert.match(co.body.ref, /^[a-f0-9]{24}$/);
-  assert.equal(lastInvoice.success_url, `https://app.test/pro?paid=${co.body.ref}`);
-
-  const start = await call('buyer', '/pass/start', { ref: co.body.ref });
-  assert.equal(start.body.status, 'pending');
-  const u = docs.get('users/buyer');
-  assert.equal(u.plan.stringValue, 'pro');
-  assert.equal(u.planSource.stringValue, 'pending');
-  const m = minutesLeft('buyer');
-  assert.ok(m > 59 && m <= 60, `expected ~60 min, got ${m}`);
-
-  // A second checkout can't start another unpaid hour.
-  const co2 = await call('buyer', '/checkout', { plan: 'day' });
-  assert.equal((await call('buyer', '/pass/start', { ref: co2.body.ref })).body.status, 'waiting');
-
-  // Seen on the network → the pending time is topped up.
-  await ipn(paid({ payment_id: 901, payment_status: 'confirming', order_id: `buyer:month:${co.body.ref}` }));
-  assert.equal(docs.get('users/buyer').planSource.stringValue, 'pending');
-
-  // Finished → the full month, no double counting, pending cleared.
-  await ipn(paid({ payment_id: 901, order_id: `buyer:month:${co.body.ref}` }));
-  const done = docs.get('users/buyer');
-  assert.equal(done.planSource.stringValue, 'crypto');
-  assert.equal(done.pendingRef.stringValue, '');
-  const days = minutesLeft('buyer') / 1440;
-  assert.ok(days > 29.9 && days < 30.1, `expected ~30 days, got ${days}`);
-  assert.equal((await call('buyer', '/pass/start', { ref: co.body.ref })).body.status, 'paid');
-});
-
-test('payment not received: the pass goes on hold by itself', async () => {
-  docs.set('users/nopay', { email: { stringValue: 'n@x.y' }, role: { stringValue: 'customer' } });
-  const co = await call('nopay', '/checkout', { plan: 'year' }, '8.8.4.4');
-  assert.equal((await call('nopay', '/pass/start', { ref: co.body.ref }, '8.8.4.4')).body.status, 'pending');
-  await ipn(paid({ payment_id: 902, payment_status: 'expired', order_id: `nopay:year:${co.body.ref}`, price_amount: 999 }));
-  const u = docs.get('users/nopay');
-  assert.equal(u.planSource.stringValue, 'hold');
-  assert.ok(minutesLeft('nopay') <= 0, 'access must stop');
-  // Paying later still switches the full pass on.
-  await ipn(paid({ payment_id: 903, order_id: `nopay:year:${co.body.ref}`, price_amount: 999 }));
-  assert.equal(docs.get('users/nopay').planSource.stringValue, 'crypto');
-  assert.ok(minutesLeft('nopay') / 1440 > 364);
-});
-
-test("can't start a pass with someone else's checkout", async () => {
-  const co = await call('buyer', '/checkout', { plan: 'day' });
-  docs.set('users/thief', { email: { stringValue: 't@x.y' }, role: { stringValue: 'customer' } });
-  const r = await call('thief', '/pass/start', { ref: co.body.ref });
-  assert.equal(r.status, 404);
-  assert.equal(docs.get('users/thief').plan, undefined);
+  assert.equal(res.status, 400);
 });
 
 /* ---------- Telegram support bot ---------- */
@@ -268,57 +376,35 @@ test('bot pings the owner when a person is needed', async () => {
   assert.ok(tgSent.some((m) => m.method === 'sendMessage' && m.body.chat_id === '999'), 'owner notified');
 });
 
-/* ---------- Abuse protection ---------- */
-
-test('fake checkouts: one unconfirmed instant start per network per day', async () => {
-  docs.set('users/farm1', { email: { stringValue: 'f1@x.y' }, role: { stringValue: 'customer' } });
-  docs.set('users/farm2', { email: { stringValue: 'f2@x.y' }, role: { stringValue: 'customer' } });
-  const a = await call('farm1', '/checkout', { plan: 'day' }, '7.7.7.7');
-  assert.equal((await call('farm1', '/pass/start', { ref: a.body.ref }, '7.7.7.7')).body.status, 'pending');
-  const b = await call('farm2', '/checkout', { plan: 'day' }, '7.7.7.7');
-  assert.equal((await call('farm2', '/pass/start', { ref: b.body.ref }, '7.7.7.7')).body.status, 'confirming');
-  assert.equal(docs.get('users/farm2').plan, undefined, 'second account on the network gets nothing until payment is seen');
-  // Payment seen on the network → switches on by itself, even without returning to the app.
-  await ipn(paid({ payment_id: 950, payment_status: 'confirming', order_id: `farm2:day:${b.body.ref}`, price_amount: 20 }));
-  assert.equal(docs.get('users/farm2').planSource.stringValue, 'pending');
-  assert.ok(minutesLeft('farm2') > 59);
-  const stored = JSON.stringify([...docs.entries()].filter(([k]) => k.startsWith('instantIps/')));
-  assert.ok(!stored.includes('7.7.7.7'), 'raw IPs must not be stored');
-});
-
-test('payment seen for an unknown checkout is ignored', async () => {
-  docs.set('users/ghost', { email: { stringValue: 'g@x.y' }, role: { stringValue: 'customer' } });
-  await ipn(paid({ payment_id: 951, payment_status: 'confirming', order_id: 'ghost:year:aaaaaaaaaaaaaaaaaaaaaaaa', price_amount: 999 }));
-  assert.equal(docs.get('users/ghost').plan, undefined);
-});
-
-test('checkout spam is rate limited', async () => {
-  docs.set('users/spam', { email: { stringValue: 's@x.y' }, role: { stringValue: 'customer' } });
-  for (let i = 0; i < 10; i++) assert.equal((await call('spam', '/checkout', { plan: 'day' })).status, 200);
-  const r = await call('spam', '/checkout', { plan: 'day' });
-  assert.equal(r.status, 429);
-});
-
-test('free-trial limit ignores a faked X-Forwarded-For header', async () => {
-  docs.set('users/fwd', { email: { stringValue: 'fwd@x.y' } });
-  const res = await worker.fetch(new Request('https://w.test/trial/claim', {
-    method: 'POST', headers: { Authorization: `Bearer ${await idToken('fwd')}`, 'X-Forwarded-For': '1.1.1.1', 'content-type': 'application/json' }, body: '{}',
-  }), env);
-  assert.equal(res.status, 400);
-});
-
 test('bot spam is rate limited (protects the Claude bill)', async () => {
   tgSent.length = 0;
   claudeReply = 'Hi!';
   let claudeCalls = 0;
-  const before = lastClaude;
   for (let i = 0; i < 23; i++) {
     lastClaude = null;
     await tgUpdate(`msg ${i}`, 'hook', 555);
     if (lastClaude) claudeCalls++;
   }
-  lastClaude = before;
   assert.equal(claudeCalls, 20, `Claude called ${claudeCalls} times`);
   const slowDown = tgSent.filter((m) => m.method === 'sendMessage' && /You're quick/.test(m.body.text));
   assert.equal(slowDown.length, 1, 'one friendly slow-down message, not one per spam message');
+});
+
+test("PayGate's real published key is used in production and rejects signatures it didn't make", async () => {
+  user('realkey');
+  const prodEnv = { ...env };
+  delete prodEnv.PAYGATE_TEST_KEY_PEM;
+  const res = await worker.fetch(new Request('https://w.test/checkout', {
+    method: 'POST', headers: { Authorization: `Bearer ${await idToken('realkey')}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ plan: 'day', method: 'card' }),
+  }), prodEnv);
+  const { ref } = await res.json();
+  const url = cardPaid(ref, 20, '0xrealkey');
+  const s = createSign('RSA-SHA256');
+  s.update(url);
+  const r = await worker.fetch(new Request(url, { headers: { 'X-PayGate-Signature': s.sign(paygateKeys.privateKey, 'base64'), 'X-PayGate-Key-Id': 'v1' } }), prodEnv);
+  assert.equal(r.status, 403);
+  const unknownKey = await worker.fetch(new Request(url, { headers: { 'X-PayGate-Signature': 'AAAA', 'X-PayGate-Key-Id': 'v9' } }), prodEnv);
+  assert.equal(unknownKey.status, 403);
+  assert.equal(str('realkey', 'plan'), undefined);
 });

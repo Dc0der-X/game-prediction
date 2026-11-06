@@ -5,7 +5,7 @@ compatibility_date = "2024-11-01"
 
 [vars]
 FIREBASE_PROJECT_ID = "prediction-ai-a4dfe"
-# Where users return after checkout.
+# The app's address (links in the bot, allowed sites).
 APP_URL = "https://aicasinopredictor.web.app"
 # Comma-separated list of sites allowed to call this worker.
 APP_ORIGINS = "https://aicasinopredictor.web.app,https://aicasinopredictor.firebaseapp.com,http://localhost:8100,http://localhost:4200"
@@ -16,12 +16,17 @@ PRICE_YEAR_USD = "999"
 TRIAL_PER_IP = "2"
 # Minutes a pass stays on after checkout while the payment confirms. No confirmation by then → on hold.
 HOLD_MINUTES = "60"
+# PayGate.to payouts (public wallet addresses – set as GitHub variables, filled in by the deploy).
+# PAYGATE_WALLET: your EVM wallet – card payments arrive as USDC on Polygon; also ETH/USDT/USDC on EVM chains.
+PAYGATE_WALLET = ""
+# Optional: more coins on the crypto checkout.
+PAYGATE_BTC = ""
+PAYGATE_TRC20 = ""
+PAYGATE_SOLANA = ""
 # Telegram support bot (src/bot.ts). Your own Telegram chat id gets a ping when a customer asks for a person.
 TELEGRAM_OWNER_CHAT_ID = ""
 
 # Secrets – set with `npx wrangler secret put NAME` (never commit them):
-#   NOWPAYMENTS_API_KEY      NOWPayments API key
-#   NOWPAYMENTS_IPN_SECRET   NOWPayments IPN secret
 #   GOOGLE_SERVICE_ACCOUNT   Firebase service-account JSON (whole file, one line)
 #   IP_SALT                  any long random string (hashes IPs for the free-trial limit)
 #   TELEGRAM_BOT_TOKEN       from @BotFather (support bot)

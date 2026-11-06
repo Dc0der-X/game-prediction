@@ -2,7 +2,7 @@
   "name": "tablewise-payments-worker",
   "private": true,
   "version": "1.0.0",
-  "description": "Free Cloudflare Worker that verifies card / crypto (NOWPayments) payments and unlocks Pro in Firestore.",
+  "description": "Free Cloudflare Worker that verifies PayGate.to card / crypto payments and unlocks Pro in Firestore.",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",

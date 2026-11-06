@@ -18,7 +18,7 @@ Roulette (red/black), Baccarat (player/banker), Dragon Tiger, Sic Bo (small/big)
 - Day Pass: $20 (24 hours).
 - Monthly: $140 (30 days).
 - Yearly: $999 (365 days).
-Passes do not auto-renew. Payment by card or crypto; the pass switches on as soon as the buyer returns from checkout.
+Passes do not auto-renew. Payment by card or crypto (PayGate.to); the pass switches on automatically as soon as the payment arrives.
 - Support: 24/7 Telegram chat.
 
 ## Important

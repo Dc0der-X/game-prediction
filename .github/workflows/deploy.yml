@@ -9,12 +9,14 @@
 #     SUPPORT_TELEGRAM           optional – bot username, e.g. TableWiseHelpBot
 #     SUPPORT_WHATSAPP           optional – WhatsApp number, digits only
 #     TELEGRAM_OWNER_CHAT_ID     optional – your Telegram chat id (bot hand-off pings)
+#     PAYGATE_WALLET             your EVM wallet address for PayGate.to payouts (card = USDC on Polygon)
+#     PAYGATE_BTC, PAYGATE_TRC20, PAYGATE_SOLANA   optional extra wallets for the crypto checkout
 #     PAYMENTS_API_URL           optional – filled automatically from the worker deploy when empty
 #   Secrets (Secrets tab)
 #     FIREBASE_SERVICE_ACCOUNT   required – service-account key JSON of the same project (used to publish)
 #     WORKER_SERVICE_ACCOUNT     recommended – a second key with only "Cloud Datastore User" for the payment server
 #     CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID          payment server (skipped until set)
-#     NOWPAYMENTS_API_KEY, NOWPAYMENTS_IPN_SECRET, IP_SALT
+#     IP_SALT                    any long random string
 #     TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, ANTHROPIC_API_KEY
 name: Deploy
 
@@ -34,6 +36,10 @@ env:
   FIREBASE_WEB_CONFIG: ${{ vars.FIREBASE_WEB_CONFIG }}
   SITE_URL: ${{ vars.SITE_URL }}
   TELEGRAM_OWNER_CHAT_ID: ${{ vars.TELEGRAM_OWNER_CHAT_ID }}
+  PAYGATE_WALLET: ${{ vars.PAYGATE_WALLET }}
+  PAYGATE_BTC: ${{ vars.PAYGATE_BTC }}
+  PAYGATE_TRC20: ${{ vars.PAYGATE_TRC20 }}
+  PAYGATE_SOLANA: ${{ vars.PAYGATE_SOLANA }}
 
 jobs:
   worker:
@@ -74,15 +80,13 @@ jobs:
         if: steps.deploy.outputs.url != ''
         working-directory: payments-worker
         env:
-          NOWPAYMENTS_API_KEY: ${{ secrets.NOWPAYMENTS_API_KEY }}
-          NOWPAYMENTS_IPN_SECRET: ${{ secrets.NOWPAYMENTS_IPN_SECRET }}
           GOOGLE_SERVICE_ACCOUNT: ${{ secrets.WORKER_SERVICE_ACCOUNT || secrets.FIREBASE_SERVICE_ACCOUNT }}
           IP_SALT: ${{ secrets.IP_SALT }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          for NAME in NOWPAYMENTS_API_KEY NOWPAYMENTS_IPN_SECRET GOOGLE_SERVICE_ACCOUNT IP_SALT TELEGRAM_BOT_TOKEN TELEGRAM_WEBHOOK_SECRET ANTHROPIC_API_KEY; do
+          for NAME in GOOGLE_SERVICE_ACCOUNT IP_SALT TELEGRAM_BOT_TOKEN TELEGRAM_WEBHOOK_SECRET ANTHROPIC_API_KEY; do
             VALUE="${!NAME}"
             if [ -n "$VALUE" ]; then
               printf '%s' "$VALUE" | npx wrangler secret put "$NAME" > /dev/null && echo "$NAME set"

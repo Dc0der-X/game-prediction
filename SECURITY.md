@@ -9,9 +9,9 @@ Review date: 2026-11-05. Everything below is covered by automated tests that run
 | Accounts | Firebase Authentication (email + Google). Passwords are never stored by the app. | – |
 | Roles | Nobody can make themselves admin: profiles are created as `customer` only; the role field can't be changed from the app, not even by an admin. | `test/rules.test.mjs` |
 | Paid access | Plans, expiry dates and trial flags are written only by the payment server (service account). Players can't give themselves Pro. | rules tests |
-| Payments | Full passes are granted only from the payment provider's signed confirmation (HMAC-SHA512, constant-time check), with amount and duplicate checks. | worker tests 1–7 |
-| Instant passes | Switch on only when the payment is seen on the network, or once per network per day; unpaid passes pause by themselves after 60 minutes. | worker tests 10–12, 16–17 |
-| Abuse limits | 10 checkouts per account per hour; free hours for 2 accounts per network; bot: 20 replies per chat per 10 minutes, 150 per day. | worker tests 9, 18–20 |
+| Payments | Full passes are granted only from PayGate.to's RSA-signed callback (signature over the exact URL, fail closed), plus the checkout's own secret token, the receiving address and the amount actually received; repeats are ignored. Money goes straight to the owner's wallet. | worker tests 1–11, 25 |
+| Instant passes | Switch on only when the payment is seen on the network, or once per network per day; unpaid passes pause by themselves after 60 minutes. | worker tests 12–15 |
+| Abuse limits | 10 checkouts per account per hour; free hours for 2 accounts per network; bot: 20 replies per chat per 10 minutes, 150 per day. | worker tests 16, 19–20, 24 |
 | Privacy | IP addresses are stored only as salted one-way hashes; bot chats under a hashed chat id, last 10 messages only. | worker tests 9, 14, 16 |
 | Data | Every collection has explicit rules: field lists, types and size limits; server-only collections are closed to the app. | rules tests |
 | Old app data | On any project these rules run on, the old `User` collection (plaintext passwords) is unreadable. | rules test 1 |
@@ -41,7 +41,8 @@ Review date: 2026-11-05. Everything below is covered by automated tests that run
 3. Google Cloud console → *APIs & Services → Credentials* → the Browser API key → restrict it to
    `<your-project-id>.web.app/*`, `<your-project-id>.firebaseapp.com/*` (and your own domain later).
 4. Use a separate key with only *Cloud Datastore User* for the payment server (`WORKER_SERVICE_ACCOUNT` secret).
-5. Turn on 2-step verification for the Google, GitHub, Cloudflare and NOWPayments accounts.
+5. Turn on 2-step verification for the Google, GitHub and Cloudflare accounts, and keep the payout wallet's
+   recovery phrase offline – whoever has it has the money.
 6. Never paste keys into chat or commit them; put them in GitHub → Settings → Secrets.
 
 ## Reporting

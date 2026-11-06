@@ -9,6 +9,8 @@
  *   SUPPORT_TELEGRAM     optional bot username, e.g. TableWiseHelpBot
  *   SUPPORT_WHATSAPP     optional WhatsApp number, digits only
  *   TELEGRAM_OWNER_CHAT_ID  optional, for bot hand-off pings
+ *   PAYGATE_WALLET       your EVM wallet for PayGate.to payouts (card payments arrive as USDC on Polygon)
+ *   PAYGATE_BTC / PAYGATE_TRC20 / PAYGATE_SOLANA  optional extra wallets for the crypto checkout
  *
  * Writes: src/environments/environment.prod.ts, firebase.json, .firebaserc, payments-worker/wrangler.toml
  * and the site address in index.html / sitemap.xml / robots.txt / llms.txt / seo.service.ts.
@@ -110,6 +112,19 @@ const owner = env('TELEGRAM_OWNER_CHAT_ID');
 if (owner) {
   if (!/^-?\d{4,20}$/.test(owner)) fail('TELEGRAM_OWNER_CHAT_ID must be a number');
   tomlSet('TELEGRAM_OWNER_CHAT_ID', owner);
+}
+const wallets = {
+  PAYGATE_WALLET: /^0x[a-fA-F0-9]{40}$/,
+  PAYGATE_BTC: /^(bc1[a-z0-9]{25,62}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})$/,
+  PAYGATE_TRC20: /^T[1-9A-HJ-NP-Za-km-z]{33}$/,
+  PAYGATE_SOLANA: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/,
+};
+for (const [k, re] of Object.entries(wallets)) {
+  const v = env(k);
+  if (!v) continue;
+  if (!re.test(v)) fail(`${k} doesn't look like a valid wallet address.`);
+  tomlSet(k, v);
+  console.log(`${k} set`);
 }
 write('payments-worker/wrangler.toml', toml);
 

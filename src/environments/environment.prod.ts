@@ -26,7 +26,7 @@ export const environment = {
     whatsapp: '',
   },
   payments: {
-    /** Card / crypto checkout (NOWPayments) is handled by the payments worker; set false to hide it. */
+    /** Card / crypto checkout (PayGate.to) is handled by the payments worker; set false to hide it. */
     cryptoEnabled: true,
     /**
      * URL of the free Cloudflare Worker in /payments-worker that verifies payments,

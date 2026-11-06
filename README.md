@@ -28,7 +28,7 @@ fun, unlimited practice and a disciplined way to play for real that keeps losses
 | Monthly | **$140** (30 days) | $4.67 (save 77%) |
 | Yearly | **$999** (365 days) | $2.74 (save 86%) |
 
-Passes are one-time payments (card or crypto through one hosted checkout). They switch on the moment the buyer is back
+Passes are one-time payments by card or crypto through PayGate.to, paid straight into your own wallet. They switch on the moment the buyer is back
 from checkout, never auto-renew and stack on any time left.
 Change prices in `src/app/core/pricing.ts` **and** `payments-worker/wrangler.toml` (`PRICE_DAY_USD`, `PRICE_MONTH_USD`,
 `PRICE_YEAR_USD`).
@@ -136,12 +136,15 @@ domain* and copy the DNS records it shows into your domain's settings. Add the d
 Settings → Authorized domains*, and set the GitHub variable `SITE_URL` (e.g. `https://tablewise.app`); the next
 deploy updates links, SEO and the payment server.
 
-**Then, whenever you're ready – payments and the 24/7 bot** (add the secrets, then *Actions → Deploy → Run workflow*):
+**Then, whenever you're ready – payments and the 24/7 bot.** Payments use **PayGate.to**: no account and no keys,
+money goes straight to your own wallet. Set the *variable* `PAYGATE_WALLET` = your EVM wallet address (e.g. from
+Trust Wallet; card payments arrive there as USDC on Polygon). Optional variables `PAYGATE_BTC`, `PAYGATE_TRC20`
+(USDT on Tron) and `PAYGATE_SOLANA` add those coins to the crypto checkout. Then add these secrets and run
+*Actions → Deploy → Run workflow*:
 
 | Secret | Where to get it |
 |---|---|
 | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | dash.cloudflare.com (free) → *My Profile → API Tokens → "Edit Cloudflare Workers"*; account id on the Workers page |
-| `NOWPAYMENTS_API_KEY`, `NOWPAYMENTS_IPN_SECRET` | nowpayments.io → *Settings → Payments* |
 | `IP_SALT` | any long random string |
 | `TELEGRAM_BOT_TOKEN` | Telegram → @BotFather → `/newbot` |
 | `TELEGRAM_WEBHOOK_SECRET` | any random string (letters/numbers) |
@@ -205,36 +208,26 @@ npm install
 npx wrangler login
 ```
 
-**Card + crypto** (nowpayments.io – one hosted checkout; enable card payments in your NOWPayments dashboard if your
-account supports them, or swap in another card-to-crypto gateway with the same invoice + signed-webhook flow):
-1. Create an account and add your payout wallet.
-2. Copy the **API key** and set an **IPN secret**.
+**Card + crypto with PayGate.to** (no account, no API key, no KYC for you – https://paygate.to/docs/):
+1. Get a self-custodial wallet (Trust Wallet is simplest). Copy its **EVM address** (starts with `0x`) – card payments
+   arrive there as USDC on Polygon, crypto payments in the coin paid. Optionally copy its BTC, USDT-TRC20 and Solana
+   addresses too.
+2. Put them in GitHub variables `PAYGATE_WALLET` (required), `PAYGATE_BTC`, `PAYGATE_TRC20`, `PAYGATE_SOLANA`
+   (optional). The deploy writes them into `payments-worker/wrangler.toml`.
+3. Optional: ask PayGate (Telegram @PayGate_to) for a free dedicated endpoint and set `PAYGATE_API` /
+   `PAYGATE_CHECKOUT` in `wrangler.toml` if the shared one is ever slow.
 
-Then:
-1. Fill in `APP_URL` (and `HOLD_MINUTES`, default 60) in `payments-worker/wrangler.toml`.
-2. Set the secrets:
-   ```bash
-   npx wrangler secret put NOWPAYMENTS_API_KEY
-   npx wrangler secret put NOWPAYMENTS_IPN_SECRET
-   npx wrangler secret put GOOGLE_SERVICE_ACCOUNT   # paste the service-account JSON
-   npx wrangler secret put IP_SALT                  # any long random string
-   npm test && npm run deploy
-   ```
-3. Put the worker URL in `src/environments/environment.prod.ts` → `payments.apiUrl`, then `npm run deploy` again
-   from the project root.
-
-**Instant access, automatic hold – no manual approval ever:**
-1. Buyer picks a pass → hosted checkout → pays → lands on `/pro?paid=<ref>`. The pass switches on **right away**
-   (status "pending") and the buyer goes straight to the Signal Room.
-2. Payment seen on the network → the pending time is extended. Payment finished → the full Day / Month / Year pass
-   is granted, counted from the moment it switched on.
-3. Payment failed / expired, or no confirmation within 60 minutes → the pass pauses by itself ("payment not received").
-   If the payment arrives later, it switches back on automatically.
-4. Only one unconfirmed instant start per account, so the free hour can't be farmed with fake checkouts.
-
-How it stays safe: the browser only starts a checkout. Only the provider's signed IPN (signature, amount and
-duplicate checks) grants a full pass, written with the service account. Firestore rules stop customers from ever
-writing their own plan, role or expiry date.
+**How a purchase works – no manual approval ever:**
+1. Buyer picks a pass → *Pay by card* (Visa, Mastercard, Apple Pay, Google Pay, bank transfer) or *Pay with crypto*
+   → PayGate.to's checkout opens in a new tab. The TableWise tab waits.
+2. PayGate pays out to your wallet and calls `/paygate/callback`. The worker checks PayGate's **RSA signature** over
+   the exact callback URL, the checkout's **own secret token**, the **receiving address** and the **amount actually
+   received** (card: at least 85% of the price after provider fees; crypto: 95%, converted with PayGate's rate;
+   stablecoins 1:1) – then grants the Day / Month / Year pass. The waiting tab switches over by itself.
+3. Buyers who tap *I've paid* before the confirmation arrives get the pass on at once for 60 minutes; without a payment
+   it pauses by itself. Unconfirmed starts: one per account, one per network per day.
+4. Repeated callbacks for the same transaction change nothing. Paying less than the price (e.g. editing the amount in
+   the card link) grants nothing and is logged on the checkout.
 
 ### 4. 24/7 Telegram support bot (fully automatic)
 
@@ -297,7 +290,7 @@ src/app/core/        games.ts (engines + odds), strategies.ts (rules, coach plan
 src/app/pages/       lobby, table, rules, auth, coach, history, pro, account, admin
 src/app/home/        public landing page
 firestore.rules      security rules (who can read and write what)
-payments-worker/     Cloudflare Worker: checkout, instant pass + auto-hold, trial limit, Telegram bot (+ tests)
+payments-worker/     Cloudflare Worker: PayGate.to checkout + signed callbacks, instant pass + auto-hold, trial limit, Telegram bot (+ tests)
 scripts/             one-time migration and make-admin scripts
 ```
 
