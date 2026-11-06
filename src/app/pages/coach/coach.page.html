@@ -1,0 +1,283 @@
+<app-topbar></app-topbar>
+<ion-content class="room-bg">
+  <div class="field-wrap"><app-neural-field [density]="stage === 'live' ? 1.2 : 0.8"></app-neural-field></div>
+  <div class="tw-page front">
+
+    <!-- Loading -->
+    <div *ngIf="stage === 'checking'" class="tw-card center"><ion-spinner></ion-spinner></div>
+
+    <!-- Paused by the player -->
+    <div *ngIf="stage === 'excluded'" class="tw-card center">
+      <h1>Your break is on</h1>
+      <p class="tw-muted">The Signal Room opens again on {{ excludedUntil | date: 'medium' }}. Practice tables are open any time.</p>
+      <ion-button routerLink="/lobby">Practice tables</ion-button>
+    </div>
+
+    <!-- Today's session is done: kind words, clear next steps, the door stays open -->
+    <section *ngIf="stage === 'locked'" class="today tw-glass">
+      <div class="today-ico" [class.win]="todayNet > 0" aria-hidden="true">
+        <svg *ngIf="todayNet > 0" viewBox="0 0 48 48"><path d="M14 8h20v8a10 10 0 0 1-20 0V8z M14 11H8a6 6 0 0 0 6 7 M34 11h6a6 6 0 0 1-6 7 M24 26v8 M17 40h14 M19 34h10v6H19z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg *ngIf="todayNet <= 0" viewBox="0 0 48 48"><path d="M30 8a16 16 0 1 0 10 26A14 14 0 0 1 30 8z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/></svg>
+      </div>
+      <p class="tw-eyebrow">{{ greeting }}</p>
+      <h1>{{ todayNet > 0 ? 'Done for the day – well played' : 'Fresh start tomorrow' }}</h1>
+      <div class="today-net" *ngIf="todayNet !== 0" [class.tw-pos]="todayNet > 0">{{ todayNet | money: cur : true }} <small>today</small></div>
+      <p class="today-line">{{ todayNet > 0
+        ? 'Protect it. The players who grow fastest stop on a win and come back tomorrow with a bigger amount.'
+        : 'Your limit kept the rest of your amount safe. A calm head and a new table – that is where the next win comes from.' }}</p>
+      <div class="today-actions">
+        <a class="tw-cta" routerLink="/history">See today's session</a>
+        <a class="tw-cta ghost" routerLink="/lobby">Practice tables</a>
+      </div>
+      <button class="link another" (click)="askAnother()">Play another session</button>
+    </section>
+
+    <!-- ================= SETUP ================= -->
+    <div *ngIf="stage === 'setup'" class="setup" #setupEl>
+      <header class="setup-head" data-in>
+        <div>
+          <p class="tw-eyebrow">{{ greeting }}</p>
+          <h1>Choose your table</h1>
+        </div>
+        <app-country-picker (changed)="onCountry()"></app-country-picker>
+      </header>
+
+      <a class="goal-banner" *ngIf="goalStep" routerLink="/goal" data-in>
+        <span class="gb-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg></span>
+        <span><strong>Today's goal step: play with {{ goalStep.amount | money: cur }}, target {{ goalStep.gain | money: cur : true }}</strong>
+          <small>{{ goalStep.left }} winning session{{ goalStep.left === 1 ? '' : 's' }} to your goal of {{ goal?.target ?? 0 | money: cur }}</small></span>
+      </a>
+
+      <div class="games-row" role="group" aria-label="Game">
+        <app-game-card *ngFor="let g of games" data-in [game]="g" [selected]="gameId === g.id" (pick)="gameId = g.id"></app-game-card>
+      </div>
+
+      <section class="amount-card tw-glass" data-in>
+        <label class="amt-label" for="amt">What are you playing with today?</label>
+        <div class="amt-input">
+          <span class="sym">{{ symbol }}</span>
+          <input id="amt" class="money" type="number" inputmode="decimal" [min]="amounts.min" step="1" [placeholder]="amounts.quick[0]"
+            [(ngModel)]="bankroll" aria-label="Amount for today" />
+        </div>
+        <div class="quick">
+          <button *ngFor="let a of amounts.quick" type="button" [class.on]="bankroll === a" (click)="bankroll = a">{{ a | money: cur }}</button>
+        </div>
+        <p class="below" *ngIf="bankroll && !plan">Live tables in {{ money.country.name }} start from {{ amounts.min | money: cur }} – choose that or more.</p>
+      </section>
+
+      <section class="plan-card tw-glass" *ngIf="plan as p" data-in>
+        <div class="plan-grid">
+          <div><span>First bet</span><strong>{{ p.series?.[0] ?? 0 | money: cur }}</strong></div>
+          <div class="good"><span>Target</span><strong>{{ p.stopWin | money: cur : true }}</strong></div>
+          <div><span>Safety limit</span><strong>{{ p.stopLoss | money: cur }}</strong></div>
+        </div>
+        <p class="how">Tap what came at your table – the coach shows the side and the amount for every bet.</p>
+        <button class="tw-cta go" (click)="start()">{{ guest ? 'Start free – enter the table' : 'Enter the table' }}</button>
+        <p class="guest-note" *ngIf="guest">3 hours free · no card needed · your plan stays as you set it</p>
+      </section>
+    </div>
+
+    <!-- ================= FIRST RESULT ================= -->
+    <ng-container *ngIf="(stage === 'first' || stage === 'newtable') && live">
+      <section class="first">
+        <p class="tw-eyebrow">{{ stage === 'newtable' ? 'Table ' + ((engine?.table ?? 1) + 1) : liveGame.name }} · {{ live.casino }}</p>
+        <h1>{{ stage === 'newtable' ? 'Fresh table! What came last here?' : 'What came last at your table?' }}</h1>
+        <p class="tw-muted">Tap the last result. Your first signal comes from it.</p>
+        <div class="choices big">
+          <button *ngFor="let c of choices; trackBy: trackIdx" class="choice" [ngClass]="'tone-' + c.tone" (click)="begin(c.id)">{{ c.label }}</button>
+        </div>
+        <p class="tw-note" *ngIf="watchNote">{{ watchNote }}</p>
+        <div class="tw-row centered">
+          <button class="link" *ngIf="live.tableUrl" (click)="openTable()">Open my live table ↗</button>
+          <button class="link" *ngIf="stage === 'first'" (click)="restart()">Change game or amount</button>
+        </div>
+      </section>
+    </ng-container>
+
+    <!-- ================= LIVE TABLE ================= -->
+    <ng-container *ngIf="stage === 'live' && live && engine">
+      <div class="room">
+        <!-- Status strip -->
+        <div class="strip">
+          <div class="ring" [class.low]="remaining < 120" aria-label="Time left">
+            <svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="26" class="track" /><circle cx="30" cy="30" r="26" class="bar" [attr.stroke-dashoffset]="ringOffset" /></svg>
+            <span>{{ clock }}</span>
+          </div>
+          <div class="where">
+            <strong>{{ liveGame.name }}</strong>
+            <span class="tw-muted tw-small">Table {{ engine.table }} · {{ live.casino }}</span>
+          </div>
+          <div class="pnl">
+            <span class="tw-muted tw-small">Session</span>
+            <strong [class.tw-pos]="net > 0">{{ net | money: cur : true }}</strong>
+            <em class="pct" [class.tw-pos]="net > 0">{{ net > 0 ? '+' : '' }}{{ pnlPct | number: '1.0-1' }}%</em>
+          </div>
+        </div>
+
+        <div class="tools">
+          <button class="tool" (click)="openTable()">{{ live.tableUrl ? 'Open my live table ↗' : 'Add my live table link' }}</button>
+          <button class="tool" *ngIf="pipSupported" (click)="togglePip()">{{ pipOn ? 'Bring signals back' : 'Float signals over the casino' }}</button>
+          <button class="tool" (click)="askingRestart = true">Change game / start over</button>
+        </div>
+
+        <div class="notice" *ngIf="notice" [ngClass]="'n-' + notice" role="status">
+          <span class="n-ico" aria-hidden="true">{{ notice === 'target' ? '★' : '◐' }}</span>
+          <div class="n-txt" *ngIf="notice === 'target'">
+            <strong>Target hit – {{ net | money: cur : true }}!</strong>
+            <span>Cash out now, or keep riding while it wins. The first miss cashes you out with the win locked in.</span>
+          </div>
+          <div class="n-txt" *ngIf="notice === 'halfway'">
+            <strong>Halfway to your safety limit</strong>
+            <span>Stay calm and follow the signal – the ladder is built to win it back. You still have {{ safeLeft | money: cur }} of room.</span>
+          </div>
+          <button class="n-x" (click)="notice = null">Got it</button>
+        </div>
+
+        <div class="grid">
+          <!-- Signal + input: this block floats over the casino in the pop-out window -->
+          <div class="mini" #mini>
+            <section class="signal-card" *ngIf="signal as sig" [class.thinking]="thinking">
+              <div class="glow" [ngClass]="'glow-' + toneOfBet"></div>
+              <div class="sig-top">
+                <span class="tw-eyebrow">{{ thinking ? 'Reading the table' : 'Next bet' }}</span>
+                <span class="mode attack" *ngIf="!thinking">{{ sig.pattern === 'opposite' ? 'Swing' : 'Ride the run' }}</span>
+                <span class="lvl" *ngIf="!thinking">Step {{ sig.level }}/8</span>
+              </div>
+
+              <div class="scan" *ngIf="thinking" aria-live="polite">
+                <div class="orb"><i></i><i></i><i></i></div>
+                <span class="tw-small">Reading the last results…</span>
+              </div>
+
+              <ng-container *ngIf="!thinking">
+                <div class="reveal" *ngFor="let k of [roundsPlayed]">
+                  <div class="disc" [ngClass]="'tone-' + toneOfBet">{{ sig.betLabel }}</div>
+                  <div class="stake">
+                    <div class="stack" aria-hidden="true">
+                      <i *ngFor="let c of chipStack; let i = index; trackBy: trackIdx" [style.bottom.px]="i * 6" [style.animation-delay.ms]="i * 35"></i>
+                    </div>
+                    <div class="amt"><small>Bet</small>{{ shownStake | money: cur }}
+                      <span class="chg" *ngIf="sig.change !== null" [class.up]="sig.change > 0" [class.down]="sig.change < 0">
+                        {{ sig.change > 0 ? '▲ ' + (sig.change | money: cur : true) : sig.change < 0 ? '▼ ' + (sig.change | money: cur) : '= same as last' }}
+                      </span>
+                      <em>{{ betPct | number: '1.0-1' }}% of your amount</em></div>
+                  </div>
+                </div>
+                <div class="if-miss" [ngClass]="'im-' + sig.ifMiss">
+                  <ng-container [ngSwitch]="sig.ifMiss">
+                    <span *ngSwitchCase="'continue'">If this misses → next bet <b>{{ sig.ifMissStake ?? 0 | money: cur }}</b></span>
+                    <span *ngSwitchCase="'fresh-table'">If this misses → <b>fresh table</b>, back to {{ sig.ifMissStake ?? 0 | money: cur }}</span>
+                    <span *ngSwitchCase="'stop'">Last bet of this session – if it misses, you stop safely with {{ live.plan.bankroll - live.plan.stopLoss + (sig.room - sig.stake) | money: cur }} kept</span>
+                    <span *ngSwitchCase="'cashout'">Riding the win – if this misses, you cash out with <b>{{ net - sig.stake | money: cur : true }}</b></span>
+                  </ng-container>
+                </div>
+                <p class="hint">{{ hint }}</p>
+              </ng-container>
+
+              <div class="flash" *ngIf="flash" [ngClass]="flash.kind">{{ flash.text }}</div>
+            </section>
+
+            <section class="input-card">
+              <p class="tw-eyebrow">What came?</p>
+              <div class="choices">
+                <button *ngFor="let c of choices; trackBy: trackIdx" class="choice" [ngClass]="'tone-' + c.tone" (click)="came(c.id)" [disabled]="thinking || !!stopSign">{{ c.label }}</button>
+              </div>
+              <div class="mini-alert" *ngIf="stopSign && pipOn">
+                <strong>{{ miniAlert }}</strong>
+                <button (click)="togglePip()">Open</button>
+              </div>
+              <div class="tw-row">
+                <button class="link" (click)="undo()" [disabled]="!roundsPlayed">Undo last</button>
+                <span class="tw-spacer"></span>
+                <button class="link" (click)="finish('manual')">Cash out &amp; finish</button>
+              </div>
+            </section>
+          </div>
+
+          <!-- Progress -->
+          <section class="disc-card">
+            <div class="bars">
+              <div class="bar-row">
+                <div class="bar-label"><span>Profit target</span><strong class="tw-pos">{{ targetPct }}%</strong></div>
+                <div class="bar"><i class="good" [style.width.%]="targetPct"></i></div>
+                <small class="tw-muted">{{ live.plan.stopWin | money: cur : true }} ({{ pctOf(live.plan.stopWin) | number: '1.0-0' }}% of your amount)</small>
+              </div>
+              <div class="bar-row">
+                <div class="bar-label"><span>Safety limit</span><strong>{{ safeLeft | money: cur }} left</strong></div>
+                <div class="bar"><i class="safe" [style.width.%]="100 - riskPct"></i></div>
+                <small class="tw-muted">Every bet stays inside {{ live.plan.stopLoss | money: cur }} ({{ pctOf(live.plan.stopLoss) | number: '1.0-0' }}% of your amount)</small>
+              </div>
+            </div>
+            <div class="ladder" aria-label="Bet ladder">
+              <i *ngFor="let l of ladder; trackBy: trackIdx" [class.on]="l.on" [class.past]="l.past">{{ l.amount | money: cur }}</i>
+            </div>
+            <div class="stats">
+              <div><strong>{{ winRate }}%</strong><span>signals won</span></div>
+              <div><strong>{{ wins }}</strong><span>wins</span></div>
+              <div><strong>{{ engine.table }}</strong><span>table</span></div>
+            </div>
+          </section>
+
+          <!-- Road -->
+          <section class="road-card">
+            <p class="tw-eyebrow">Table {{ engine.table }} road</p>
+            <div class="road" role="img" aria-label="Results at this table">
+              <div class="col" *ngFor="let col of road; trackBy: trackIdx">
+                <ng-container *ngFor="let b of col; trackBy: trackIdx">
+                  <span *ngIf="b; else slot" class="bead" [ngClass]="['tone-' + b.tone, 'mark-' + b.mark]">{{ b.label }}</span>
+                  <ng-template #slot><span class="slot"></span></ng-template>
+                </ng-container>
+              </div>
+            </div>
+            <div class="legend tw-small tw-muted"><span class="ring-won"></span> signal won</div>
+          </section>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- ================= DONE ================= -->
+    <ng-container *ngIf="stage === 'done' && live">
+      <section class="done tw-glass" #doneEl>
+        <p class="tw-eyebrow">{{ liveGame.name }} · Table {{ engine?.table ?? 1 }}</p>
+        <h1>{{ endTitle }}</h1>
+        <div class="big" [class.tw-pos]="net > 0">{{ net | money: cur : true }}</div>
+        <div class="big-pct" [class.tw-pos]="net > 0">{{ net > 0 ? '+' : '' }}{{ pnlPct | number: '1.0-1' }}% on your amount</div>
+        <div class="done-stats">
+          <div><strong>{{ wins }}</strong><span>wins</span></div>
+          <div><strong>{{ winRate }}%</strong><span>signals won</span></div>
+          <div><strong>{{ engine?.table ?? 1 }}</strong><span>table{{ (engine?.table ?? 1) === 1 ? '' : 's' }}</span></div>
+        </div>
+        <p class="kind">{{ endLine }}</p>
+        <p class="tw-error" *ngIf="saveError">{{ saveError }}</p>
+        <div class="today-actions">
+          <a class="tw-cta" routerLink="/history">See my session</a>
+          <a class="tw-cta ghost" routerLink="/lobby">Practice tables</a>
+        </div>
+        <button class="link another" (click)="askAnother()">Play another table</button>
+      </section>
+    </ng-container>
+  </div>
+</ion-content>
+
+<!-- Overlays -->
+<app-stop-sign *ngIf="stopSign === 'checkin' && stage === 'live'" kind="checkin" [icon]="net > 0 ? 'cash' : 'switch'"
+  [title]="checkinTitle" [reason]="checkinReason" [hint]="checkinHint" [net]="net" [currency]="cur"
+  [stopLabel]="net > 0 ? 'Cash out now' : 'Finish for today'" continueLabel="Keep playing"
+  (stop)="finish('checkin')" (continue)="continuePlaying()"></app-stop-sign>
+
+<app-stop-sign *ngIf="stopSign === 'table'" kind="checkin" icon="switch" title="FRESH TABLE TIME"
+  reason="Hop to a new live table." [net]="net" [currency]="cur"
+  hint="Open another table and tap its last result. The ladder starts again at step 1 – your totals carry on."
+  stopLabel="Finish for today" continueLabel="I've moved tables"
+  (stop)="finish('change-table')" (continue)="moveTable()"></app-stop-sign>
+
+<app-stop-sign *ngIf="askingRestart" kind="checkin" icon="switch" title="CHANGE GAME?"
+  [reason]="roundsPlayed ? 'This session ends here.' : 'Nothing is bet yet.'"
+  [hint]="roundsPlayed ? 'Its result is saved in your history. Then pick a table and an amount again.' : 'Pick a table and an amount again.'"
+  [net]="roundsPlayed ? net : null" [currency]="cur"
+  stopLabel="Choose a game" continueLabel="Keep playing" (stop)="restart()" (continue)="cancelRestart()"></app-stop-sign>
+
+<app-stop-sign *ngIf="askingAnother" kind="checkin" [icon]="(stage === 'done' ? net : todayNet) > 0 ? 'cash' : 'switch'"
+  [title]="anotherTitle" [reason]="anotherReason" [hint]="anotherHint" [currency]="cur"
+  stopLabel="Done for today" continueLabel="Play another session"
+  (stop)="askingAnother = false" (continue)="playAnother()"></app-stop-sign>

@@ -7,13 +7,268 @@
 @import "@ionic/angular/css/typography.css";
 @import "@ionic/angular/css/display.css";
 
-/* Optional CSS utils that can be commented out */
+/* Optional CSS utils */
 @import "@ionic/angular/css/padding.css";
-@import "@ionic/angular/css/float-elements.css";
-@import "@ionic/angular/css/text-alignment.css";
-@import "@ionic/angular/css/text-transformation.css";
 @import "@ionic/angular/css/flex-utils.css";
+@import "@ionic/angular/css/text-alignment.css";
 
 body {
-  background: #fff;
+  background: var(--tw-bg);
+  color: var(--tw-text);
+  font-family: var(--tw-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  font-family: var(--tw-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+a { color: var(--tw-gold); }
+
+/* ---------- Layout ---------- */
+.tw-page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 20px 16px 64px;
+}
+
+.tw-page.narrow { max-width: 560px; }
+
+.tw-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.tw-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.tw-spacer { flex: 1; }
+
+/* ---------- Surfaces ---------- */
+.tw-card {
+  background: var(--tw-card);
+  border: 1px solid var(--tw-line);
+  border-radius: var(--tw-radius);
+  padding: 18px;
+}
+
+.tw-card.felt {
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(var(--tw-ink-rgb), 0.07), transparent 60%),
+    linear-gradient(180deg, var(--tw-felt-2), var(--tw-felt));
+  border-color: rgba(var(--tw-accent-rgb), 0.25);
+}
+
+.tw-card h2, .tw-card h3 { margin-top: 0; }
+
+.tw-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--tw-gold);
+  margin: 0 0 6px;
+}
+
+.tw-muted { color: var(--tw-muted); }
+.tw-small { font-size: 13px; }
+.tw-pos { color: var(--tw-green); }
+.tw-neg { color: var(--tw-red); }
+.tw-gold { color: var(--tw-gold); }
+
+.tw-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--tw-card-2);
+  border: 1px solid var(--tw-line);
+  color: var(--tw-text);
+  white-space: nowrap;
+}
+.tw-pill.gold { background: rgba(var(--tw-accent-rgb), 0.14); border-color: rgba(var(--tw-accent-rgb), 0.4); color: var(--tw-gold-2); }
+.tw-pill.green { background: rgba(52, 181, 120, 0.14); border-color: rgba(52, 181, 120, 0.4); color: var(--tw-pos-text); }
+.tw-pill.red { background: rgba(224, 82, 82, 0.14); border-color: rgba(224, 82, 82, 0.4); color: var(--tw-neg-text); }
+
+/* ---------- Stats ---------- */
+.tw-stats {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+.tw-stat {
+  background: var(--tw-bg-2);
+  border: 1px solid var(--tw-line);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.tw-stat .label { font-size: 12px; color: var(--tw-muted); }
+.tw-stat .value { font-size: 22px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+/* ---------- Forms ---------- */
+.tw-field { display: block; margin-bottom: 14px; }
+.tw-field > span { display: block; font-size: 13px; color: var(--tw-muted); margin-bottom: 6px; }
+.tw-input, .tw-select {
+  width: 100%;
+  background: var(--tw-bg-2);
+  color: var(--tw-text);
+  border: 1px solid var(--tw-line-strong);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font: inherit;
+  font-size: 16px;
+  outline: none;
+}
+.tw-input:focus, .tw-select:focus { border-color: var(--tw-gold); }
+.tw-check { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; margin: 10px 0; }
+.tw-check input { margin-top: 3px; accent-color: var(--tw-gold); width: 18px; height: 18px; }
+.tw-error {
+  background: rgba(224, 82, 82, 0.12);
+  border: 1px solid rgba(224, 82, 82, 0.4);
+  color: #f6b0b0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  margin: 10px 0;
+}
+.tw-note {
+  background: rgba(var(--tw-accent-rgb), 0.08);
+  border: 1px solid rgba(var(--tw-accent-rgb), 0.3);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  margin: 10px 0;
+}
+
+/* ---------- Buttons ---------- */
+ion-button { --border-radius: 999px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+
+/* ---------- Result tones ---------- */
+.tone-red { background: var(--tw-red) !important; color: #fff !important; }
+.tone-black { background: var(--tw-black) !important; color: #fff !important; }
+.tone-green { background: var(--tw-green) !important; color: #fff !important; }
+.tone-blue { background: var(--tw-blue) !important; color: #fff !important; }
+.tone-gold { background: var(--tw-gold) !important; color: var(--tw-on-accent) !important; }
+
+/* ---------- Playing cards ---------- */
+.tw-cardface {
+  width: 54px;
+  height: 76px;
+  border-radius: 8px;
+  background: #fbf8f0;
+  color: #1a1a1a;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  animation: tw-deal 0.35s ease-out both;
+}
+.tw-cardface.red { color: #c62828; }
+.tw-cardface .suit { font-size: 22px; margin-top: 4px; }
+
+.tw-die {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: #fbf8f0;
+  color: #1a1a1a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 800;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  animation: tw-roll 0.45s ease-out both;
+}
+
+@keyframes tw-deal {
+  from { transform: translateY(-14px) rotate(-6deg); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes tw-roll {
+  0% { transform: rotate(-180deg) scale(0.6); opacity: 0; }
+  100% { transform: none; opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tw-cardface, .tw-die { animation: none; }
+}
+
+/* ---------- Phone tab bar (shared/tabbar.component) ---------- */
+:root { --tw-tabbar-h: 0px; }
+@media (max-width: 720px) {
+  html.tw-tabbar-on { --tw-tabbar-h: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  html.tw-tabbar-on .tw-page { padding-bottom: calc(64px + var(--tw-tabbar-h)); }
+  html.tw-tabbar-on app-topbar .tabs { display: none; }
+}
+
+/* ---------- Theme polish ---------- */
+.tw-card { box-shadow: var(--tw-shadow); }
+:root[data-tw-theme='clean'] .tw-card.felt { border-color: rgba(var(--tw-accent-rgb), .18); }
+
+/* ===================== Night lounge design system ===================== */
+ion-content { --background: var(--tw-page-bg); }
+h1, h2 { font-family: var(--tw-serif); font-weight: 700; letter-spacing: -0.015em; }
+.tw-serif { font-family: var(--tw-serif); }
+.tw-gold-text { background: var(--tw-accent-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* Glass card: soft border, inner highlight */
+.tw-glass {
+  background: linear-gradient(180deg, rgba(var(--tw-ink-rgb), 0.06), rgba(var(--tw-ink-rgb), 0.02)), var(--tw-glass);
+  border: 1px solid var(--tw-line); border-radius: 22px; box-shadow: var(--tw-shadow);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+
+/* Gold call-to-action with a slow light sweep */
+.tw-cta {
+  position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 52px; padding: 0 28px; border: 0; border-radius: 999px; cursor: pointer; text-decoration: none;
+  background: var(--tw-accent-grad); color: var(--tw-on-accent); font: 700 16px/1 var(--tw-font); letter-spacing: .01em;
+  box-shadow: 0 10px 30px rgba(var(--tw-accent-rgb), .28), inset 0 1px 0 rgba(255, 255, 255, .45);
+  transition: transform .18s ease, box-shadow .18s ease;
+  &::after { content: ''; position: absolute; inset: -40% auto -40% -30%; width: 40%; transform: skewX(-20deg);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .55), transparent); animation: tw-sweep 3.8s ease-in-out infinite; }
+  &:hover { transform: translateY(-1px); box-shadow: 0 14px 36px rgba(var(--tw-accent-rgb), .36), inset 0 1px 0 rgba(255, 255, 255, .45); }
+  &:active { transform: translateY(1px) scale(.99); }
+  &[disabled] { opacity: .45; cursor: not-allowed; &::after { display: none; } }
+}
+.tw-cta.ghost { background: transparent; color: var(--tw-gold-2); box-shadow: inset 0 0 0 1.5px rgba(var(--tw-accent-rgb), .55);
+  &::after { display: none; } }
+@keyframes tw-sweep { 0%, 55% { left: -40%; } 100% { left: 130%; } }
+
+/* Gold coin (used by coin bursts and floating coins) */
+.tw-coin {
+  position: absolute; width: 34px; height: 34px; border-radius: 50%; pointer-events: none; will-change: transform, opacity;
+  background: radial-gradient(circle at 34% 30%, #fff4cc 0 12%, #f3cf78 30%, #d49d3a 62%, #9c6b1f 100%);
+  box-shadow: inset 0 0 0 3px rgba(255, 236, 170, .55), inset 0 -3px 6px rgba(120, 72, 10, .55), 0 6px 14px rgba(0, 0, 0, .35);
+  display: grid; place-items: center; color: rgba(110, 66, 8, .85); font: 800 15px/1 var(--tw-serif);
+  &::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; border: 1.5px dashed rgba(120, 76, 14, .45); }
+}
+
+/* Playing card */
+.tw-pcard {
+  width: 64px; height: 90px; border-radius: 9px; background: linear-gradient(160deg, #ffffff, #f1ece1);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, .45); color: #141414; display: grid; place-items: center;
+  font: 700 26px/1 var(--tw-serif); position: absolute;
+  &.red { color: #c81e3a; }
+  small { position: absolute; top: 6px; left: 7px; font-size: 13px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tw-cta::after { animation: none; display: none; }
 }

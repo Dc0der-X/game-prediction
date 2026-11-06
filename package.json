@@ -1,16 +1,23 @@
 {
-  "name": "game-prediction-app",
+  "name": "tablewise",
   "version": "0.0.1",
   "author": "Ionic Framework",
   "homepage": "https://ionicframework.com/",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "prebuild": "node scripts/check-dealers.mjs",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "lint": "ng lint",
-    "deploy": "ionic build && firebase deploy"
+    "deploy": "ng build && firebase deploy --only hosting,firestore",
+    "start:emulators": "ng serve --configuration emulators --proxy-config proxy.emulators.json --host 0.0.0.0 --disable-host-check",
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-tablewise",
+    "seed:emulators": "node scripts/seed-emulators.mjs",
+    "prebuild:demo": "node scripts/check-dealers.mjs",
+    "build:demo": "ng build --configuration demo",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-tablewise \"node --test --test-force-exit test/rules.test.mjs\""
   },
   "private": true,
   "dependencies": {
@@ -30,7 +37,7 @@
     "@capacitor/status-bar": "5.0.6",
     "@ionic/angular": "^7.0.0",
     "firebase": "^10.4.0",
-    "firebase-tools": "^12.5.4",
+    "gsap": "3.15.0",
     "ionicons": "^7.0.0",
     "ng-http-loader": "^15.0.0",
     "rxjs": "~7.8.0",
@@ -57,6 +64,7 @@
     "eslint-plugin-import": "2.22.1",
     "eslint-plugin-jsdoc": "30.7.6",
     "eslint-plugin-prefer-arrow": "1.2.2",
+    "firebase-tools": "^12.5.4",
     "jasmine-core": "~4.6.0",
     "jasmine-spec-reporter": "~5.0.0",
     "karma": "~6.4.0",
@@ -68,5 +76,5 @@
     "ts-node": "^8.3.0",
     "typescript": "~5.0.2"
   },
-  "description": "An Ionic project"
+  "description": "TableWise – casino practice tables and a real-money session coach."
 }

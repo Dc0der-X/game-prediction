@@ -1,0 +1,32 @@
+# TableWise
+
+> TableWise is a session coach for live casino table games. Players enter the amount they are playing with,
+> tap the last results at their table, and get a signal for every bet: which side (e.g. Red or Black, Player or
+> Banker) and exactly how much – up or down from the last bet. It fills a profit target live, keeps every bet inside a
+> safety limit and tells the player the moment to cash out. It works beside any online or land-based casino; it does not take bets or hold money.
+
+## What it does
+- Signal Room: personal session plan from the player's amount; side and amount for every bet (the signal rides runs and follows swings); 8-step bet ladder; live progress to target; cash-out alerts; fresh-table alert after 3 misses; floating signal window beside the live casino; session history.
+- Practice tables: free play-money Roulette, Baccarat, Craps, Dragon Tiger and Sic Bo with the same signals.
+- Personal colour themes (Neon, High Roller, Classic, Ember).
+
+## Games
+Signals: Baccarat (player/banker), Roulette (red/black), Dragon Tiger (dragon/tiger), Sic Bo (small/big), Craps (pass/don't pass).
+
+## Pricing (USD)
+- Free: 3 hours of full access after sign-up, no card. Practice tables free forever.
+- Day Pass: $20 (24 hours).
+- Monthly: $140 (30 days).
+- Yearly: $999 (365 days).
+Passes do not auto-renew. Payment by card or crypto (PayGate.to); the pass switches on automatically as soon as the payment arrives.
+- Support: 24/7 Telegram chat.
+
+## Important
+TableWise gives signals and session guidance; it does not take bets, hold money or guarantee results.
+For adults 18+ where online casino games are legal. Built-in tools: safety limit, check-ins, pause option.
+
+## Links
+- Home: https://aicasinopredictor.web.app/home
+- Sign up: https://aicasinopredictor.web.app/signup
+- Practice tables: https://aicasinopredictor.web.app/lobby
+- Terms: https://aicasinopredictor.web.app/terms

@@ -1,0 +1,21 @@
+{
+  "name": "tablewise-payments-worker",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Free Cloudflare Worker that verifies PayGate.to card / crypto payments and unlocks Pro in Firestore.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "wrangler deploy --dry-run --outdir dist && node --test test/webhook.test.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.5.0",
+    "jose": "5.9.6"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20241205.0",
+    "typescript": "5.6.3",
+    "wrangler": "3.95.0"
+  }
+}

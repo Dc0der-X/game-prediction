@@ -1,0 +1,12 @@
+{
+  "name": "tablewise-scripts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "migrate": "node migrate-legacy-users.mjs",
+    "make-admin": "node make-admin.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "12.7.0"
+  }
+}

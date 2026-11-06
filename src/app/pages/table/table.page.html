@@ -1,0 +1,216 @@
+<app-topbar></app-topbar>
+<ion-content>
+  <div class="tw-page" *ngIf="game">
+    <!-- Table header -->
+    <div class="head">
+      <div>
+        <p class="tw-eyebrow">Practice table · play money</p>
+        <h1>{{ game.name }}</h1>
+      </div>
+      <div class="balance">
+        <span class="tw-muted tw-small">Balance</span>
+        <strong>{{ balance | number: '1.0-2' }}</strong>
+        <button class="link" (click)="resetBalance()">Reset to 1,000</button>
+      </div>
+    </div>
+
+    <div class="mode-row">
+      <button class="toggle" [class.on]="signalsOn" (click)="toggleSignals()" role="switch" [attr.aria-checked]="signalsOn">
+        <span class="knob"></span> Signals {{ signalsOn ? 'ON' : 'OFF' }}
+      </button>
+      <span class="tw-muted tw-small">{{ signalsOn ? 'Follow the signal – the same signals as the Signal Room.' : 'Free betting – place any bets you like.' }}</span>
+    </div>
+
+    <div class="layout">
+      <!-- ====== Felt ====== -->
+      <section class="felt tw-card felt">
+        <div class="stage" [ngSwitch]="game.id">
+          <div class="dealing" *ngIf="dealing">
+            {{ game.id === 'roulette' ? 'Spinning…' : game.id === 'sicbo' ? 'Rolling…' : 'Dealing…' }}
+          </div>
+
+          <ng-container *ngIf="!dealing && !outcome">
+            <p class="placeholder">Choose a chip, tap a bet, then press
+              <strong>{{ game.id === 'roulette' ? 'Spin' : game.id === 'sicbo' ? 'Roll' : 'Deal' }}</strong>.</p>
+          </ng-container>
+
+          <ng-container *ngIf="!dealing && outcome">
+            <!-- Baccarat -->
+            <div *ngSwitchCase="'baccarat'" class="hands">
+              <div class="hand" [class.win]="outcome.data.winner === 'P'">
+                <span class="who blue">Player · {{ outcome.data.pt }}</span>
+                <div class="cards">
+                  <div *ngFor="let c of outcome.data.player; let i = index" class="tw-cardface"
+                       [class.red]="isRed(c)" [style.animation-delay.ms]="i * 120">
+                    {{ RANKS[c.rank] }}<span class="suit">{{ SUITS[c.suit] }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="hand" [class.win]="outcome.data.winner === 'B'">
+                <span class="who red">Banker · {{ outcome.data.bt }}</span>
+                <div class="cards">
+                  <div *ngFor="let c of outcome.data.banker; let i = index" class="tw-cardface"
+                       [class.red]="isRed(c)" [style.animation-delay.ms]="i * 120 + 60">
+                    {{ RANKS[c.rank] }}<span class="suit">{{ SUITS[c.suit] }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Roulette -->
+            <div *ngSwitchCase="'roulette'" class="wheel">
+              <div class="ball" [ngClass]="numberTone(outcome.data.n)">{{ outcome.data.n }}</div>
+            </div>
+
+            <!-- Dragon Tiger -->
+            <div *ngSwitchCase="'dragon-tiger'" class="hands">
+              <div class="hand" [class.win]="outcome.data.winner === 'D'">
+                <span class="who red">Dragon</span>
+                <div class="cards"><div class="tw-cardface big" [class.red]="isRed(outcome.data.dragon)">
+                  {{ RANKS[outcome.data.dragon.rank] }}<span class="suit">{{ SUITS[outcome.data.dragon.suit] }}</span></div></div>
+              </div>
+              <div class="hand" [class.win]="outcome.data.winner === 'T'">
+                <span class="who blue">Tiger</span>
+                <div class="cards"><div class="tw-cardface big" [class.red]="isRed(outcome.data.tiger)" style="animation-delay: 120ms">
+                  {{ RANKS[outcome.data.tiger.rank] }}<span class="suit">{{ SUITS[outcome.data.tiger.suit] }}</span></div></div>
+              </div>
+            </div>
+
+            <!-- Sic Bo -->
+            <div *ngSwitchCase="'sicbo'" class="dice">
+              <div *ngFor="let d of outcome.data.dice; let i = index" class="tw-die" [style.animation-delay.ms]="i * 90">{{ d }}</div>
+            </div>
+
+            <!-- Craps -->
+            <div *ngSwitchCase="'craps'" class="craps">
+              <span class="point" *ngIf="outcome.data.point">Point {{ outcome.data.point }}</span>
+              <div class="rolls">
+                <span class="pair" *ngFor="let r of outcome.data.rolls.slice(-6); let i = index" [style.animation-delay.ms]="i * 90">
+                  <i class="tw-die mini">{{ r[0] }}</i><i class="tw-die mini">{{ r[1] }}</i>
+                </span>
+              </div>
+            </div>
+
+            <div class="verdict">
+              <div class="text">{{ outcome.text }}</div>
+              <div class="net" *ngIf="settled.length" [class.tw-pos]="roundNet > 0" [class.tw-neg]="roundNet < 0">
+                {{ roundNet > 0 ? 'You won +' + (roundNet | number: '1.0-2') : roundNet < 0 ? (roundNet | number: '1.0-2') : 'Push – stake returned' }}
+              </div>
+            </div>
+          </ng-container>
+        </div>
+
+        <!-- Result road -->
+        <div class="road" aria-label="Recent results">
+          <span *ngFor="let h of history" class="dot" [ngClass]="'tone-' + h.tone">{{ h.tag }}</span>
+          <span class="tw-muted tw-small" *ngIf="!history.length">Results appear here.</span>
+        </div>
+
+        <!-- Signal -->
+        <div class="signal" *ngIf="signalsOn && signal as sig">
+          <div class="sig-main">
+            <span class="tw-eyebrow">Neural signal <span class="mode attack">{{ levelLabel }}</span></span>
+            <div class="do">Bet {{ sig.stake | number: '1.0-2' }} on {{ sig.betLabel }}
+              <span class="chg" *ngIf="sig.change !== null" [class.up]="sig.change > 0">{{ sig.change > 0 ? '▲ +' + (sig.change | number: '1.0-2') : sig.change < 0 ? '▼ ' + (sig.change | number: '1.0-2') : '= same' }}</span></div>
+            <div class="tw-small sig-meta">
+              Session <strong [class.tw-pos]="sigNet > 0" [class.tw-neg]="sigNet < 0">{{ sigNet > 0 ? '+' : '' }}{{ sigNet | number: '1.0-2' }}</strong>
+              · target <span class="tw-pos">+{{ stopWin }}</span> · safety limit {{ stopLoss }}
+              · {{ sig.ifMiss === 'continue' ? 'if it misses: next ' + (sig.ifMissStake | number: '1.0-2') : sig.ifMiss === 'fresh-table' ? 'if it misses: fresh table' : 'last bet if it misses' }}
+            </div>
+          </div>
+          <ion-button (click)="playSignal()" [disabled]="dealing || !!stopSign">
+            Place &amp; {{ game.id === 'roulette' ? 'spin' : game.id === 'sicbo' ? 'roll' : 'deal' }}
+          </ion-button>
+        </div>
+        <p class="tw-error" *ngIf="signalError">{{ signalError }}</p>
+
+        <!-- Bet spots -->
+        <div class="spots">
+          <button *ngFor="let b of game.bets" class="spot" [class.best]="!signalsOn && b.id === game.bestBet"
+                  [class.signalled]="signalsOn && signal?.betId === b.id"
+                  [ngClass]="betTone(b.id) ? 'edge-' + betTone(b.id) : ''" (click)="place(b.id)" [disabled]="dealing || signalsOn">
+            <span class="best-tag" *ngIf="!signalsOn && b.id === game.bestBet">Best bet</span>
+            <span class="best-tag" *ngIf="signalsOn && signal?.betId === b.id">Signal</span>
+            <span class="lbl">{{ b.label }}</span>
+            <span class="pays">{{ b.pays }}</span>
+            <span class="stake" *ngIf="bets[b.id]">{{ bets[b.id] }}</span>
+          </button>
+        </div>
+
+        <!-- Roulette numbers -->
+        <ng-container *ngIf="game.id === 'roulette' && !signalsOn">
+          <button class="link" (click)="showNumbers = !showNumbers">{{ showNumbers ? 'Hide' : 'Show' }} single numbers (35:1)</button>
+          <div class="numbers" *ngIf="showNumbers">
+            <button class="num tone-green" (click)="place('n0')">0<span class="stake" *ngIf="bets['n0']">{{ bets['n0'] }}</span></button>
+            <button *ngFor="let n of numbers" class="num" [ngClass]="numberTone(n)" (click)="place('n' + n)">
+              {{ n }}<span class="stake" *ngIf="bets['n' + n]">{{ bets['n' + n] }}</span>
+            </button>
+          </div>
+        </ng-container>
+
+        <!-- Chips + actions -->
+        <div class="rack">
+          <div class="chips" role="radiogroup" [attr.aria-label]="signalsOn ? 'Signal base stake' : 'Chip value'">
+            <button *ngFor="let c of chips" class="chip" [class.on]="chip === c" (click)="setChip(c)"
+                    [attr.aria-checked]="chip === c" role="radio">{{ c }}</button>
+          </div>
+          <div class="actions" *ngIf="!signalsOn">
+            <ion-button fill="clear" size="small" (click)="clearBets()" [disabled]="!totalBet || dealing">Clear</ion-button>
+            <ion-button fill="outline" size="small" (click)="rebet()" [disabled]="dealing">Rebet</ion-button>
+            <ion-button (click)="deal()" [disabled]="!totalBet || dealing">
+              {{ game.id === 'roulette' ? 'Spin' : game.id === 'sicbo' ? 'Roll' : 'Deal' }}
+              <span *ngIf="totalBet">&nbsp;· {{ totalBet }}</span>
+            </ion-button>
+          </div>
+        </div>
+        <p class="tw-error" *ngIf="balance < chips[0]">Out of chips. Reset your balance to keep practising.</p>
+      </section>
+
+      <!-- ====== Side panel ====== -->
+      <aside class="side">
+        <div class="tw-card">
+          <p class="tw-eyebrow">This visit</p>
+          <div class="tw-stats">
+            <div class="tw-stat"><div class="label">Rounds</div><div class="value">{{ rounds }}</div></div>
+            <div class="tw-stat"><div class="label">Wagered</div><div class="value">{{ wagered | number: '1.0-0' }}</div></div>
+            <div class="tw-stat"><div class="label">Your result</div>
+              <div class="value" [class.tw-pos]="net > 0" [class.tw-neg]="net < 0">{{ net > 0 ? '+' : '' }}{{ net | number: '1.0-2' }}</div></div>
+          </div>
+        </div>
+
+        <div class="tw-card">
+          <p class="tw-eyebrow">Fast-forward</p>
+          <p class="tw-small tw-muted">Let the signals play a run of rounds for you at a base of {{ chip }}.</p>
+          <div class="tw-row" style="margin-top: 10px">
+            <ion-button size="small" fill="outline" (click)="autoPlay(10)" [disabled]="dealing || balance < chip">Auto ×10</ion-button>
+            <ion-button size="small" fill="outline" (click)="autoPlay(50)" [disabled]="dealing || balance < chip">Auto ×50</ion-button>
+          </div>
+          <div class="tw-note" *ngIf="autoResult">
+            {{ autoResult.rounds }} rounds:
+            <strong [class.tw-pos]="autoResult.net > 0" [class.tw-neg]="autoResult.net < 0">
+              {{ autoResult.net > 0 ? '+' : '' }}{{ autoResult.net | number: '1.0-2' }}</strong>
+            · biggest bet {{ autoResult.maxStake | number: '1.0-2' }}
+          </div>
+        </div>
+
+        <div class="tw-card upsell" *ngIf="(access$ | async)?.hasPro !== true && rounds >= 10">
+          <p class="tw-eyebrow">Ready for your live table?</p>
+          <p class="tw-small">Take these signals to a real table in the Signal Room – every bet, every amount, and the moment to cash out.</p>
+          <ion-button size="small" [routerLink]="(access$ | async)?.signedIn ? '/pro' : '/signup'">Start free – 3 hours</ion-button>
+        </div>
+      </aside>
+    </div>
+  </div>
+</ion-content>
+
+<app-stop-sign *ngIf="stopSign === 'final'" kind="final" [icon]="sigNet > 0 ? 'cash' : 'stop'"
+  [title]="sigNet > 0 ? 'CASH OUT NOW' : 'SESSION COMPLETE'" [reason]="stopReason" [net]="sigNet"
+  hint="In real play this is the moment to cash out. Here, start a fresh practice session any time."
+  stopLabel="Start a fresh practice session" (stop)="newSignalSession()"></app-stop-sign>
+<app-stop-sign *ngIf="stopSign === 'table'" kind="checkin" icon="switch" title="FRESH TABLE TIME" reason="3 misses in a row – hop to a new table." [net]="sigNet"
+  hint="In real play you open another live table. Here, the signals start fresh from step 1 – your totals carry on."
+  stopLabel="Start a fresh practice session" continueLabel="New table"
+  (stop)="newSignalSession()" (continue)="switchTable()"></app-stop-sign>
+<app-stop-sign *ngIf="stopSign === 'checkin'" kind="checkin" [icon]="sigNet > 0 ? 'cash' : 'switch'" title="TIME CHECK" reason="Quick check-in." [hint]="checkinHint" [net]="sigNet"
+  stopLabel="Start a fresh session" continueLabel="Keep practising"
+  (stop)="newSignalSession()" (continue)="stopSign = null"></app-stop-sign>

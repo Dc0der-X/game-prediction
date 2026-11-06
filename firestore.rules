@@ -1,0 +1,145 @@
+rules_version = '2';
+
+// TableWise security rules.
+// Customers can never grant themselves Pro: plan fields are written only by the
+// payments worker (service account, bypasses rules) or by an admin.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function changed() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // A self-exclusion lock can be set or extended, never shortened or removed early.
+    function validSelfExclusion() {
+      let next = request.resource.data.selfExcludedUntil;
+      return next is timestamp
+        && next > request.time
+        && (!('selfExcludedUntil' in resource.data)
+            || resource.data.selfExcludedUntil == null
+            || next >= resource.data.selfExcludedUntil);
+    }
+
+    // Short optional text fields on a profile.
+    function shortText(field, max) {
+      return !(field in request.resource.data)
+        || (request.resource.data[field] is string && request.resource.data[field].size() <= max);
+    }
+
+    function validProfileText() {
+      return shortText('name', 100) && shortText('phone', 40) && shortText('telegram', 64);
+    }
+
+    // Compounding goal: { start, target, setAt } – numbers only, sensible ranges.
+    function validGoal() {
+      let g = request.resource.data.goal;
+      return g == null
+        || (g is map && g.keys().hasOnly(['start', 'target', 'setAt'])
+            && g.start is number && g.start >= 50
+            && g.target is number && g.target > g.start && g.target <= g.start * 1000
+            && g.setAt is int);
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+
+      allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['name', 'email', 'phone', 'telegram', 'role', 'createdAt', 'ageConfirmed'])
+        && request.resource.data.role == 'customer'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.email == request.auth.token.email
+        && validProfileText();
+
+      allow update: if
+        (isOwner(uid)
+          && changed().hasOnly(['name', 'phone', 'telegram', 'selfExcludedUntil', 'goal'])
+          && (!changed().hasAny(['selfExcludedUntil']) || validSelfExclusion())
+          && (!changed().hasAny(['goal']) || validGoal())
+          && validProfileText())
+        || (isAdmin() && changed().hasOnly(['plan', 'planSource', 'planExpiresAt']));
+
+      allow delete: if false;
+
+      match /sessions/{sid} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if isOwner(uid)
+          && request.resource.data.keys().hasOnly(['gameId', 'betId', 'system', 'casino', 'bankroll', 'unit', 'stopWin',
+               'stopLoss', 'minutes', 'rounds', 'net', 'endReason', 'startedAt', 'endedAt', 'savedAt', 'currency'])
+          && request.resource.data.gameId is string && request.resource.data.gameId.size() <= 20
+          && (!('currency' in request.resource.data) || (request.resource.data.currency is string
+               && request.resource.data.currency.matches('^[A-Z]{3}$')))
+          && request.resource.data.casino is string && request.resource.data.casino.size() <= 80
+          && request.resource.data.endReason is string && request.resource.data.endReason.size() <= 20
+          && request.resource.data.net is number
+          && request.resource.data.bankroll is number && request.resource.data.bankroll > 0
+          && request.resource.data.rounds is list
+          && request.resource.data.rounds.size() <= 500;
+        allow update, delete: if false;
+      }
+    }
+
+    // Admin "Coach activity" feed (collection-group query).
+    match /{path=**}/sessions/{sid} {
+      allow read: if isAdmin();
+    }
+
+    // Anonymous public cash-outs feed (no names, no bets). Winning sessions only, stamped now.
+    match /feed/{id} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['game', 'net', 'pct', 'minutes', 'endReason', 'createdAt'])
+        && request.resource.data.game is string && request.resource.data.game.size() <= 20
+        && request.resource.data.net is number && request.resource.data.net > 0
+        && request.resource.data.pct is number
+        && request.resource.data.pct > 0 && request.resource.data.pct <= 100
+        && request.resource.data.minutes is int && request.resource.data.minutes <= 600
+        && request.resource.data.endReason is string && request.resource.data.endReason.size() <= 20
+        && request.resource.data.createdAt is int
+        && request.resource.data.createdAt > request.time.toMillis() - 300000
+        && request.resource.data.createdAt < request.time.toMillis() + 300000;
+      allow update, delete: if false;
+    }
+
+    // Written only by the payments worker.
+    match /payments/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Landing-page contact form.
+    match /Contact/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['name', 'email', 'number', 'message', 'createdAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 100
+        && request.resource.data.email is string && request.resource.data.email.size() <= 200
+        && request.resource.data.message is string && request.resource.data.message.size() <= 2000
+        && (!('number' in request.resource.data) || (request.resource.data.number is string && request.resource.data.number.size() <= 40));
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // Server-only collections (payments worker / bot, via service account). No client access.
+    match /checkouts/{id} { allow read, write: if false; }
+    match /trialIps/{id} { allow read, write: if false; }
+    match /instantIps/{id} { allow read, write: if false; }
+    match /botChats/{id} { allow read, write: if false; }
+
+    // Legacy collection from the old app (contained plaintext passwords). Locked.
+    match /User/{id} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -4,31 +4,45 @@ import { RouteReuseStrategy } from '@angular/router';
 import { IonicModule, IonicRouteStrategy } from '@ionic/angular';
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
+import { SupportComponent } from './shared/support.component';
+import { TabbarComponent } from './shared/tabbar.component';
 import { environment } from '../environments/environment';
-import { provideAuth, getAuth } from '@angular/fire/auth';
-import { AngularFireModule } from '@angular/fire/compat';
-import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
-import { provideFirestore, getFirestore } from '@angular/fire/firestore';
-import { NgHttpLoaderModule } from 'ng-http-loader';
+import { getApp, initializeApp, provideFirebaseApp } from '@angular/fire/app';
+import { provideAuth, getAuth, connectAuthEmulator } from '@angular/fire/auth';
+import { provideFirestore, getFirestore, initializeFirestore } from '@angular/fire/firestore';
+
+const FIREBASE = [
+  provideFirebaseApp(() => initializeApp(environment.firebase)),
+  // In emulator mode the dev server proxies the emulators on the app's own address
+  // (proxy.emulators.json), so it also works from a phone or a remote preview.
+  provideAuth(() => {
+    const auth = getAuth();
+    if (environment.useEmulators) connectAuthEmulator(auth, location.origin, { disableWarnings: true });
+    return auth;
+  }),
+  provideFirestore(() =>
+    environment.useEmulators
+      ? initializeFirestore(getApp(), {
+          host: location.host,
+          ssl: location.protocol === 'https:',
+          experimentalForceLongPolling: true,
+        })
+      : getFirestore()
+  ),
+];
 
 @NgModule({
   declarations: [AppComponent],
   imports: [
     BrowserModule,
-    IonicModule.forRoot(),
+    IonicModule.forRoot({ mode: 'ios' }),
     AppRoutingModule,
-    AngularFireModule.initializeApp(environment.firebase),
-    provideFirebaseApp(() => initializeApp(environment.firebase)),
-    provideFirestore(() => getFirestore()),
-    NgHttpLoaderModule.forRoot(),
-
-    // AngularFireModule.initializeApp(environment.firebase),
-    // AngularFireAuthModule,
-    // provideFirebaseApp(() => initializeApp(environment.firebase)),
-    // provideFirestore(() => getFirestore()),
+    SupportComponent,
+    TabbarComponent,
+    // The browser-only demo build runs without Firebase.
+    ...(environment.demoMode ? [] : FIREBASE),
   ],
   providers: [{ provide: RouteReuseStrategy, useClass: IonicRouteStrategy }],
   bootstrap: [AppComponent],
-  exports: [],
 })
 export class AppModule {}

@@ -1,0 +1,27 @@
+{
+  "/identitytoolkit.googleapis.com": {
+    "target": "http://127.0.0.1:9099",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/securetoken.googleapis.com": {
+    "target": "http://127.0.0.1:9099",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/emulator": {
+    "target": "http://127.0.0.1:9099",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/google.firestore.v1.Firestore": {
+    "target": "http://127.0.0.1:8080",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/v1": {
+    "target": "http://127.0.0.1:8080",
+    "secure": false,
+    "changeOrigin": true
+  }
+}

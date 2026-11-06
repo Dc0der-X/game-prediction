@@ -1,76 +1,59 @@
-<ion-header slot="fixed" class="Navbar__Container">
-  <div class="ion-padding">
-    <div class="Navbar__Firstdiv">
-      <h1>AI Casino Predictor</h1>
-    </div>
-    <div>
-      <a class="back-btn" [routerLink]="['/home']">Go Back</a>
-    </div>
+<ion-header class="ion-no-border">
+  <div class="bar">
+    <a class="brand" routerLink="/home"><span class="mark">♠</span>TableWise</a>
+    <a routerLink="/home">← Back</a>
   </div>
 </ion-header>
 
 <ion-content>
-  <div class="Section_heading">
-    <h1>Terms and Conditions of Use</h1>
-    <p>
-      Welcome to www.aicasinopredictor.com. By accessing this website, you agree
-      to comply with and be bound by the following terms and conditions of use.
-      If you do not agree with these terms, please do not use this website.
-    </p>
-    <p>
-      1. Accuracy of Information The information provided on this website is for
-      general informational purposes only. We make no representations or
-      warranties of any kind, express or implied, about the accuracy,
-      reliability, completeness, or suitability of the information contained on
-      the website for any purpose. Any reliance you place on such information is
-      strictly at your own risk.
-    </p>
-    <p>
-      2. Predictions and Gambling Our website offers casino predictions for
-      entertainment purposes only. We do not guarantee the accuracy or
-      reliability of the predictions. Gambling involves risk and should be
-      undertaken responsibly. We are not responsible for any losses incurred as
-      a result of using our predictions for gambling purposes.
-    </p>
-    <p>
-      3. User Conduct You agree not to use this website for any unlawful purpose
-      or in a way that violates these terms and conditions. You may not attempt
-      to gain unauthorized access to any part of the website or its content.
-    </p>
-    <p>
-      4. Privacy We respect your privacy. Please refer to our Privacy Policy
-      [link to privacy policy] to understand how we collect, use, and disclose
-      information about you.
-    </p>
-    <p>
-      5. Limitation of Liability In no event will we be liable for any loss or
-      damage, including without limitation, indirect or consequential loss or
-      damage, or any loss or damage whatsoever arising from loss of data or
-      profits arising out of or in connection with the use of this website.
-    </p>
-    <p>
-      6. Changes to Terms We reserve the right to modify these terms and
-      conditions at any time. It is your responsibility to check this page
-      periodically for changes. Your continued use of the website following the
-      posting of changes will indicate your acceptance of those changes.
-    </p>
-    <p>
-      7. Governing Law These terms and conditions are governed by and construed
-      in accordance with the laws of Jurisdiction, and you agree to submit to
-      the exclusive jurisdiction of the courts in that jurisdiction. If you have
-      any questions about these terms and conditions, please contact us at
-      aicasinopredictor@gmail.com.
-    </p>
-  </div>
-  <!-- Footer Section -->
-  <div class="footer__container">
-    <div>
-      <ion-toolbar color="light">
-        <ion-title slot="start">AI Casino Predictor</ion-title>
-      </ion-toolbar>
-    </div>
-    <div id="Menu">
-      <a [routerLink]="['/home']" id="footer-a">Back to Home</a>
-    </div>
+  <div class="tw-page narrow terms">
+    <h1>Terms of Use</h1>
+    <p class="tw-muted">By using TableWise you agree to these terms. If you do not agree, please do not use the service.</p>
+
+    <h3>1. What TableWise is</h3>
+    <p>TableWise is an entertainment and self-control tool. It offers practice versions of casino games with play
+      money, and a Session Coach that helps you set and keep limits when you play elsewhere. TableWise does not accept
+      bets, hold money, pay winnings or connect to any casino.</p>
+
+    <h3>2. No predictions, no guarantees</h3>
+    <p>Casino games are games of chance with a built-in house edge. No pattern, strategy or betting system – including
+      anything shown in TableWise – can predict results or guarantee a profit. Over time, players should expect to lose
+      roughly the house edge on every amount wagered. Any money you gamble is your own responsibility.</p>
+
+    <h3>3. Who can use it</h3>
+    <p>You must be 18 or older (or the legal gambling age where you live, if higher), and you must only gamble where
+      it is legal for you to do so.</p>
+
+    <h3>4. Accounts</h3>
+    <p>Keep your login details private. You are responsible for activity on your account. We may suspend accounts
+      that abuse the service.</p>
+
+    <h3>5. Free trial, passes and payments</h3>
+    <p>New accounts get free Pro hours (up to 2 accounts per network). After that, Pro is a Day, Monthly or Yearly pass,
+      paid once by card or crypto through PayGate.to. Passes do not renew. A pass switches on as soon as the payment arrives;
+      if you tap "I've paid" first, it switches on at once and pauses after 60 minutes if no payment is received. Because Pro can be tried free first, payments are non-refundable except where the law
+      requires otherwise – contact us if something went wrong and we will look at it fairly.</p>
+
+    <h3>6. Responsible gambling</h3>
+    <p>You can lock real-money sessions from your account page at any time; locks cannot be shortened. If gambling
+      stops being fun, please contact
+      <a href="https://www.begambleaware.org" target="_blank" rel="noopener">BeGambleAware</a>,
+      <a href="https://www.gamcare.org.uk" target="_blank" rel="noopener">GamCare</a>,
+      <a href="https://www.ncpgambling.org/help-treatment/" target="_blank" rel="noopener">1-800-GAMBLER</a> or
+      <a href="https://www.gamblersanonymous.org" target="_blank" rel="noopener">Gamblers Anonymous</a>.</p>
+
+    <h3>7. Privacy</h3>
+    <p>We store your name, email, optional phone/Telegram, your plan and the sessions you record, so the service can
+      work. We do not sell your data. Payments are processed by PayGate.to and its licensed card partners; we never see your card or
+      wallet keys. For the free-hours limit we keep only a one-way hash of your network address, never the address itself. You can ask us to delete your account at any time.</p>
+
+    <h3>8. Liability</h3>
+    <p>TableWise is provided "as is". To the extent the law allows, we are not liable for gambling losses or for any
+      indirect loss arising from use of the service.</p>
+
+    <h3>9. Changes</h3>
+    <p>We may update these terms. Continued use after an update means you accept the new terms.</p>
+
+    <p class="tw-muted">Questions: aicasinopredictor&#64;gmail.com</p>
   </div>
 </ion-content>

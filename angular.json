@@ -29,9 +29,16 @@
                 "glob": "**/*.svg",
                 "input": "node_modules/ionicons/dist/ionicons/svg",
                 "output": "./svg"
-              }
+              },
+              "src/robots.txt",
+              "src/sitemap.xml",
+              "src/llms.txt",
+              "src/manifest.webmanifest"
             ],
-            "styles": ["src/theme/variables.scss", "src/global.scss"],
+            "styles": [
+              "src/theme/variables.scss",
+              "src/global.scss"
+            ],
             "scripts": []
           },
           "configurations": {
@@ -54,7 +61,15 @@
                   "with": "src/environments/environment.prod.ts"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "optimization": {
+                "scripts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": false
+                },
+                "fonts": true
+              }
             },
             "development": {
               "buildOptimizer": false,
@@ -66,6 +81,74 @@
             },
             "ci": {
               "progress": false
+            },
+            "emulators": {
+              "buildOptimizer": false,
+              "optimization": false,
+              "vendorChunk": true,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "namedChunks": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.emulators.ts"
+                }
+              ]
+            },
+            "demo": {
+              "outputPath": "www-demo",
+              "baseHref": "./",
+              "sourceMap": false,
+              "outputHashing": "all",
+              "optimization": true,
+              "extractLicenses": false,
+              "namedChunks": false,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.demo.ts"
+                }
+              ],
+              "assets": [
+                {
+                  "glob": "{baccarat.jpeg,roulette.png,dragon-tiger.webp,sic-bo.jpeg,dice-coins.jpeg}",
+                  "input": "src/assets/img",
+                  "output": "assets/img"
+                },
+                {
+                  "glob": "favicon.png",
+                  "input": "src/assets/icon",
+                  "output": "assets/icon"
+                },
+                {
+                  "glob": "{menu-outline,person-circle-outline,person-circle,sunny-outline,moon-outline,radio-button-on,radio-button-on-outline,flag,flag-outline,grid,grid-outline,time,time-outline}.svg",
+                  "input": "node_modules/ionicons/dist/ionicons/svg",
+                  "output": "./svg"
+                },
+                {
+                  "glob": "color-palette-outline.svg",
+                  "input": "node_modules/ionicons/dist/ionicons/svg",
+                  "output": "./svg"
+                },
+                {
+                  "glob": "og-image.png",
+                  "input": "src/assets",
+                  "output": "assets"
+                },
+                {
+                  "glob": "*.{png,mp4,webm}",
+                  "input": "src/assets/dealers",
+                  "output": "assets/dealers"
+                }
+              ],
+              "budgets": [
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "20kb",
+                  "maximumError": "40kb"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -81,6 +164,9 @@
             },
             "ci": {
               "progress": false
+            },
+            "emulators": {
+              "browserTarget": "app:build:emulators"
             }
           },
           "defaultConfiguration": "development"
@@ -111,7 +197,10 @@
                 "output": "./svg"
               }
             ],
-            "styles": ["src/theme/variables.scss", "src/global.scss"],
+            "styles": [
+              "src/theme/variables.scss",
+              "src/global.scss"
+            ],
             "scripts": []
           },
           "configurations": {
@@ -124,7 +213,10 @@
         "lint": {
           "builder": "@angular-eslint/builder:lint",
           "options": {
-            "lintFilePatterns": ["src/**/*.ts", "src/**/*.html"]
+            "lintFilePatterns": [
+              "src/**/*.ts",
+              "src/**/*.html"
+            ]
           }
         },
         "deploy": {
@@ -138,7 +230,9 @@
     }
   },
   "cli": {
-    "schematicCollections": ["@ionic/angular-toolkit"]
+    "schematicCollections": [
+      "@ionic/angular-toolkit"
+    ]
   },
   "schematics": {
     "@ionic/angular-toolkit:component": {

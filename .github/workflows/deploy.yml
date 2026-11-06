@@ -1,0 +1,164 @@
+# Puts TableWise live on YOUR Firebase project – no terminal needed.
+#
+# Runs on every push to main, or by hand: GitHub → Actions → Deploy → Run workflow.
+# Everything comes from GitHub → Settings → Secrets and variables → Actions:
+#
+#   Variables (Variables tab)
+#     FIREBASE_WEB_CONFIG        required – the firebaseConfig snippet of your Firebase web app (pasted as is)
+#     SITE_URL                   optional – your own domain, e.g. https://tablewise.app
+#     SUPPORT_TELEGRAM           optional – bot username, e.g. TableWiseHelpBot
+#     SUPPORT_WHATSAPP           optional – WhatsApp number, digits only
+#     TELEGRAM_OWNER_CHAT_ID     optional – your Telegram chat id (bot hand-off pings)
+#     PAYGATE_WALLET             your EVM wallet address for PayGate.to payouts (card = USDC on Polygon)
+#     PAYGATE_BTC, PAYGATE_TRC20, PAYGATE_SOLANA   optional extra wallets for the crypto checkout
+#     PAYMENTS_API_URL           optional – filled automatically from the worker deploy when empty
+#   Secrets (Secrets tab)
+#     FIREBASE_SERVICE_ACCOUNT   required – service-account key JSON of the same project (used to publish)
+#     WORKER_SERVICE_ACCOUNT     recommended – a second key with only "Cloud Datastore User" for the payment server
+#     CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID          payment server (skipped until set)
+#     IP_SALT                    any long random string
+#     TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, ANTHROPIC_API_KEY
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  FIREBASE_WEB_CONFIG: ${{ vars.FIREBASE_WEB_CONFIG }}
+  SITE_URL: ${{ vars.SITE_URL }}
+  TELEGRAM_OWNER_CHAT_ID: ${{ vars.TELEGRAM_OWNER_CHAT_ID }}
+  PAYGATE_WALLET: ${{ vars.PAYGATE_WALLET }}
+  PAYGATE_BTC: ${{ vars.PAYGATE_BTC }}
+  PAYGATE_TRC20: ${{ vars.PAYGATE_TRC20 }}
+  PAYGATE_SOLANA: ${{ vars.PAYGATE_SOLANA }}
+
+jobs:
+  worker:
+    name: Payment server + support bot
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: payments-worker/package-lock.json
+      - name: Point at your Firebase project
+        run: node scripts/configure-env.mjs
+      - run: npm ci
+        working-directory: payments-worker
+      - name: Test
+        run: npm test
+        working-directory: payments-worker
+      - name: Deploy worker
+        id: deploy
+        working-directory: payments-worker
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ] || [ -z "$FIREBASE_WEB_CONFIG" ]; then
+            echo "::notice::Cloudflare secrets or FIREBASE_WEB_CONFIG not set yet – payment server skipped."
+            exit 0
+          fi
+          npx wrangler deploy 2>&1 | tee deploy.log
+          URL=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Worker live at $URL"
+      - name: Set worker secrets
+        if: steps.deploy.outputs.url != ''
+        working-directory: payments-worker
+        env:
+          GOOGLE_SERVICE_ACCOUNT: ${{ secrets.WORKER_SERVICE_ACCOUNT || secrets.FIREBASE_SERVICE_ACCOUNT }}
+          IP_SALT: ${{ secrets.IP_SALT }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          for NAME in GOOGLE_SERVICE_ACCOUNT IP_SALT TELEGRAM_BOT_TOKEN TELEGRAM_WEBHOOK_SECRET ANTHROPIC_API_KEY; do
+            VALUE="${!NAME}"
+            if [ -n "$VALUE" ]; then
+              printf '%s' "$VALUE" | npx wrangler secret put "$NAME" > /dev/null && echo "$NAME set"
+            else
+              echo "::notice::$NAME not set yet – skipped."
+            fi
+          done
+      - name: Connect the Telegram bot
+        if: steps.deploy.outputs.url != ''
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_WEBHOOK_SECRET" ]; then
+            echo "::notice::Telegram secrets not set yet – bot skipped."
+            exit 0
+          fi
+          curl -sS --fail "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
+            --data-urlencode "url=${URL}/telegram/webhook" \
+            --data-urlencode "secret_token=${TELEGRAM_WEBHOOK_SECRET}" \
+            --data-urlencode 'allowed_updates=["message"]' > /dev/null
+          echo "Telegram bot connected"
+
+  web:
+    name: Website, login and database rules
+    needs: worker
+    if: always()
+    runs-on: ubuntu-latest
+    env:
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+      - name: Check settings
+        run: |
+          if [ -z "$FIREBASE_WEB_CONFIG" ]; then
+            echo "::error::Add the FIREBASE_WEB_CONFIG variable (README → Go live, step 2)."
+            exit 1
+          fi
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Add the FIREBASE_SERVICE_ACCOUNT secret (README → Go live, step 2)."
+            exit 1
+          fi
+      - run: npm ci
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Database security tests
+        run: npm run test:rules
+      - name: Point at your Firebase project
+        id: cfg
+        env:
+          PAYMENTS_API_URL: ${{ vars.PAYMENTS_API_URL || needs.worker.outputs.url }}
+          SUPPORT_TELEGRAM: ${{ vars.SUPPORT_TELEGRAM }}
+          SUPPORT_WHATSAPP: ${{ vars.SUPPORT_WHATSAPP }}
+        run: node scripts/configure-env.mjs
+      - name: Build
+        run: node scripts/check-dealers.mjs && npx ng build --configuration production
+      - name: Deploy to Firebase
+        env:
+          PROJECT: ${{ steps.cfg.outputs.project_id }}
+          SITE: ${{ steps.cfg.outputs.site_url }}
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          npx --yes firebase-tools@13.29.1 deploy --only hosting,firestore:rules,firestore:indexes \
+            --project "$PROJECT" --non-interactive --force
+          rm -f "$RUNNER_TEMP/sa.json"
+          echo "Live at https://${PROJECT}.web.app" >> "$GITHUB_STEP_SUMMARY"
+          echo "Site address: ${SITE}" >> "$GITHUB_STEP_SUMMARY"
