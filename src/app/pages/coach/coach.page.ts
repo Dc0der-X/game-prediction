@@ -12,7 +12,12 @@ import { NeuralFieldComponent } from '../../shared/neural-field.component';
 import { AccountService } from '../../core/account.service';
 import { EndReason, SessionsService } from '../../core/sessions.service';
 import { GameDef, SIGNAL_GAMES, getBet, getGame } from '../../core/games';
-import { CHIP_CHOICES, DEFAULT_LIMITS, LadderFit, MIN_BET_CHOICES, SESSION_LIMITS, SessionPlan, TableLimits, ladderFor, planNeural } from '../../core/strategies';
+import { SESSION_LIMITS, SessionPlan, TableLimits, ladderFor, planNeural } from '../../core/strategies';
+import { MoneyService, amountsFor, formatMoney, tableFor } from '../../core/money';
+import { MoneyPipe } from '../../shared/money.pipe';
+import { GameCardComponent } from '../../shared/game-card.component';
+import { CountryPickerComponent } from '../../shared/country-picker.component';
+import { coinBurst, countUp, staggerIn } from '../../shared/motion';
 import { Goal, goalProgress } from '../../core/goal';
 import { Signal, SignalEngine, SignalEvent, SystemId, VOID_RESULT } from '../../core/signals';
 
@@ -50,7 +55,8 @@ export const SIDE_TONE: Record<string, string> = {
 @Component({
   selector: 'app-coach',
   standalone: true,
-  imports: [IonicModule, FormsModule, RouterLink, NgIf, NgFor, NgClass, NgSwitch, NgSwitchCase, DecimalPipe, DatePipe,
+  imports: [IonicModule, FormsModule, RouterLink, NgIf, NgFor, NgClass, NgSwitch, NgSwitchCase, DecimalPipe, DatePipe, MoneyPipe,
+    GameCardComponent, CountryPickerComponent,
     TopbarComponent, StopSignComponent, ConfettiComponent, NeuralFieldComponent],
   templateUrl: './coach.page.html',
   styleUrls: ['./coach.page.scss'],
@@ -85,10 +91,14 @@ export class CoachPage implements OnDestroy {
   casinoSuggestions = ['Evolution live tables', 'Ezugi', 'Pragmatic Play Live', 'Playtech Live', 'Other online casino', 'Land-based casino'];
   bankroll: number | null = null;
   minutes = SESSION_LIMITS.sessionMinutes;
-  /** The player's table: minimum bet and smallest chip (each casino sets its own). */
-  table: TableLimits = loadTableLimits();
-  minBetChoices = MIN_BET_CHOICES;
-  chipChoices = CHIP_CHOICES;
+  money = inject(MoneyService);
+  /** Today's total so far (shown when today's session is already played). */
+  todayNet = 0;
+  /** The "play another session?" pop-up. */
+  askingAnother = false;
+  /** The player chose to play another session today. */
+  private anotherOk = false;
+  private burstDone = false;
 
   live: LiveState | null = null;
   engine: SignalEngine | null = null;
@@ -150,7 +160,7 @@ export class CoachPage implements OnDestroy {
       else this.clearPersisted();
       this.live = null;
       this.engine = null;
-      this.stage = (await this.sessions.playedToday(this.uid)) ? 'locked' : 'setup';
+      this.stage = (await this.playedToday()) ? 'locked' : 'setup';
       return;
     }
     if (saved && saved.v === 2 && saved.uid === this.uid) {
@@ -161,7 +171,7 @@ export class CoachPage implements OnDestroy {
       this.startTimer();
       return;
     }
-    this.stage = (await this.sessions.playedToday(this.uid)) ? 'locked' : 'setup';
+    this.stage = (await this.playedToday()) ? 'locked' : 'setup';
   }
 
   /** Pre-fills today's amount from ?amount= or the player's goal. */
@@ -177,6 +187,54 @@ export class CoachPage implements OnDestroy {
     if (Number.isFinite(q) && q >= 50) this.bankroll = Math.round(q * 100) / 100;
   }
 
+  /** True when a session was already played today (unless the player chose to play another). Loads today's total. */
+  private async playedToday(): Promise<boolean> {
+    if (this.anotherOk) return false;
+    const played = await this.sessions.playedToday(this.uid);
+    if (played) {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const list = await this.sessions.list(this.uid).catch(() => []);
+      this.todayNet = Math.round(list.filter((x) => x.startedAt.toMillis() >= start.getTime()).reduce((a, x) => a + x.net, 0) * 100) / 100;
+    }
+    return played;
+  }
+
+  /** "Play another session" – first a kind word about stopping while it's good. */
+  askAnother() {
+    this.askingAnother = true;
+  }
+
+  playAnother() {
+    this.askingAnother = false;
+    this.anotherOk = true;
+    this.live = null;
+    this.engine = null;
+    this.stopSign = null;
+    this.endReason = null;
+    this.saveError = '';
+    this.stage = 'setup';
+    this.clearPersisted();
+  }
+
+  get anotherTitle(): string {
+    return this.todayNet > 0 || this.net > 0 ? 'PROTECT TODAY\'S WIN?' : 'FRESH START TOMORROW?';
+  }
+
+  get anotherReason(): string {
+    const today = this.stage === 'done' ? this.net : this.todayNet;
+    return today > 0
+      ? `You're up ${formatMoney(today, this.cur, true)} today.`
+      : 'Today’s limit kept the rest of your amount safe.';
+  }
+
+  get anotherHint(): string {
+    const today = this.stage === 'done' ? this.net : this.todayNet;
+    return today > 0
+      ? 'The players who grow fastest stop on a win and come back tomorrow with a bigger amount. Another session today puts this win back on the table.'
+      : 'Chasing today rarely ends well. A new day brings a new table and a calm head – that is where the next win comes from.';
+  }
+
   /** "Good evening, Vivek" – the setup screen speaks to the player by name. */
   get greeting(): string {
     const h = new Date().getHours();
@@ -190,28 +248,34 @@ export class CoachPage implements OnDestroy {
     return getGame(this.gameId)!;
   }
 
-  /** How the ladder fits today's amount at this table (null until an amount is entered). */
-  get fit(): LadderFit | null {
-    if (!this.bankroll || this.bankroll < 50) return null;
-    return ladderFor(this.bankroll, this.table);
+  /** Currency of every amount on screen: the session's, or the player's country. */
+  get cur(): string {
+    return this.live?.plan.currency || this.money.currency;
+  }
+
+  /** The usual live-table minimum and chips for the player's currency (worked out for them). */
+  get table(): TableLimits {
+    return tableFor(this.money.currency);
+  }
+
+  /** Smallest amount that fits, and four easy amounts to pick. */
+  get amounts() {
+    return amountsFor(this.money.currency);
+  }
+
+  get symbol(): string {
+    return formatMoney(0, this.cur).replace(/[\d\s.,]/g, '') || this.cur;
   }
 
   get plan(): SessionPlan | null {
-    const fit = this.fit;
-    if (!fit || fit.unit === null) return null;
-    return planNeural(this.game, this.bankroll!, this.minutes, 'book', this.table);
+    if (!this.bankroll || this.bankroll <= 0) return null;
+    if (ladderFor(this.bankroll, this.table).unit === null) return null;
+    return { ...planNeural(this.game, this.bankroll, this.minutes, 'book', this.table), currency: this.money.currency };
   }
 
-  setMinBet(v: number) {
-    this.table = { ...this.table, minBet: v };
-    // A chip bigger than the minimum can't make the minimum bet exactly.
-    if (this.table.chip > v) this.table = { ...this.table, chip: CHIP_CHOICES.filter((c) => c <= v).pop() ?? v };
-    saveTableLimits(this.table);
-  }
-
-  setChip(v: number) {
-    this.table = { ...this.table, chip: v };
-    saveTableLimits(this.table);
+  /** Country changed: drop an amount that was typed for the old currency. */
+  onCountry() {
+    this.bankroll = null;
   }
 
   sidesLabel(g: GameDef): string {
@@ -221,6 +285,7 @@ export class CoachPage implements OnDestroy {
   start() {
     const plan = this.plan;
     if (!plan) return;
+    this.money.setCountry(this.money.country.code); // remember the country once a session starts
     const casino = this.casino.trim().slice(0, 80) || 'Live table';
     const tableUrl = safeUrl(this.tableUrl);
     try {
@@ -229,7 +294,8 @@ export class CoachPage implements OnDestroy {
     } catch {}
     const now = Date.now();
     this.live = { v: 2, uid: this.uid, casino, system: 'neural', plan, tableUrl, startedAt: now,
-      nextCheckinAt: now + 15 * MIN, events: [] };
+      nextCheckinAt: now + 20 * MIN, events: [] };
+    this.burstDone = false;
     this.engine = this.makeEngine(this.live);
     this.endReason = null;
     this.stopSign = null;
@@ -362,7 +428,7 @@ export class CoachPage implements OnDestroy {
     const r = this.engine.applySide(side);
     this.persist();
     if (!r) return;
-    this.pop(r.net > 0 ? `+${r.net}` : r.net < 0 ? `${r.net}` : 'Push', r.result === 'won' ? 'won' : r.net < 0 ? 'lost' : 'void');
+    this.pop(r.net !== 0 ? formatMoney(r.net, this.cur, true) : 'Push', r.result === 'won' ? 'won' : r.net < 0 ? 'lost' : 'void');
     this.buzz(r.result === 'won' ? 20 : r.net < 0 ? [40, 60, 40] : 10);
 
     const hit = this.engine.check();
@@ -530,7 +596,7 @@ export class CoachPage implements OnDestroy {
 
   /** Minutes between check-ins. */
   get checkinEvery(): number {
-    return 15;
+    return 20;
   }
 
   get toneOfBet(): string {
@@ -585,17 +651,17 @@ export class CoachPage implements OnDestroy {
   /* ---------- STOP signs ---------- */
 
   get checkinTitle(): string {
-    return this.net > 0 ? "YOU'RE UP – CASH OUT?" : 'TIME CHECK';
+    return this.net > 0 ? "YOU'RE UP – CASH OUT?" : 'TAKE A BREATH';
   }
 
   get checkinReason(): string {
-    return this.net > 0 ? `You're up ${this.pnlPct}% on your amount.` : 'Quick check-in.';
+    return this.net > 0 ? `You're up ${this.pnlPct}% on your amount.` : '20 minutes at the table.';
   }
 
   get checkinHint(): string {
     const mins = Math.ceil(this.remaining / 60);
-    if (this.net > 0) return 'A great moment to cash out on top. Or keep going – the coach keeps every bet sized for you.';
-    return `Stay with the plan for up to ${mins} more minutes – every bet stays inside your safety limit.`;
+    if (this.net > 0) return 'Cashing out on a win is how amounts grow day after day. Or keep going – every bet stays sized for you.';
+    return `A short pause keeps your decisions sharp. ${mins} minutes left in this session – every bet stays inside your safety limit.`;
   }
 
   get finalReason(): string {
@@ -620,10 +686,34 @@ export class CoachPage implements OnDestroy {
   }
 
   get endTitle(): string {
-    if (this.net > 0) {
-      return this.endReason === 'stop-win' ? 'Target hit. You cashed out a winner!' : 'You cashed out on top. Well played!';
-    }
-    return this.endReason === 'stop-loss' ? 'Session complete – amount protected.' : 'Session complete.';
+    if (this.net > 0) return this.endReason === 'stop-win' ? 'Target hit. Done for the day!' : 'Cashed out on top. Well played!';
+    if (this.net === 0) return 'Even session – nothing lost.';
+    return 'Fresh start tomorrow.';
+  }
+
+  /** A kind word for the end of the session. */
+  get endLine(): string {
+    const p = this.live?.plan;
+    if (this.net > 0) return 'Cash out at the casino now – that win is yours. The best players stop here and come back tomorrow to grow it again.';
+    if (!p) return '';
+    const kept = formatMoney(p.bankroll + this.net, this.cur);
+    return `The safety limit did its job – ${kept} of your amount is safe. Tomorrow brings a new table and a new plan.`;
+  }
+
+  /** Coins for a real win, once, when the end screen appears. */
+  @ViewChild('doneEl') set doneEl(el: ElementRef<HTMLElement> | undefined) {
+    if (!el || this.burstDone) return;
+    this.burstDone = true;
+    const big = el.nativeElement.querySelector<HTMLElement>('.big');
+    requestAnimationFrame(() => big && countUp(big, this.net, (v) => formatMoney(v, this.cur, true)));
+    if (this.net > 0) setTimeout(() => el.nativeElement.isConnected && coinBurst(el.nativeElement, 26, this.symbol.slice(0, 2) || '♠'), 150);
+  }
+
+  /** Setup screen: cards and fields arrive one after another. */
+  @ViewChild('setupEl') set setupEl(el: ElementRef<HTMLElement> | undefined) {
+    // Next frame: the screen must be in the page before GSAP measures it (otherwise GSAP re-inserts
+    // detached elements and can shuffle them past Angular's anchors).
+    if (el) requestAnimationFrame(() => el.nativeElement.isConnected && staggerIn(el.nativeElement, '[data-in]'));
   }
 
   continuePlaying() {
@@ -638,7 +728,7 @@ export class CoachPage implements OnDestroy {
     this.endReason = reason;
     if (!quiet) {
       this.stage = 'done';
-      this.stopSign = reason === 'manual' || reason === 'checkin' ? null : 'final';
+      this.stopSign = null; // the end screen itself says what to do
     }
     const p = this.live.plan;
     const rounds = this.engine?.rounds ?? [];
@@ -658,6 +748,7 @@ export class CoachPage implements OnDestroy {
         endReason: reason,
         startedAt: Timestamp.fromMillis(this.live.startedAt),
         endedAt: Timestamp.now(),
+        currency: p.currency || this.money.currency,
       });
       this.clearPersisted();
     } catch {
@@ -707,21 +798,4 @@ function safeUrl(raw: string): string {
   } catch {
     return '';
   }
-}
-
-const TABLE_KEY = 'tw.tableLimits';
-
-/** The table limits the player used last time (or a standard $1 table). */
-function loadTableLimits(): TableLimits {
-  try {
-    const t = JSON.parse(localStorage.getItem(TABLE_KEY) || 'null');
-    if (t && CHIP_CHOICES.includes(t.chip) && MIN_BET_CHOICES.includes(t.minBet)) return { minBet: t.minBet, chip: t.chip };
-  } catch {}
-  return { ...DEFAULT_LIMITS };
-}
-
-function saveTableLimits(t: TableLimits) {
-  try {
-    localStorage.setItem(TABLE_KEY, JSON.stringify(t));
-  } catch {}
 }

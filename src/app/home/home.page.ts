@@ -1,4 +1,6 @@
-import { Component, inject } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild, inject } from '@angular/core';
+import { Router } from '@angular/router';
+import { gsap } from 'gsap';
 import { FormBuilder, Validators } from '@angular/forms';
 import { Firestore, addDoc, collection } from '@angular/fire/firestore';
 import { AccountService } from '../core/account.service';
@@ -8,14 +10,17 @@ import { FREE_FEATURES, PLANS, PRICING, PRO_FEATURES, perDay, savingVsDay } from
 import { FeedItem, SessionsService } from '../core/sessions.service';
 import { THEMES, ThemeService } from '../core/theme.service';
 import { getGame } from '../core/games';
-import { TABLE_RULES } from '../core/strategies';
+import { TABLE_RULES, smallestUnit } from '../core/strategies';
+import { CASINO_DEALERS } from '../core/dealers';
+import { MoneyService, formatMoney, tableFor } from '../core/money';
+import { float, reducedMotion, revealOnView, tilt } from '../shared/motion';
 
 @Component({
   selector: 'app-home',
   templateUrl: 'home.page.html',
   styleUrls: ['home.page.scss'],
 })
-export class HomePage {
+export class HomePage implements AfterViewInit, OnDestroy {
   private fs = inject(Firestore, { optional: true }) as Firestore;
   private fb = inject(FormBuilder);
   access$ = inject(AccountService).access$;
@@ -39,6 +44,46 @@ export class HomePage {
   pro = PRO_FEATURES;
   pct = pct;
   year = new Date().getFullYear();
+  dealers = CASINO_DEALERS;
+  private money = inject(MoneyService);
+  private router = inject(Router);
+  private cleanups: (() => void)[] = [];
+  @ViewChild('hero', { static: true }) hero!: ElementRef<HTMLElement>;
+  @ViewChild('page', { static: true }) page!: ElementRef<HTMLElement>;
+
+  /** The hero's example bet, in the visitor's currency (₹30, $3 …). */
+  get demoBet(): string {
+    const t = tableFor(this.money.currency);
+    return formatMoney(smallestUnit(t) * 1.5, this.money.currency);
+  }
+
+  openTable(id: string) {
+    this.router.navigate(['/live', id]);
+  }
+
+  ngAfterViewInit() {
+    const h = this.hero.nativeElement;
+    this.cleanups.push(revealOnView(this.page.nativeElement));
+    h.querySelectorAll<HTMLElement>('.dcard').forEach((c) => this.cleanups.push(tilt(c, 7)));
+    if (reducedMotion()) return;
+    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+    tl.from(h.querySelectorAll('[data-h]'), { y: 30, opacity: 0, duration: 0.8, stagger: 0.09 })
+      .from(h.querySelectorAll('.dcard'), { y: 90, rotation: 0, opacity: 0, duration: 1, stagger: 0.1, clearProps: 'opacity' }, 0.15)
+      .from(h.querySelectorAll('.tw-pcard'), { y: -60, rotationY: 180, opacity: 0, duration: 0.9, stagger: 0.12 }, 0.5)
+      .from(h.querySelector('.sig-chip'), { scale: 0.7, opacity: 0, duration: 0.6, ease: 'back.out(2)' }, 0.9)
+      .from(h.querySelectorAll('.hero-coin'), { scale: 0, opacity: 0, duration: 0.5, stagger: 0.08, ease: 'back.out(3)' }, 1.0);
+    tl.add(() => {
+      float(h.querySelectorAll('.hero-coin'), 12, 2.6);
+      float(h.querySelector('.sig-chip')!, 6, 3.4);
+      float(h.querySelectorAll('.tw-pcard'), 8, 3.8);
+      gsap.to(h.querySelectorAll('.hero-coin'), { rotationY: 360, duration: 4, ease: 'none', repeat: -1, stagger: 0.6 });
+    });
+  }
+
+  ngOnDestroy() {
+    this.cleanups.forEach((f) => f());
+    gsap.killTweensOf(this.hero.nativeElement.querySelectorAll('*'));
+  }
 
   faqs = [
     {

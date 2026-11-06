@@ -560,6 +560,8 @@ export interface SessionPlan {
   expectedLoss: number;
   /** The table's minimum bet and smallest chip the ladder was sized for. */
   limits?: TableLimits;
+  /** Currency of every amount in this plan (ISO code). */
+  currency?: string;
 }
 
 export type NeuralMode = 'book' | 'protected';

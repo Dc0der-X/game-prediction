@@ -1,4 +1,6 @@
 import { Component, inject } from '@angular/core';
+import { MoneyPipe } from '../../shared/money.pipe';
+import { MoneyService } from '../../core/money';
 import { DecimalPipe, NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -14,7 +16,7 @@ interface Pt { x: number; y: number }
 @Component({
   selector: 'app-goal',
   standalone: true,
-  imports: [IonicModule, FormsModule, RouterLink, NgIf, NgFor, DecimalPipe, TopbarComponent],
+  imports: [MoneyPipe, IonicModule, FormsModule, RouterLink, NgIf, NgFor, DecimalPipe, TopbarComponent],
   template: `
     <app-topbar></app-topbar>
     <ion-content>
@@ -46,14 +48,14 @@ interface Pt { x: number; y: number }
             <section class="tw-card preview" *ngIf="!formError">
               <p class="tw-eyebrow">Your plan</p>
               <div class="big-n"><strong>{{ previewSessions }}</strong><span>winning sessions to go from
-                {{ start | number: '1.0-2' }} to {{ target | number: '1.0-2' }}</span></div>
+                {{ start | money: cur }} to {{ target | money: cur }}</span></div>
               <svg viewBox="0 0 600 170" class="chart" preserveAspectRatio="none" role="img" aria-label="Plan curve">
                 <polyline [attr.points]="line(previewCurve)" class="plan" />
                 <circle *ngFor="let p of previewCurve.slice(-1)" [attr.cx]="p.x" [attr.cy]="p.y" r="6" class="end" />
               </svg>
               <div class="mini-steps">
-                <div *ngFor="let s of previewSteps"><span>#{{ s.n }}</span><span>{{ s.from | number: '1.0-2' }}</span>
-                  <b>+{{ s.gain | number: '1.0-2' }}</b><span>→ {{ s.to | number: '1.0-2' }}</span></div>
+                <div *ngFor="let s of previewSteps"><span>#{{ s.n }}</span><span>{{ s.from | money: cur }}</span>
+                  <b>{{ s.gain | money: cur : true }}</b><span>→ {{ s.to | money: cur }}</span></div>
               </div>
             </section>
           </div>
@@ -61,15 +63,15 @@ interface Pt { x: number; y: number }
 
         <!-- ============ Goal tracker ============ -->
         <ng-container *ngIf="goal && !editing && prog as pr">
-          <h1>{{ pr.reached ? 'Goal reached! 🎉' : (goal.start | number: '1.0-0') + ' → ' + (goal.target | number: '1.0-0') }}</h1>
+          <h1>{{ pr.reached ? 'Goal reached! 🎉' : (goal.start | money: cur) + ' → ' + (goal.target | money: cur) }}</h1>
 
           <div class="track">
             <section class="tw-card hero">
               <div class="hero-top">
                 <div>
                   <span class="tw-muted tw-small">Where you are</span>
-                  <div class="bal">{{ pr.balance | number: '1.0-2' }}</div>
-                  <span class="gain" *ngIf="pr.balance > goal.start">+{{ pr.balance - goal.start | number: '1.0-2' }} since you started</span>
+                  <div class="bal">{{ pr.balance | money: cur }}</div>
+                  <span class="gain" *ngIf="pr.balance > goal.start">{{ pr.balance - goal.start | money: cur : true }} since you started</span>
                 </div>
                 <div class="ring" [style.--p]="pr.pct">
                   <span>{{ pr.pct }}%</span>
@@ -86,17 +88,17 @@ interface Pt { x: number; y: number }
             <section class="tw-card next" *ngIf="!pr.reached">
               <p class="tw-eyebrow">Today's step</p>
               <div class="step-line">
-                <div><span>Play with</span><strong>{{ pr.nextAmount | number: '1.0-2' }}</strong></div>
+                <div><span>Play with</span><strong>{{ pr.nextAmount | money: cur }}</strong></div>
                 <div class="arrow">→</div>
-                <div><span>Target</span><strong class="tw-pos">+{{ pr.nextGain | number: '1.0-2' }}</strong></div>
+                <div><span>Target</span><strong class="tw-pos">{{ pr.nextGain | money: cur : true }}</strong></div>
                 <div class="arrow">→</div>
-                <div><span>New balance</span><strong>{{ pr.nextAmount + pr.nextGain | number: '1.0-2' }}</strong></div>
+                <div><span>New balance</span><strong>{{ pr.nextAmount + pr.nextGain | money: cur }}</strong></div>
               </div>
               <a class="go" routerLink="/coach" [queryParams]="{ amount: pr.nextAmount }">Start today's session</a>
             </section>
             <section class="tw-card next" *ngIf="pr.reached">
               <p class="tw-eyebrow">You did it</p>
-              <p>You reached {{ goal.target | number: '1.0-2' }}. Cash it out, then set your next goal.</p>
+              <p>You reached {{ goal.target | money: cur }}. Cash it out, then set your next goal.</p>
               <button class="go" (click)="newGoal()">Set my next goal</button>
             </section>
           </div>
@@ -118,7 +120,7 @@ interface Pt { x: number; y: number }
               <div class="steps">
                 <div class="row head"><span>Session</span><span>Play with</span><span>Target</span><span>After</span></div>
                 <div class="row" *ngFor="let s of steps" [class.done]="s.n <= pr.wins" [class.now]="s.n === pr.wins + 1">
-                  <span>#{{ s.n }}</span><span>{{ s.from | number: '1.0-2' }}</span><span class="tw-pos">+{{ s.gain | number: '1.0-2' }}</span><span>{{ s.to | number: '1.0-2' }}</span>
+                  <span>#{{ s.n }}</span><span>{{ s.from | money: cur }}</span><span class="tw-pos">{{ s.gain | money: cur : true }}</span><span>{{ s.to | money: cur }}</span>
                 </div>
               </div>
             </details>
@@ -194,6 +196,12 @@ interface Pt { x: number; y: number }
   `],
 })
 export class GoalPage {
+  private moneySvc = inject(MoneyService);
+  /** Every amount shows in the player's currency. */
+  get cur(): string {
+    return this.moneySvc.currency;
+  }
+
   private account = inject(AccountService);
   private sessionsSvc = inject(SessionsService);
 

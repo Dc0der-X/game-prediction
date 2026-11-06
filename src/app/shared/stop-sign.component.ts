@@ -6,6 +6,7 @@ import { DecimalPipe, NgIf } from '@angular/common';
  *  kind="final"   – a limit or the timer was hit; the only way out is the stop button.
  *  kind="checkin" – the regular interval check-in; the player may stop or continue.
  */
+import { formatMoney } from '../core/money';
 @Component({
   selector: 'app-stop-sign',
   standalone: true,
@@ -15,11 +16,11 @@ import { DecimalPipe, NgIf } from '@angular/common';
       <div class="panel" [class.final]="kind === 'final'" [class.amber]="icon === 'switch'" [class.green]="icon === 'cash'">
         <div class="octagon" aria-hidden="true" *ngIf="icon === 'stop'"><span>STOP</span></div>
         <div class="switch" aria-hidden="true" *ngIf="icon === 'switch'">⇄</div>
-        <div class="cash" aria-hidden="true" *ngIf="icon === 'cash'">$</div>
+        <div class="cash" aria-hidden="true" *ngIf="icon === 'cash'">{{ symbol }}</div>
         <h2 id="stop-title">{{ title || (kind === 'final' ? 'SESSION COMPLETE' : 'QUICK CHECK-IN') }}</h2>
         <p class="reason">{{ reason }}</p>
         <div class="net" *ngIf="net !== null" [class.pos]="net > 0" [class.neg]="net < 0">
-          {{ net > 0 ? '+' : '' }}{{ net | number: '1.0-2' }}
+          {{ shownNet }}
         </div>
         <p class="hint">{{ hint }}</p>
         <div class="actions">
@@ -85,6 +86,16 @@ export class StopSignComponent {
   @Input() reason = '';
   @Input() hint = '';
   @Input() net: number | null = null;
+  /** Currency of `net` (ISO code); amounts then show as "+₹54". */
+  @Input() currency = 'USD';
+
+  get shownNet(): string {
+    return formatMoney(this.net ?? 0, this.currency, true);
+  }
+
+  get symbol(): string {
+    return formatMoney(0, this.currency).replace(/[\d\s.,]/g, '') || '$';
+  }
   @Input() stopLabel = 'I have stopped';
   @Input() continueLabel = 'Continue';
   @Output() stop = new EventEmitter<void>();

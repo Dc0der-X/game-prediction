@@ -1,4 +1,6 @@
 import { Component, inject } from '@angular/core';
+import { MoneyPipe } from '../../shared/money.pipe';
+import { MoneyService } from '../../core/money';
 import { AsyncPipe, DatePipe, DecimalPipe, LowerCasePipe, NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -10,7 +12,7 @@ import { TopbarComponent } from '../../shared/topbar.component';
 @Component({
   selector: 'app-account',
   standalone: true,
-  imports: [IonicModule, FormsModule, RouterLink, NgIf, NgFor, AsyncPipe, DatePipe, DecimalPipe, LowerCasePipe, TopbarComponent],
+  imports: [MoneyPipe, IonicModule, FormsModule, RouterLink, NgIf, NgFor, AsyncPipe, DatePipe, DecimalPipe, LowerCasePipe, TopbarComponent],
   template: `
     <app-topbar></app-topbar>
     <ion-content>
@@ -30,7 +32,7 @@ import { TopbarComponent } from '../../shared/topbar.component';
 
         <a class="tw-card goal-card" routerLink="/goal">
           <p class="tw-eyebrow">My goal</p>
-          <h3 *ngIf="p.goal">{{ p.goal.start | number: '1.0-0' }} → {{ p.goal.target | number: '1.0-0' }}</h3>
+          <h3 *ngIf="p.goal">{{ p.goal.start | money: cur }} → {{ p.goal.target | money: cur }}</h3>
           <h3 *ngIf="!p.goal">Set a goal – see how your wins compound</h3>
           <span class="tw-small go-link">Open the compounding calculator →</span>
         </a>
@@ -83,6 +85,12 @@ import { TopbarComponent } from '../../shared/topbar.component';
   `],
 })
 export class AccountPage {
+  private moneySvc = inject(MoneyService);
+  /** Every amount shows in the player's currency. */
+  get cur(): string {
+    return this.moneySvc.currency;
+  }
+
   private account = inject(AccountService);
   private router = inject(Router);
   profile$ = this.account.profile$;

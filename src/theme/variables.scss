@@ -1,23 +1,23 @@
 // TableWise themes:
-//   Elite Dark (default) – near-black with warm gold: sleek, premium, calm for long sessions.
+//   Elite Dark (default) – "night lounge": near-black with emerald-felt and wine glows, glass cards, rich gold.
 //   Clean Pro (light)    – white and royal blue: minimal, professional, trustworthy.
 // Areas that are always a casino floor (live studio, felt) stay dark in both themes.
 :root {
-  /* Brand tokens – Elite Dark (TableWise Elite Dark design system) */
-  --tw-bg: #090a0d;
-  --tw-bg-2: #101216;
-  --tw-card: #15191f;
-  --tw-card-2: #1b2028;
-  --tw-inset: #0d1015;
-  --tw-felt: #101216;
-  --tw-felt-2: #1b2028;
-  --tw-line: #303640;
-  --tw-line-strong: #555d68;
-  --tw-text: #f5f2eb;
-  --tw-muted: #b8b5ae;
-  --tw-faint: #858991;
-  --tw-gold: #d6ad62;
-  --tw-gold-2: #f0cf87;
+  /* Brand tokens – Elite Dark */
+  --tw-bg: #08090b;
+  --tw-bg-2: #0e1013;
+  --tw-card: #121418;
+  --tw-card-2: #1a1d22;
+  --tw-inset: #0b0d10;
+  --tw-felt: #0f1a15;
+  --tw-felt-2: #16261e;
+  --tw-line: rgba(255, 255, 255, 0.08);
+  --tw-line-strong: rgba(255, 255, 255, 0.16);
+  --tw-text: #f6f1e7;
+  --tw-muted: #aca59b;
+  --tw-faint: #7d786f;
+  --tw-gold: #e3b965;
+  --tw-gold-2: #f6d892;
   --tw-gold-muted: #8d7040;
   --tw-red: #f05261;
   --tw-blue: #4b8deb;
@@ -27,23 +27,28 @@
   --tw-radius: 16px;
   --tw-font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --tw-display: 'Sora', 'Inter', system-ui, sans-serif;
+  --tw-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
   --tw-mono: 'JetBrains Mono', ui-monospace, monospace;
   --tw-violet: #8b6cff;
   --tw-money: #f0cf87;
   /* Accent as r,g,b for glows: rgba(var(--tw-accent-rgb), .4) */
-  --tw-accent-rgb: 214, 173, 98;
+  --tw-accent-rgb: 227, 185, 101;
   /* "Ink" as r,g,b for soft overlays and hairlines: white on dark, navy on light */
   --tw-ink-rgb: 255, 255, 255;
   /* Text on accent-coloured buttons */
   --tw-on-accent: #17130b;
-  --tw-accent-grad: linear-gradient(180deg, #e2bc72, #d6ad62);
-  --tw-shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
+  --tw-accent-grad: linear-gradient(135deg, #f8df9c 0%, #dcae52 48%, #b5852f 100%);
+  --tw-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  /* Page backdrop: emerald felt and wine glows on near-black */
+  --tw-page-bg: radial-gradient(1100px 560px at 8% -8%, rgba(18, 104, 70, 0.22), transparent 62%),
+    radial-gradient(900px 520px at 100% -6%, rgba(128, 26, 52, 0.18), transparent 60%),
+    radial-gradient(700px 400px at 50% 110%, rgba(227, 185, 101, 0.06), transparent 70%), #08090b;
   --tw-focus: 0 0 0 2px #090a0d, 0 0 0 4px #f0cf87;
   --tw-glow-2: rgba(214, 173, 98, 0.08);
   --tw-glow-3: rgba(240, 207, 135, 0.04);
   /* Glass panels, header bar, and soft status text (readable on the theme's background) */
-  --tw-glass: rgba(21, 25, 31, 0.86);
-  --tw-header-bg: rgba(16, 18, 22, 0.94);
+  --tw-glass: rgba(20, 22, 27, 0.78);
+  --tw-header-bg: rgba(8, 9, 11, 0.82);
   --tw-pos-text: #8ff0c0;
   --tw-neg-text: #ff9bab;
   --tw-info-text: #b9d3ff;
@@ -52,7 +57,7 @@
   /* Ionic base */
   --ion-font-family: var(--tw-font);
   --ion-background-color: var(--tw-bg);
-  --ion-background-color-rgb: 9, 10, 13;
+  --ion-background-color-rgb: 8, 9, 11;
   --ion-text-color: var(--tw-text);
   --ion-text-color-rgb: 245, 242, 235;
   --ion-toolbar-background: var(--tw-bg);
@@ -61,8 +66,8 @@
   --ion-placeholder-color: #858991;
 
   /** primary – gold **/
-  --ion-color-primary: #d6ad62;
-  --ion-color-primary-rgb: 214, 173, 98;
+  --ion-color-primary: #e3b965;
+  --ion-color-primary-rgb: 227, 185, 101;
   --ion-color-primary-contrast: #17130b;
   --ion-color-primary-contrast-rgb: 23, 19, 11;
   --ion-color-primary-shade: #bc9856;
@@ -147,6 +152,8 @@
   --tw-on-accent: #ffffff;
   --tw-accent-grad: linear-gradient(180deg, #2b5ff0, #1d4ed8);
   --tw-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --tw-page-bg: radial-gradient(1000px 520px at 0% -10%, rgba(29, 78, 216, 0.08), transparent 60%),
+    radial-gradient(800px 480px at 100% 0%, rgba(14, 165, 233, 0.06), transparent 60%), #f4f6fb;
   --tw-glow-2: rgba(29, 78, 216, 0.06); --tw-glow-3: rgba(29, 78, 216, 0.04);
   --tw-glass: rgba(255, 255, 255, 0.9); --tw-header-bg: rgba(244, 246, 251, 0.92);
   --tw-pos-text: #047857; --tw-neg-text: #be123c; --tw-info-text: #1e40af; --tw-warn-text: #92400e;

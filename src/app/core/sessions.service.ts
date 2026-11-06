@@ -40,6 +40,8 @@ export interface RealSession {
   endReason: EndReason;
   startedAt: Timestamp;
   endedAt: Timestamp;
+  /** Currency the session was played in (ISO code, e.g. INR). */
+  currency?: string;
 }
 
 const DEMO_SESSIONS = 'tw.demo.sessions';
@@ -126,10 +128,10 @@ export class SessionsService {
 
   /** The coach allows one real-money session per calendar day. */
   async playedToday(uid: string): Promise<boolean> {
-    // The demo lets visitors replay the coach as often as they like.
-    if (this.demo) return false;
     const start = new Date();
     start.setHours(0, 0, 0, 0);
+    // Demo: sessions live in this browser (the "today" screen still lets visitors play again).
+    if (this.demo) return demoLoad().some((x: any) => x.uid === uid && x.startedAt >= start.getTime());
     const snap = await getDocs(
       query(
         collection(this.fs, 'users', uid, 'sessions'),

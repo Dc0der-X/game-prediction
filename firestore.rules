@@ -78,8 +78,10 @@ service cloud.firestore {
         allow read: if isOwner(uid) || isAdmin();
         allow create: if isOwner(uid)
           && request.resource.data.keys().hasOnly(['gameId', 'betId', 'system', 'casino', 'bankroll', 'unit', 'stopWin',
-               'stopLoss', 'minutes', 'rounds', 'net', 'endReason', 'startedAt', 'endedAt', 'savedAt'])
+               'stopLoss', 'minutes', 'rounds', 'net', 'endReason', 'startedAt', 'endedAt', 'savedAt', 'currency'])
           && request.resource.data.gameId is string && request.resource.data.gameId.size() <= 20
+          && (!('currency' in request.resource.data) || (request.resource.data.currency is string
+               && request.resource.data.currency.matches('^[A-Z]{3}$')))
           && request.resource.data.casino is string && request.resource.data.casino.size() <= 80
           && request.resource.data.endReason is string && request.resource.data.endReason.size() <= 20
           && request.resource.data.net is number

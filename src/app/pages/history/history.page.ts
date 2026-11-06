@@ -1,4 +1,6 @@
 import { Component, inject } from '@angular/core';
+import { MoneyPipe } from '../../shared/money.pipe';
+import { MoneyService } from '../../core/money';
 import { DatePipe, DecimalPipe, NgFor, NgIf } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
@@ -12,7 +14,7 @@ import { round2 } from '../../core/strategies';
 @Component({
   selector: 'app-history',
   standalone: true,
-  imports: [IonicModule, RouterLink, NgFor, NgIf, DatePipe, DecimalPipe, TopbarComponent],
+  imports: [MoneyPipe, IonicModule, RouterLink, NgFor, NgIf, DatePipe, DecimalPipe, TopbarComponent],
   template: `
     <app-topbar></app-topbar>
     <ion-content>
@@ -32,12 +34,12 @@ import { round2 } from '../../core/strategies';
           <section class="wall">
             <div class="wall-main">
               <p class="tw-eyebrow">Your winnings wall</p>
-              <div class="won">+{{ totalWon | number: '1.0-0' }}</div>
+              <div class="won">{{ totalWon | money: cur : true }}</div>
               <p class="tw-small">won across {{ winCount }} winning session{{ winCount === 1 ? '' : 's' }}</p>
             </div>
             <div class="trophies">
               <div><strong>{{ targetHits }}</strong><span>targets hit</span></div>
-              <div><strong>+{{ best | number: '1.0-0' }}</strong><span>best session</span></div>
+              <div><strong>{{ best | money: cur : true }}</strong><span>best session</span></div>
               <div><strong>{{ bestStreak }}</strong><span>wins in a row</span></div>
             </div>
           </section>
@@ -46,8 +48,8 @@ import { round2 } from '../../core/strategies';
             <div class="tw-stat"><div class="label">Sessions</div><div class="value">{{ sessions.length }}</div></div>
             <div class="tw-stat"><div class="label">Winning sessions</div><div class="value">{{ winRate | number: '1.0-0' }}%</div></div>
             <div class="tw-stat"><div class="label">Overall result</div>
-              <div class="value" [class.tw-pos]="total > 0" [class.tw-neg]="total < 0">{{ total > 0 ? '+' : '' }}{{ total | number: '1.0-2' }}</div></div>
-            <div class="tw-stat"><div class="label">Total wagered</div><div class="value">{{ wagered | number: '1.0-0' }}</div></div>
+              <div class="value" [class.tw-pos]="total > 0" [class.tw-neg]="total < 0">{{ total | money: cur : true }}</div></div>
+            <div class="tw-stat"><div class="label">Total wagered</div><div class="value">{{ wagered | money: cur }}</div></div>
             <div class="tw-stat"><div class="label">Stuck to the plan</div><div class="value">{{ discipline | number: '1.0-0' }}%</div></div>
           </div>
 
@@ -67,7 +69,7 @@ import { round2 } from '../../core/strategies';
             <p class="tw-eyebrow">By casino</p>
             <div class="row" *ngFor="let c of byCasino">
               <span>{{ c.name }}</span><span class="tw-muted">{{ c.count }} sessions</span><span></span><span></span>
-              <span class="r" [class.tw-pos]="c.net > 0" [class.tw-neg]="c.net < 0">{{ c.net > 0 ? '+' : '' }}{{ c.net | number: '1.0-2' }}</span>
+              <span class="r" [class.tw-pos]="c.net > 0" [class.tw-neg]="c.net < 0">{{ c.net | money: cur : true }}</span>
             </div>
           </div>
 
@@ -79,7 +81,7 @@ import { round2 } from '../../core/strategies';
                 <div class="tw-muted tw-small">{{ s.casino || 'Unspecified' }}</div></span>
               <span>{{ s.rounds.length }}</span>
               <span class="tw-muted">{{ reason(s.endReason) }}</span>
-              <span class="r" [class.tw-pos]="s.net > 0" [class.tw-neg]="s.net < 0">{{ s.net > 0 ? '+' : '' }}{{ s.net | number: '1.0-2' }}</span>
+              <span class="r" [class.tw-pos]="s.net > 0" [class.tw-neg]="s.net < 0">{{ s.net | money: cur : true }}</span>
             </div>
           </div>
         </ng-container>
@@ -114,6 +116,12 @@ import { round2 } from '../../core/strategies';
   `],
 })
 export class HistoryPage {
+  private moneySvc = inject(MoneyService);
+  /** Every amount shows in the player's currency. */
+  get cur(): string {
+    return this.moneySvc.currency;
+  }
+
   private account = inject(AccountService);
   private svc = inject(SessionsService);
   sessions: RealSession[] = [];

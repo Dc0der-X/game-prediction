@@ -4,7 +4,8 @@
     <button class="burger" (click)="menuOpen = !menuOpen" aria-label="Menu"><ion-icon name="menu-outline"></ion-icon></button>
     <div class="links" [class.open]="menuOpen">
       <a (click)="scrollTo('how')">How it works</a>
-      <a (click)="scrollTo('results')">Live cash-outs</a>
+      <a (click)="scrollTo('tables')">Tables</a>
+      <a *ngIf="feed.length" (click)="scrollTo('results')">Live cash-outs</a>
       <a (click)="scrollTo('pricing')">Pricing</a>
       <a (click)="scrollTo('faq')">FAQ</a>
       <ng-container *ngIf="access$ | async as a">
@@ -17,98 +18,97 @@
 </ion-header>
 
 <ion-content>
+ <div class="page" #page>
   <!-- Hero -->
-  <section class="hero">
-    <app-neural-field [density]="1.1"></app-neural-field>
+  <section class="hero" #hero>
     <div class="hero-in">
       <div class="copy">
-        <p class="tw-eyebrow">Neural Signals · for live tables</p>
-        <h1>Win smarter.<br /><span>Keep more.</span></h1>
-        <p class="lead">
-          Bring your amount. Tap what came at your table – Red or Black, Player or Banker, Dragon or Tiger.
-          TableWise shows the side and the exact amount for every bet, rides the runs with you, fills your target
-          live and tells you the perfect moment to cash out on top.
-        </p>
-        <div class="cta">
-          <ion-button routerLink="/signup">Start free – {{ pricing.trialHours }} hours</ion-button>
-          <ion-button fill="outline" routerLink="/lobby">Try a practice table</ion-button>
+        <p class="tw-eyebrow" data-h>Live table signals</p>
+        <h1 data-h>Win smarter.<br /><span class="tw-gold-text">Keep more.</span></h1>
+        <p class="lead" data-h>Tap what came at your live table. TableWise shows the side and the exact bet – and tells you when to cash out.</p>
+        <div class="cta" data-h>
+          <a class="tw-cta" routerLink="/signup">Start free – {{ pricing.trialHours }} hours</a>
+          <a class="tw-cta ghost" routerLink="/lobby">Try a practice table</a>
         </div>
-        <p class="tw-small tw-muted">No card needed · Works beside any live casino · 18+</p>
-        <div class="vibes" aria-label="Choose your colour theme">
-          <span class="tw-small tw-muted">Make it yours:</span>
-          <button *ngFor="let t of themes" [class.on]="theme.current === t.id" (click)="theme.set(t.id)" [attr.aria-label]="t.name + ' theme – ' + t.feel" [title]="t.name + ' · ' + t.feel">
-            <i [style.background]="'linear-gradient(135deg,' + t.swatch[0] + ' 50%,' + t.swatch[1] + ' 50%)'"></i>
-          </button>
-        </div>
+        <p class="fine" data-h>No card needed · Works beside any live casino · 18+</p>
       </div>
-      <div class="felt-art tw-casino-floor" aria-hidden="true">
-        <div class="sig-demo">
-          <span class="lbl">NEXT BET</span>
-          <span class="pill-red">Red</span>
-          <span class="amt">8</span>
+
+      <div class="stage" aria-hidden="true">
+        <div class="fan">
+          <figure class="dcard" *ngFor="let d of dealers; let i = index" [ngClass]="'d' + i">
+            <img [src]="d.image" alt="" [style.object-position]="d.focusX + '% 20%'" />
+            <figcaption><b>{{ d.name }}</b></figcaption>
+          </figure>
         </div>
-        <div class="road-demo"><i class="r"></i><i class="b"></i><i class="r"></i><i class="r"></i><i class="b"></i><i class="r"></i><i class="g"></i><i class="b"></i></div>
-        <div class="lights-demo"><i class="on"></i><i></i><i></i></div>
-        <div class="timer">14:59</div>
+        <div class="sig-chip tw-glass">
+          <span class="lbl">Next bet</span>
+          <span class="pill-red">Red</span>
+          <strong>{{ demoBet }}</strong>
+        </div>
+        <div class="tw-pcard p1"><small>A</small>♠</div>
+        <div class="tw-pcard red p2"><small>K</small>♥</div>
+        <i class="tw-coin hero-coin k1">♠</i><i class="tw-coin hero-coin k2">♠</i><i class="tw-coin hero-coin k3">♠</i><i class="tw-coin hero-coin k4">♠</i>
       </div>
     </div>
   </section>
 
-  <!-- Honest strip -->
-  <section class="strip">
-    <div class="strip-in">
-      <div><strong>1 tap</strong><span>per round – just tell it what came</span></div>
-      <div><strong>{{ cashouts24h === null ? '–' : cashouts24h }}</strong><span>cash-outs in the last 24 h{{ demo ? ' (sample)' : '' }}</span></div>
-      <div><strong>30 min</strong><span>a session a day, then you cash out</span></div>
-      <div><strong>4 games</strong><span>Baccarat, Craps, Roulette, Sic Bo</span></div>
-    </div>
+  <!-- Strip -->
+  <section class="strip" data-reveal>
+    <div><strong>1 tap</strong><span>per round – tell it what came</span></div>
+    <div><strong>30 min</strong><span>a calm session, then cash out</span></div>
+    <div><strong>4 games</strong><span>Baccarat · Roulette · Sic Bo · Craps</span></div>
+    <div><strong>{{ pricing.trialHours }} h free</strong><span>no card needed</span></div>
   </section>
 
   <!-- How it works -->
   <section class="block" id="how">
-    <p class="tw-eyebrow">How it works</p>
-    <h2>Three steps. Zero guesswork.</h2>
+    <p class="tw-eyebrow" data-reveal>How it works</p>
+    <h2 data-reveal>Three taps from plan to cash-out.</h2>
     <div class="steps">
-      <div class="tw-card"><span class="n">1</span><h3>Bring your amount</h3>
-        <p class="tw-muted">Tell it what you're playing with today. It builds your session: every bet size and your profit target.</p></div>
-      <div class="tw-card"><span class="n">2</span><h3>Tap what came</h3>
-        <p class="tw-muted">Each tap gives you the next signal – the side and the exact amount. No charts, no maths, no second-guessing.</p></div>
-      <div class="tw-card"><span class="n">3</span><h3>Cash out on cue</h3>
-        <p class="tw-muted">Watch your target fill up live. When it's hit, the big sign tells you to cash out – and keep it.</p></div>
+      <div class="step tw-glass" data-reveal>
+        <span class="tw-coin n">1</span>
+        <svg class="ico" viewBox="0 0 32 32" aria-hidden="true"><rect x="5" y="9" width="22" height="16" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 14h22M10 20h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <h3>Bring your amount</h3>
+        <p>Enter what you're playing with. Your bets, target and safety limit are worked out for you.</p>
+      </div>
+      <div class="step tw-glass" data-reveal>
+        <span class="tw-coin n">2</span>
+        <svg class="ico" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="10" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="16" r="3.5" fill="currentColor"/></svg>
+        <h3>Tap what came</h3>
+        <p>Each tap gives the next signal – the side and the exact amount, in your currency.</p>
+      </div>
+      <div class="step tw-glass" data-reveal>
+        <span class="tw-coin n">3</span>
+        <svg class="ico" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 22l7-7 5 5 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 11h6v6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <h3>Cash out on cue</h3>
+        <p>Watch the target fill. When it's hit, the coach tells you – and you keep the win.</p>
+      </div>
     </div>
   </section>
 
   <!-- Tables -->
-  <section class="block">
-    <p class="tw-eyebrow">The tables</p>
-    <h2>Four live games. One signal.</h2>
-    <div class="games">
-      <a class="game" *ngFor="let g of signalGames" [routerLink]="['/live', g.id]">
-        <div class="img" [style.background-image]="'url(' + g.image + ')'"></div>
-        <div class="body">
-          <h3>{{ g.name }}</h3>
-          <p class="tw-muted tw-small">{{ g.blurb }}</p>
-          <span class="tw-pill gold">Signals on {{ sidesOf(g) }}</span>
-        </div>
-      </a>
+  <section class="block" id="tables">
+    <p class="tw-eyebrow" data-reveal>Practice tables · free</p>
+    <h2 data-reveal>Meet your dealers.</h2>
+    <p class="sub" data-reveal>Real round rhythm, play money, the same signals. Pick a table and feel how it works.</p>
+    <div class="tables">
+      <app-game-card *ngFor="let g of signalGames" data-reveal [game]="g" (pick)="openTable(g.id)"></app-game-card>
     </div>
   </section>
 
-  <!-- Rules -->
-  <section class="block" id="results">
-    <p class="tw-eyebrow">Live cash-outs</p>
-    <h2>Players cashing out right now</h2>
-    <p class="tw-muted narrow">The latest winning sessions from TableWise players, shared anonymously{{ demo ? ' – sample data in this demo' : '' }}.
-      No names, no bets.</p>
-    <div class="feed" *ngIf="feed.length; else noFeed">
-      <div class="item win" *ngFor="let f of feed">
+  <!-- Live cash-outs (only real ones, and only when there are some) -->
+  <section class="block" id="results" *ngIf="feed.length">
+    <p class="tw-eyebrow" data-reveal>Live cash-outs</p>
+    <h2 data-reveal>Players cashing out on top.</h2>
+    <div class="feed">
+      <div class="item tw-glass" *ngFor="let f of feed" data-reveal>
+        <span class="pct">+{{ f.pct | number: '1.0-1' }}%</span>
         <span class="g">{{ gameName(f.game) }}</span>
-        <span class="r">+{{ f.net | number: '1.0-2' }} <small>+{{ f.pct | number: '1.0-1' }}%</small></span>
         <span class="tag">{{ f.endReason === 'stop-win' ? 'Target hit' : 'Cashed out on top' }}</span>
-        <span class="m tw-muted">{{ f.minutes }} min · {{ ago(f.createdAt) }}</span>
+        <span class="m">{{ f.minutes }} min · {{ ago(f.createdAt) }}</span>
       </div>
     </div>
-    <ng-template #noFeed><p class="tw-muted">Cash-outs appear here as players finish winning sessions.</p></ng-template>
+    <p class="fineprint" *ngIf="demo">Sample data in this demo.</p>
   </section>
 
   <!-- Pricing -->
@@ -117,7 +117,7 @@
     <h2>Start free. Then pick your pass.</h2>
     <p class="tw-muted narrow">{{ pricing.trialHours }} hours of full access when you sign up – no card. After that, choose the pass that fits how often you play.</p>
     <div class="plans">
-      <div class="tw-card plan" *ngFor="let p of plans" [class.featured]="p.id === 'month'">
+      <div class="tw-glass plan" data-reveal *ngFor="let p of plans" [class.featured]="p.id === 'month'">
         <span class="tw-pill gold" *ngIf="p.badge">{{ p.badge }}</span>
         <h3>{{ p.name }}</h3>
         <div class="price">${{ p.usd }}<span>/{{ p.per }}</span></div>
@@ -126,7 +126,7 @@
       </div>
     </div>
     <ul class="incl"><li *ngFor="let f of pro">{{ f }}</li></ul>
-    <ion-button routerLink="/signup">Start my {{ pricing.trialHours }} free hours</ion-button>
+    <a class="tw-cta" routerLink="/signup">Start my {{ pricing.trialHours }} free hours</a>
   </section>
 
   <!-- FAQ -->
@@ -134,7 +134,7 @@
     <p class="tw-eyebrow">FAQ</p>
     <h2>Quick answers</h2>
     <div class="faq">
-      <details *ngFor="let f of faqs" class="tw-card">
+      <details *ngFor="let f of faqs" class="tw-glass" data-reveal>
         <summary>{{ f.q }}</summary>
         <p class="tw-muted">{{ f.a }}</p>
       </details>
@@ -142,11 +142,12 @@
   </section>
 
   <!-- Final call to action -->
-  <section class="block final">
-    <div class="final-in tw-card felt">
+  <section class="block final" data-reveal>
+    <div class="final-in">
+      <i class="tw-coin fc1">♠</i><i class="tw-coin fc2">♠</i>
       <h2>Your next session, planned in 30 seconds.</h2>
-      <p>Free for {{ pricing.trialHours }} hours. No card. Cancel nothing – passes never auto-renew.</p>
-      <ion-button routerLink="/signup">Start free now</ion-button>
+      <p>Free for {{ pricing.trialHours }} hours. No card. Passes never auto-renew.</p>
+      <a class="tw-cta" routerLink="/signup">Start free now</a>
     </div>
   </section>
 
@@ -154,7 +155,7 @@
   <section class="block" id="contact">
     <p class="tw-eyebrow">Contact</p>
     <h2>Questions? Write to us.</h2>
-    <form class="tw-card contact" [formGroup]="contactFG" (ngSubmit)="onSubmit()">
+    <form class="tw-glass contact" data-reveal [formGroup]="contactFG" (ngSubmit)="onSubmit()">
       <div class="two">
         <label class="tw-field"><span>Name</span><input class="tw-input" formControlName="name" /></label>
         <label class="tw-field"><span>Email</span><input class="tw-input" type="email" formControlName="email" /></label>
@@ -162,7 +163,7 @@
       <label class="tw-field"><span>Phone or Telegram (optional)</span><input class="tw-input" formControlName="number" /></label>
       <label class="tw-field"><span>Message</span><textarea class="tw-input" rows="4" formControlName="message"></textarea></label>
       <div class="tw-note" *ngIf="sent">Thanks – we'll get back to you soon.</div>
-      <ion-button type="submit" [disabled]="sending">{{ sending ? 'Sending…' : 'Send message' }}</ion-button>
+      <button class="tw-cta" type="submit" [disabled]="sending">{{ sending ? 'Sending…' : 'Send message' }}</button>
     </form>
   </section>
 
@@ -173,6 +174,11 @@
         <p class="tw-muted tw-small">
           Signals and session guidance for live tables. TableWise does not take bets or hold money. 18+, play responsibly.
         </p>
+        <div class="vibes" role="group" aria-label="Colour theme">
+          <button *ngFor="let t of themes" [class.on]="theme.current === t.id" (click)="theme.set(t.id)">
+            <i [style.background]="'linear-gradient(135deg,' + t.swatch[0] + ' 50%,' + t.swatch[1] + ' 50%)'"></i>{{ t.name }}
+          </button>
+        </div>
       </div>
       <div class="tw-small">
         <a routerLink="/terms">Terms</a> ·
@@ -183,4 +189,5 @@
       </div>
     </div>
   </footer>
+ </div>
 </ion-content>

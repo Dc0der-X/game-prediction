@@ -220,3 +220,55 @@ ion-button { --border-radius: 999px; font-weight: 600; text-transform: none; let
 /* ---------- Theme polish ---------- */
 .tw-card { box-shadow: var(--tw-shadow); }
 :root[data-tw-theme='clean'] .tw-card.felt { border-color: rgba(var(--tw-accent-rgb), .18); }
+
+/* ===================== Night lounge design system ===================== */
+ion-content { --background: var(--tw-page-bg); }
+h1, h2 { font-family: var(--tw-serif); font-weight: 700; letter-spacing: -0.015em; }
+.tw-serif { font-family: var(--tw-serif); }
+.tw-gold-text { background: var(--tw-accent-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* Glass card: soft border, inner highlight */
+.tw-glass {
+  background: linear-gradient(180deg, rgba(var(--tw-ink-rgb), 0.06), rgba(var(--tw-ink-rgb), 0.02)), var(--tw-glass);
+  border: 1px solid var(--tw-line); border-radius: 22px; box-shadow: var(--tw-shadow);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+
+/* Gold call-to-action with a slow light sweep */
+.tw-cta {
+  position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 52px; padding: 0 28px; border: 0; border-radius: 999px; cursor: pointer; text-decoration: none;
+  background: var(--tw-accent-grad); color: var(--tw-on-accent); font: 700 16px/1 var(--tw-font); letter-spacing: .01em;
+  box-shadow: 0 10px 30px rgba(var(--tw-accent-rgb), .28), inset 0 1px 0 rgba(255, 255, 255, .45);
+  transition: transform .18s ease, box-shadow .18s ease;
+  &::after { content: ''; position: absolute; inset: -40% auto -40% -30%; width: 40%; transform: skewX(-20deg);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .55), transparent); animation: tw-sweep 3.8s ease-in-out infinite; }
+  &:hover { transform: translateY(-1px); box-shadow: 0 14px 36px rgba(var(--tw-accent-rgb), .36), inset 0 1px 0 rgba(255, 255, 255, .45); }
+  &:active { transform: translateY(1px) scale(.99); }
+  &[disabled] { opacity: .45; cursor: not-allowed; &::after { display: none; } }
+}
+.tw-cta.ghost { background: transparent; color: var(--tw-gold-2); box-shadow: inset 0 0 0 1.5px rgba(var(--tw-accent-rgb), .55);
+  &::after { display: none; } }
+@keyframes tw-sweep { 0%, 55% { left: -40%; } 100% { left: 130%; } }
+
+/* Gold coin (used by coin bursts and floating coins) */
+.tw-coin {
+  position: absolute; width: 34px; height: 34px; border-radius: 50%; pointer-events: none; will-change: transform, opacity;
+  background: radial-gradient(circle at 34% 30%, #fff4cc 0 12%, #f3cf78 30%, #d49d3a 62%, #9c6b1f 100%);
+  box-shadow: inset 0 0 0 3px rgba(255, 236, 170, .55), inset 0 -3px 6px rgba(120, 72, 10, .55), 0 6px 14px rgba(0, 0, 0, .35);
+  display: grid; place-items: center; color: rgba(110, 66, 8, .85); font: 800 15px/1 var(--tw-serif);
+  &::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; border: 1.5px dashed rgba(120, 76, 14, .45); }
+}
+
+/* Playing card */
+.tw-pcard {
+  width: 64px; height: 90px; border-radius: 9px; background: linear-gradient(160deg, #ffffff, #f1ece1);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, .45); color: #141414; display: grid; place-items: center;
+  font: 700 26px/1 var(--tw-serif); position: absolute;
+  &.red { color: #c81e3a; }
+  small { position: absolute; top: 6px; left: 7px; font-size: 13px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tw-cta::after { animation: none; display: none; }
+}
