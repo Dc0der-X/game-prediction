@@ -14,7 +14,7 @@ import { ThemeService } from '../core/theme.service';
     <ion-header class="ion-no-border">
       <div class="demo" *ngIf="demo">Demo · sample data, saved only in this browser · no real money or payments</div>
       <div class="bar">
-        <a class="brand" routerLink="/coach">
+        <a class="brand" [routerLink]="(access$ | async)?.signedIn ? '/me' : '/home'" aria-label="My TableWise">
           <span class="mark">♠</span><span>TableWise</span>
         </a>
         <div class="right" *ngIf="access$ | async as a">

@@ -98,6 +98,8 @@ export class CoachPage implements OnDestroy {
   askingAnother = false;
   /** The "start over?" pop-up. */
   askingRestart = false;
+  /** Game picked elsewhere (?game=) while a session was running: offered after "start over". */
+  private pendingGame: string | null = null;
   /** The player chose to play another session today. */
   private anotherOk = false;
   private burstDone = false;
@@ -126,6 +128,10 @@ export class CoachPage implements OnDestroy {
   private tick: any;
 
   constructor() {
+    // Opening a game from My TableWise while this page is already open (Ionic keeps it alive).
+    this.route.queryParamMap.subscribe((q) => {
+      if (this.stage !== 'checking') this.applyGameParam(q.get('game'));
+    });
     try {
       this.casino = localStorage.getItem('tw.lastCasino') || '';
       this.tableUrl = localStorage.getItem('tw.lastTableUrl') || '';
@@ -171,9 +177,22 @@ export class CoachPage implements OnDestroy {
       this.stage = saved.events.length ? 'live' : 'first';
       this.countTo(this.engine.signal().stake);
       this.startTimer();
+      this.applyGameParam();
       return;
     }
     this.stage = (await this.playedToday()) ? 'locked' : 'setup';
+    this.applyGameParam();
+  }
+
+  /** ?game=roulette (from My TableWise): preselect it, or offer to change game if a session is running. */
+  private applyGameParam(g = this.route.snapshot.queryParamMap.get('game')) {
+    if (!g || !SIGNAL_GAMES.includes(g as any)) return;
+    if (this.live && this.live.plan.gameId !== g) {
+      this.pendingGame = g;
+      this.askingRestart = true;
+    } else if (!this.live) {
+      this.gameId = g;
+    }
   }
 
   /** Pre-fills today's amount from ?amount= or the player's goal. */
@@ -202,6 +221,11 @@ export class CoachPage implements OnDestroy {
     return played;
   }
 
+  cancelRestart() {
+    this.askingRestart = false;
+    this.pendingGame = null;
+  }
+
   /** "Start over": end this session (its result is saved) and go back to choosing a table and amount. */
   async restart() {
     this.askingRestart = false;
@@ -214,6 +238,8 @@ export class CoachPage implements OnDestroy {
     this.watchNote = '';
     this.clearPersisted();
     this.anotherOk = true;
+    if (this.pendingGame) this.gameId = this.pendingGame;
+    this.pendingGame = null;
     this.stage = 'setup';
   }
 

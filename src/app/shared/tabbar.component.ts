@@ -54,7 +54,7 @@ export class TabbarComponent implements OnDestroy {
     { label: 'Goal', icon: 'flag', link: '/goal', match: ['/goal'] },
     { label: 'Practice', icon: 'grid', link: '/lobby', match: ['/lobby', '/live', '/table'] },
     { label: 'History', icon: 'time', link: '/history', match: ['/history'] },
-    { label: 'Profile', icon: 'person-circle', link: '/account', match: ['/account', '/pro'] },
+    { label: 'Me', icon: 'person-circle', link: '/me', match: ['/me', '/account', '/pro'] },
   ];
 
   constructor() {

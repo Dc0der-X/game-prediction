@@ -116,7 +116,7 @@
         <div class="tools">
           <button class="tool" (click)="openTable()">{{ live.tableUrl ? 'Open my live table ↗' : 'Add my live table link' }}</button>
           <button class="tool" *ngIf="pipSupported" (click)="togglePip()">{{ pipOn ? 'Bring signals back' : 'Float signals over the casino' }}</button>
-          <button class="tool" (click)="askingRestart = true">Start over</button>
+          <button class="tool" (click)="askingRestart = true">Change game / start over</button>
         </div>
 
         <div class="grid">
@@ -256,11 +256,11 @@
   stopLabel="Finish for today" continueLabel="I've moved tables"
   (stop)="finish('change-table')" (continue)="moveTable()"></app-stop-sign>
 
-<app-stop-sign *ngIf="askingRestart" kind="checkin" icon="switch" title="START OVER?"
+<app-stop-sign *ngIf="askingRestart" kind="checkin" icon="switch" title="CHANGE GAME?"
   [reason]="roundsPlayed ? 'This session ends here.' : 'Nothing is bet yet.'"
   [hint]="roundsPlayed ? 'Its result is saved in your history. Then pick a table and an amount again.' : 'Pick a table and an amount again.'"
   [net]="roundsPlayed ? net : null" [currency]="cur"
-  stopLabel="Start over" continueLabel="Keep playing" (stop)="restart()" (continue)="askingRestart = false"></app-stop-sign>
+  stopLabel="Choose a game" continueLabel="Keep playing" (stop)="restart()" (continue)="cancelRestart()"></app-stop-sign>
 
 <app-stop-sign *ngIf="askingAnother" kind="checkin" [icon]="(stage === 'done' ? net : todayNet) > 0 ? 'cash' : 'switch'"
   [title]="anotherTitle" [reason]="anotherReason" [hint]="anotherHint" [currency]="cur"
