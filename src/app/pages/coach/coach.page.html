@@ -88,7 +88,7 @@
         <p class="tw-note" *ngIf="watchNote">{{ watchNote }}</p>
         <div class="tw-row centered">
           <button class="link" *ngIf="live.tableUrl" (click)="openTable()">Open my live table ↗</button>
-          <button class="link" (click)="begin(null)">Start right away</button>
+          <button class="link" *ngIf="stage === 'first'" (click)="restart()">Change game or amount</button>
         </div>
       </section>
     </ng-container>
@@ -116,6 +116,7 @@
         <div class="tools">
           <button class="tool" (click)="openTable()">{{ live.tableUrl ? 'Open my live table ↗' : 'Add my live table link' }}</button>
           <button class="tool" *ngIf="pipSupported" (click)="togglePip()">{{ pipOn ? 'Bring signals back' : 'Float signals over the casino' }}</button>
+          <button class="tool" (click)="askingRestart = true">Start over</button>
         </div>
 
         <div class="grid">
@@ -254,6 +255,12 @@
   hint="Open another table and tap its last result. The ladder starts again at step 1 – your totals carry on."
   stopLabel="Finish for today" continueLabel="I've moved tables"
   (stop)="finish('change-table')" (continue)="moveTable()"></app-stop-sign>
+
+<app-stop-sign *ngIf="askingRestart" kind="checkin" icon="switch" title="START OVER?"
+  [reason]="roundsPlayed ? 'This session ends here.' : 'Nothing is bet yet.'"
+  [hint]="roundsPlayed ? 'Its result is saved in your history. Then pick a table and an amount again.' : 'Pick a table and an amount again.'"
+  [net]="roundsPlayed ? net : null" [currency]="cur"
+  stopLabel="Start over" continueLabel="Keep playing" (stop)="restart()" (continue)="askingRestart = false"></app-stop-sign>
 
 <app-stop-sign *ngIf="askingAnother" kind="checkin" [icon]="(stage === 'done' ? net : todayNet) > 0 ? 'cash' : 'switch'"
   [title]="anotherTitle" [reason]="anotherReason" [hint]="anotherHint" [currency]="cur"

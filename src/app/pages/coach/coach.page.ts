@@ -96,6 +96,8 @@ export class CoachPage implements OnDestroy {
   todayNet = 0;
   /** The "play another session?" pop-up. */
   askingAnother = false;
+  /** The "start over?" pop-up. */
+  askingRestart = false;
   /** The player chose to play another session today. */
   private anotherOk = false;
   private burstDone = false;
@@ -198,6 +200,21 @@ export class CoachPage implements OnDestroy {
       this.todayNet = Math.round(list.filter((x) => x.startedAt.toMillis() >= start.getTime()).reduce((a, x) => a + x.net, 0) * 100) / 100;
     }
     return played;
+  }
+
+  /** "Start over": end this session (its result is saved) and go back to choosing a table and amount. */
+  async restart() {
+    this.askingRestart = false;
+    clearInterval(this.tick);
+    if (this.live && this.engine?.rounds.length) await this.finish('manual', true);
+    this.live = null;
+    this.engine = null;
+    this.stopSign = null;
+    this.endReason = null;
+    this.watchNote = '';
+    this.clearPersisted();
+    this.anotherOk = true;
+    this.stage = 'setup';
   }
 
   /** "Play another session" – first a kind word about stopping while it's good. */
@@ -325,6 +342,12 @@ export class CoachPage implements OnDestroy {
   /** The last result at a (new) table: the first signal follows it. */
   begin(side: string | null) {
     if (!this.live || !this.engine) return;
+    if (!side) {
+      // Zero / tie / bar points to neither side: the first signal waits for a real result (SOS starts on "Same").
+      this.watchNote = `${VOID_RESULT[this.liveGame.id].label} doesn't point to a side – tap the next result at your table.`;
+      return;
+    }
+    this.watchNote = '';
     const isNewTable = this.stage === 'newtable';
     this.live.events.push({ t: 'start', side });
     if (isNewTable) this.engine.changeTable(side);
