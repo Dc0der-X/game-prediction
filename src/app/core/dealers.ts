@@ -9,7 +9,7 @@ import { GameId } from './games';
 export type DealerPhase = 'betting' | 'closing' | 'dealing' | 'result';
 
 export interface CasinoDealer {
-  id: 'sofia' | 'maya' | 'elena' | 'lina';
+  id: 'sofia' | 'maya' | 'elena' | 'lina' | 'zara';
   name: string;
   /** Path of the image inside the app (src/assets/dealers). */
   image: string;
@@ -65,7 +65,17 @@ export const CASINO_DEALERS: CasinoDealer[] = [
     role: 'Casino Dealer',
     visualIdentity: 'Dark hair, elegant black and red casino uniform',
     tableName: 'LINA',
-    games: ['sicbo', 'craps'],
+    games: ['sicbo'],
+    focusX: 50,
+  },
+  {
+    id: 'zara',
+    name: 'Zara',
+    image: 'assets/dealers/zara_casino_dealer.png',
+    role: 'Casino Dealer',
+    visualIdentity: 'Dark wavy hair, black and burgundy casino uniform with a burgundy bow tie',
+    tableName: 'ZARA',
+    games: ['craps'],
     focusX: 50,
   },
 ];
