@@ -12,7 +12,7 @@ import { NeuralFieldComponent } from '../../shared/neural-field.component';
 import { AccountService } from '../../core/account.service';
 import { EndReason, SessionsService } from '../../core/sessions.service';
 import { GameDef, SIGNAL_GAMES, getBet, getGame } from '../../core/games';
-import { SESSION_LIMITS, SessionPlan, planNeural } from '../../core/strategies';
+import { CHIP_CHOICES, DEFAULT_LIMITS, LadderFit, MIN_BET_CHOICES, SESSION_LIMITS, SessionPlan, TableLimits, ladderFor, planNeural } from '../../core/strategies';
 import { Goal, goalProgress } from '../../core/goal';
 import { Signal, SignalEngine, SignalEvent, SystemId, VOID_RESULT } from '../../core/signals';
 
@@ -85,6 +85,10 @@ export class CoachPage implements OnDestroy {
   casinoSuggestions = ['Evolution live tables', 'Ezugi', 'Pragmatic Play Live', 'Playtech Live', 'Other online casino', 'Land-based casino'];
   bankroll: number | null = null;
   minutes = SESSION_LIMITS.sessionMinutes;
+  /** The player's table: minimum bet and smallest chip (each casino sets its own). */
+  table: TableLimits = loadTableLimits();
+  minBetChoices = MIN_BET_CHOICES;
+  chipChoices = CHIP_CHOICES;
 
   live: LiveState | null = null;
   engine: SignalEngine | null = null;
@@ -186,9 +190,28 @@ export class CoachPage implements OnDestroy {
     return getGame(this.gameId)!;
   }
 
-  get plan(): SessionPlan | null {
+  /** How the ladder fits today's amount at this table (null until an amount is entered). */
+  get fit(): LadderFit | null {
     if (!this.bankroll || this.bankroll < 50) return null;
-    return planNeural(this.game, this.bankroll, this.minutes);
+    return ladderFor(this.bankroll, this.table);
+  }
+
+  get plan(): SessionPlan | null {
+    const fit = this.fit;
+    if (!fit || fit.unit === null) return null;
+    return planNeural(this.game, this.bankroll!, this.minutes, 'book', this.table);
+  }
+
+  setMinBet(v: number) {
+    this.table = { ...this.table, minBet: v };
+    // A chip bigger than the minimum can't make the minimum bet exactly.
+    if (this.table.chip > v) this.table = { ...this.table, chip: CHIP_CHOICES.filter((c) => c <= v).pop() ?? v };
+    saveTableLimits(this.table);
+  }
+
+  setChip(v: number) {
+    this.table = { ...this.table, chip: v };
+    saveTableLimits(this.table);
   }
 
   sidesLabel(g: GameDef): string {
@@ -684,4 +707,21 @@ function safeUrl(raw: string): string {
   } catch {
     return '';
   }
+}
+
+const TABLE_KEY = 'tw.tableLimits';
+
+/** The table limits the player used last time (or a standard $1 table). */
+function loadTableLimits(): TableLimits {
+  try {
+    const t = JSON.parse(localStorage.getItem(TABLE_KEY) || 'null');
+    if (t && CHIP_CHOICES.includes(t.chip) && MIN_BET_CHOICES.includes(t.minBet)) return { minBet: t.minBet, chip: t.chip };
+  } catch {}
+  return { ...DEFAULT_LIMITS };
+}
+
+function saveTableLimits(t: TableLimits) {
+  try {
+    localStorage.setItem(TABLE_KEY, JSON.stringify(t));
+  } catch {}
 }

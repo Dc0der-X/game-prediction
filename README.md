@@ -67,9 +67,12 @@ Every player gets the same signals; there is no strategy to pick and nothing to 
    won. 1st miss → follow the side that just came (Same); 2nd miss → bet against it (Opposite – the table is
    swinging); 3rd miss → Same again. Result: **the signal never bets against a run** – once a side comes twice in a
    row, the signal is on it (checked on 18.9 million simulated bets, 0 exceptions). Zero / tie / bar don't change the side.
-2. **Amount – 8-step ladder, always exactly 1.5 · 2.5 · 4 · 6 · 10.5 · 15 · 22.5 · 30 chips.** The chip is picked
-   from the amount: $1 up to $919 (bets 1.5 · 2.5 · 4 · 6 · 10.5 · 15 · 22.5 · 30), $5 from $920 (7.5 · 12.5 · 20 · 30 ·
-   52.5 · 75 · 112.5 · 150), then $10, $25, $50, $100. Up one step after a miss; down one after a win, down two after
+2. **Amount – 8-step ladder in the book's proportions 1.5 : 2.5 : 4 : 6 : 10.5 : 15 : 22.5 : 30, sized to the
+   player's table.** Each casino sets its own minimum bet and chips, so the player picks both in setup ("Your table's
+   chips"); every bet is then a whole number of chips and the first bet meets the minimum. $1 chips → 3 · 5 · 8 · 12 ·
+   21 · 30 · 45 · 60; 50¢ chips → 1.5 · 2.5 · 4 …; $5 chips → 15 · 25 · 40 … The size is the biggest whose whole ladder
+   fits the amount twice; if none, the smallest whose first table (three bets) fits inside the 10% safety limit; if
+   none, the app asks for a table with smaller chips or a bigger amount (e.g. $1 chips need 160+). Up one step after a miss; down one after a win, down two after
    two wins in a row or two of the last three. Every signal shows the change from the last bet (▲ +1 / ▼ −1.5 / = same).
 3. **Session rules (same for every game), final:** profit target **+5%** of the amount → cash out; **lock in
    profit** – once halfway to the target, cash out as soon as half of the best point is given back; **3 misses in a

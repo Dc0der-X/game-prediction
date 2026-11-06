@@ -98,17 +98,79 @@ export const NEURAL_SERIES = [1.5, 2.5, 4, 6, 10.5, 15, 22.5, 30];
 /** The whole ladder added up (92 units). */
 export const NEURAL_BANKROLL_UNITS = NEURAL_SERIES.reduce((a, b) => a + b, 0);
 
-/** Casino chip sizes the ladder is built on. */
-export const NEURAL_CHIPS = [1, 5, 10, 25, 50, 100];
+/**
+ * Table limits. Every casino sets its own minimum bet and chip values (the studio does not),
+ * so the player tells us what their table offers: the minimum bet and the smallest chip.
+ */
+export interface TableLimits {
+  /** Smallest bet the table accepts on the signal's bet. */
+  minBet: number;
+  /** Smallest chip on the table's chip tray. */
+  chip: number;
+}
+
+/** Most common live table: $1 minimum, $1 smallest chip. */
+export const DEFAULT_LIMITS: TableLimits = { minBet: 1, chip: 1 };
+
+/** Chip values found on live tables (smallest chip choices). */
+export const CHIP_CHOICES = [0.1, 0.2, 0.5, 1, 2, 5, 10, 25];
+
+/** Common table minimums. */
+export const MIN_BET_CHOICES = [0.2, 0.5, 1, 2, 5, 10, 25];
+
+/** Ladder sizes tried, in "pairs of smallest chips" (keeps every step a whole number of chips). */
+const UNIT_MULTIPLES = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000];
+
+export interface LadderFit {
+  /** Ladder unit: bets are NEURAL_SERIES × unit. null = this amount is too small for the table. */
+  unit: number | null;
+  /** True when the full ladder is bigger than the amount; the safety limit still holds every bet. */
+  tight: boolean;
+  /** Smallest amount that fits this table (when unit is null). */
+  needAmount: number;
+}
+
+const isWhole = (x: number) => Math.abs(x - Math.round(x)) < 1e-6;
+
+/** Every ladder bet is a whole number of the table's smallest chip and the first one meets the minimum. */
+export function ladderFitsTable(unit: number, t: TableLimits): boolean {
+  return NEURAL_SERIES.every((s) => isWhole((s * unit) / t.chip)) && NEURAL_SERIES[0] * unit >= t.minBet - 1e-9;
+}
 
 /**
- * Chip for today's amount: the ladder is always exactly 1.5 2.5 4 6 10.5 15 22.5 30 chips.
- * The biggest chip whose ladder fits in the amount twice over; a $1 chip up to $919.
+ * Ladder size for today's amount at this table. Same book proportions (1.5 : 2.5 : 4 : 6 : 10.5 : 15 : 22.5 : 30),
+ * scaled so every bet can be placed with the table's chips – e.g. $1 chips → 3, 5, 8, 12, 21, 30, 45, 60.
+ *   1. the biggest size whose whole ladder fits in the amount twice over (as before);
+ *   2. otherwise the smallest size whose first table (three bets) fits inside the 10% safety limit;
+ *   3. otherwise the amount is too small for this table.
  */
-export function neuralBase(amount: number): number {
-  let chip = NEURAL_CHIPS[0];
-  for (const c of NEURAL_CHIPS) if (c * NEURAL_BANKROLL_UNITS * 2 <= amount) chip = c;
-  return chip;
+export function ladderFor(amount: number, t: TableLimits = DEFAULT_LIMITS): LadderFit {
+  const units = tableUnits(t);
+  const roomy = units.filter((u) => u * NEURAL_BANKROLL_UNITS * 2 <= amount + 1e-9);
+  if (roomy.length) return { unit: roomy[roomy.length - 1], tight: false, needAmount: 0 };
+  const firstTable = (u: number) => (NEURAL_SERIES[0] + NEURAL_SERIES[1] + NEURAL_SERIES[2]) * u;
+  const safety = amount * SESSION_LIMITS.safetyShare;
+  const tight = units.find((u) => firstTable(u) <= safety + 1e-9);
+  if (tight !== undefined) return { unit: tight, tight: true, needAmount: 0 };
+  return { unit: null, tight: false, needAmount: Math.ceil(firstTable(units[0]) / SESSION_LIMITS.safetyShare) };
+}
+
+/** Ladder sizes that fit a table, smallest first. */
+function tableUnits(t: TableLimits): number[] {
+  const chip = t.chip > 0 ? t.chip : DEFAULT_LIMITS.chip;
+  const limits = { minBet: Math.max(0, t.minBet || 0), chip };
+  const units = UNIT_MULTIPLES.map((k) => round2(2 * chip * k)).filter((u) => ladderFitsTable(u, limits));
+  return units.length ? units : [round2(2 * chip * UNIT_MULTIPLES[UNIT_MULTIPLES.length - 1])];
+}
+
+/** The smallest ladder a table allows (e.g. $1 chips, $1 minimum → 3, 5, 8, 12, 21, 30, 45, 60). */
+export function smallestUnit(t: TableLimits = DEFAULT_LIMITS): number {
+  return tableUnits(t)[0];
+}
+
+/** Ladder unit for an amount at a table (standard table: $1 minimum, $1 chips). */
+export function neuralBase(amount: number, t: TableLimits = DEFAULT_LIMITS): number {
+  return ladderFor(amount, t).unit ?? smallestUnit(t);
 }
 
 /** Bet size for a ladder level (0–7). */
@@ -496,6 +558,8 @@ export interface SessionPlan {
   minutes: number;
   maxRounds: number;
   expectedLoss: number;
+  /** The table's minimum bet and smallest chip the ladder was sized for. */
+  limits?: TableLimits;
 }
 
 export type NeuralMode = 'book' | 'protected';
@@ -505,8 +569,9 @@ export type NeuralMode = 'book' | 'protected';
  * today's amount; the profit target and the safety limit are shares of it.
  * `mode` is kept only so older saved plans still load.
  */
-export function planNeural(game: GameDef, amount: number, minutes: number, mode: NeuralMode = 'book'): SessionPlan {
-  const base = neuralBase(amount);
+export function planNeural(game: GameDef, amount: number, minutes: number, mode: NeuralMode = 'book',
+  limits: TableLimits = DEFAULT_LIMITS): SessionPlan {
+  const base = neuralBase(amount, limits);
   const bet = getBet(game, game.bestBet)!;
   return {
     mode,
@@ -522,6 +587,7 @@ export function planNeural(game: GameDef, amount: number, minutes: number, mode:
     minutes,
     maxRounds: 150,
     expectedLoss: 0,
+    limits: { minBet: limits.minBet, chip: limits.chip },
   };
 }
 

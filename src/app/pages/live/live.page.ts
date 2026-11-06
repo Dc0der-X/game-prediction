@@ -7,7 +7,7 @@ import { TopbarComponent } from '../../shared/topbar.component';
 import { LiveDealerComponent } from './live-dealer.component';
 import { CasinoDealer, dealerFor } from '../../core/dealers';
 import { Card, GameDef, Outcome, RANKS, RED_NUMBERS, SUITS, getBet, getGame, isRedSuit, sideOf } from '../../core/games';
-import { NEURAL_BANKROLL_UNITS, SESSION_LIMITS, round2 } from '../../core/strategies';
+import { NEURAL_BANKROLL_UNITS, SESSION_LIMITS, round2, smallestUnit } from '../../core/strategies';
 import { SignalEngine } from '../../core/signals';
 
 type Phase = 'betting' | 'closing' | 'dealing' | 'result';
@@ -311,7 +311,8 @@ export class LivePage implements OnDestroy {
   /* ---------------- Signals ---------------- */
 
   private newSignals(last: string | null) {
-    this.signalBase = 1;
+    // Practice tables have $1 chips and a $1 minimum: the ladder in whole chips (3, 5, 8, 12 ...).
+    this.signalBase = smallestUnit({ minBet: 1, chip: this.chips[0] });
     const amount = this.signalBase * NEURAL_BANKROLL_UNITS * 2;
     this.engine = new SignalEngine(this.game, 'neural', this.signalBase,
       Math.round(amount * SESSION_LIMITS.targetShare), Math.round(amount * SESSION_LIMITS.safetyShare));

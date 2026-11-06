@@ -78,6 +78,26 @@
         </div>
       </section>
 
+      <section class="step">
+        <div class="step-n">3</div>
+        <div class="step-body">
+          <h3>Your table's chips</h3>
+          <p class="tw-small tw-muted step-hint">Every casino sets its own limits – check the table's info (i) panel. Your bets are sized so each one is a whole number of chips.</p>
+          <div class="limit-row">
+            <span class="lbl">Minimum bet</span>
+            <div class="seg chips-seg" role="group" aria-label="Table minimum bet">
+              <button *ngFor="let v of minBetChoices" [class.on]="table.minBet === v" (click)="setMinBet(v)">{{ v | number: '1.0-2' }}</button>
+            </div>
+          </div>
+          <div class="limit-row">
+            <span class="lbl">Smallest chip</span>
+            <div class="seg chips-seg" role="group" aria-label="Smallest chip on the table">
+              <button *ngFor="let v of chipChoices" [class.on]="table.chip === v" [disabled]="v > table.minBet" (click)="setChip(v)">{{ v | number: '1.0-2' }}</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="rules-card" *ngIf="plan as p; else needAmount">
         <p class="tw-eyebrow">Your session</p>
         <div class="rule-grid">
@@ -86,6 +106,7 @@
           <div class="r good"><span>Profit target</span><strong>+{{ p.stopWin | number: '1.0-2' }} <em>+{{ (p.stopWin / p.bankroll) * 100 | number: '1.0-0' }}%</em></strong></div>
           <div class="r"><span>Safety limit</span><strong>{{ p.stopLoss | number: '1.0-2' }} <em>{{ (p.stopLoss / p.bankroll) * 100 | number: '1.0-0' }}%</em></strong></div>
         </div>
+        <p class="tw-small tw-muted fit-note">Sized for {{ table.chip | number: '1.0-2' }} chips{{ fit?.tight ? ' – bigger steps than usual for this amount, your safety limit still covers every bet' : '' }}.</p>
         <div class="ladder setup-ladder" aria-label="Your bet ladder">
           <i *ngFor="let a of p.series; let i = index; trackBy: trackIdx" [class.on]="i === 0">{{ a | number: '1.0-2' }}</i>
         </div>
@@ -94,7 +115,14 @@
         <button class="go" (click)="start()">Enter the table</button>
       </section>
       <ng-template #needAmount>
-        <section class="rules-card muted"><p class="tw-muted">Enter an amount (50 or more) to see your session.</p></section>
+        <section class="rules-card muted" *ngIf="fit as f; else noAmount">
+          <p class="tw-eyebrow">Pick a smaller table</p>
+          <p>At a table with a {{ table.minBet | number: '1.0-2' }} minimum and {{ table.chip | number: '1.0-2' }} chips, the first bets
+            would go past your safety limit. Choose a table with smaller chips, or play with {{ f.needAmount | number: '1.0-0' }} or more.</p>
+        </section>
+        <ng-template #noAmount>
+          <section class="rules-card muted"><p class="tw-muted">Enter an amount (50 or more) to see your session.</p></section>
+        </ng-template>
       </ng-template>
     </ng-container>
 
