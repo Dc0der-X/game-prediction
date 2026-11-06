@@ -1,7 +1,7 @@
 import { Component, ElementRef, NgZone, OnDestroy, ViewChild, inject } from '@angular/core';
 import { DatePipe, DecimalPipe, NgClass, NgFor, NgIf, NgSwitch, NgSwitchCase } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
 import { Timestamp } from '@angular/fire/firestore';
 import { firstValueFrom, filter } from 'rxjs';
@@ -92,6 +92,9 @@ export class CoachPage implements OnDestroy {
   bankroll: number | null = null;
   minutes = SESSION_LIMITS.sessionMinutes;
   money = inject(MoneyService);
+  private router = inject(Router);
+  /** Not signed in: the setup is a preview, entering a table starts the free sign-up. */
+  guest = false;
   /** Today's total so far (shown when today's session is already played). */
   todayNet = 0;
   /** The "play another session?" pop-up. */
@@ -128,6 +131,14 @@ export class CoachPage implements OnDestroy {
   private tick: any;
 
   constructor() {
+    // A visitor who signs up / logs in while this page is kept alive: start the real Signal Room.
+    this.account.user$.subscribe((u) => {
+      if (u && this.guest) {
+        this.guest = false;
+        this.stage = 'checking';
+        this.init();
+      }
+    });
     // Opening a game from My TableWise while this page is already open (Ionic keeps it alive).
     this.route.queryParamMap.subscribe((q) => {
       if (this.stage !== 'checking') this.applyGameParam(q.get('game'));
@@ -148,8 +159,16 @@ export class CoachPage implements OnDestroy {
   }
 
   private async init() {
-    const user = await firstValueFrom(this.account.user$.pipe(filter((u) => !!u)));
-    this.uid = user!.uid;
+    const user = await firstValueFrom(this.account.user$);
+    if (!user) {
+      // Visitor: a full preview of the setup; entering a table asks for the free sign-up.
+      this.guest = true;
+      this.stage = 'setup';
+      this.applyGameParam();
+      return;
+    }
+    this.guest = false;
+    this.uid = user.uid;
     const profile = await firstValueFrom(this.account.profile$);
     this.firstName = (profile?.name || '').trim().split(/\s+/)[0] || '';
     await this.loadGoal(profile?.goal ?? null);
@@ -328,6 +347,10 @@ export class CoachPage implements OnDestroy {
   start() {
     const plan = this.plan;
     if (!plan) return;
+    if (this.guest) {
+      this.router.navigate(['/signup'], { queryParams: { next: `/coach?game=${this.gameId}&amount=${this.bankroll}` } });
+      return;
+    }
     this.money.setCountry(this.money.country.code); // remember the country once a session starts
     const casino = this.casino.trim().slice(0, 80) || 'Live table';
     const tableUrl = safeUrl(this.tableUrl);

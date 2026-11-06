@@ -1,3 +1,4 @@
+import { firstValueFrom } from 'rxjs';
 import { Component, inject } from '@angular/core';
 import { AsyncPipe, DatePipe, DecimalPipe, NgClass, NgFor, NgIf } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -190,6 +191,10 @@ export class ProPage {
   async pay(method: 'card' | 'crypto') {
     this.error = '';
     this.startNote = '';
+    if (!(await firstValueFrom(this.account.access$)).signedIn) {
+      this.router.navigate(['/signup'], { queryParams: { next: '/pro' } });
+      return;
+    }
     if (this.demo) {
       this.account.demoStartPass(this.selected);
       this.router.navigateByUrl('/coach');

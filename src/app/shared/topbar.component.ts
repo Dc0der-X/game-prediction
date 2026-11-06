@@ -36,12 +36,21 @@ import { ThemeService } from '../core/theme.service';
           </ng-template>
         </div>
       </div>
-      <nav class="tabs">
+      <nav class="tabs" *ngIf="(access$ | async)?.signedIn; else guestTabs">
         <a routerLink="/coach" routerLinkActive="on" class="primary">Signal Room</a>
         <a routerLink="/goal" routerLinkActive="on">My Goal</a>
         <a routerLink="/lobby" routerLinkActive="on">Practice</a>
         <a routerLink="/history" routerLinkActive="on">History</a>
       </nav>
+      <ng-template #guestTabs>
+        <nav class="tabs">
+          <a routerLink="/home" routerLinkActive="on">Home</a>
+          <a routerLink="/coach" routerLinkActive="on" class="primary">Try the Signal Room</a>
+          <a routerLink="/lobby" routerLinkActive="on">Practice free</a>
+          <a routerLink="/rules" routerLinkActive="on">How it works</a>
+          <a routerLink="/pro" routerLinkActive="on">Pricing</a>
+        </nav>
+      </ng-template>
     </ion-header>
   `,
   styles: [

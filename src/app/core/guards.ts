@@ -24,6 +24,15 @@ export const proGuard: CanActivateFn = (_route, state) => {
   );
 };
 
+/** Signal Room: visitors get a preview (sign-up when they enter a table); expired accounts go to pricing. */
+export const signalRoomGuard: CanActivateFn = () => {
+  const router = inject(Router);
+  return inject(AccountService).access$.pipe(
+    take(1),
+    map((a) => (!a.signedIn || a.hasPro ? true : router.createUrlTree(['/pro'])))
+  );
+};
+
 /** Admins only. */
 export const adminGuard: CanActivateFn = () => {
   const router = inject(Router);

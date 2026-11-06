@@ -72,7 +72,8 @@
           <div><span>Safety limit</span><strong>{{ p.stopLoss | money: cur }}</strong></div>
         </div>
         <p class="how">Tap what came at your table – the coach shows the side and the amount for every bet.</p>
-        <button class="tw-cta go" (click)="start()">Enter the table</button>
+        <button class="tw-cta go" (click)="start()">{{ guest ? 'Start free – enter the table' : 'Enter the table' }}</button>
+        <p class="guest-note" *ngIf="guest">3 hours free · no card needed · your plan stays as you set it</p>
       </section>
     </div>
 

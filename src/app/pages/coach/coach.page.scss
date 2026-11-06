@@ -325,3 +325,5 @@
   b { font-family: var(--tw-mono); }
   &.im-fresh-table { background: rgba(245, 199, 106, .16); color: var(--tw-warn-text); }
   &.im-stop { background: rgba(47, 224, 143, .14); color: var(--tw-pos-text); box-shadow: inset 0 0 0 1px rgba(47, 224, 143, .4); } }
+
+.guest-note { margin: 10px 0 0; color: var(--tw-muted); font-size: 13px; }

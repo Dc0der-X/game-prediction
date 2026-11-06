@@ -1,6 +1,6 @@
 import { NgModule } from '@angular/core';
 import { PreloadAllModules, RouterModule, Routes } from '@angular/router';
-import { adminGuard, authGuard, proGuard } from './core/guards';
+import { adminGuard, authGuard, proGuard, signalRoomGuard } from './core/guards';
 import { environment } from '../environments/environment';
 
 const routes: Routes = [
@@ -18,10 +18,10 @@ const routes: Routes = [
   { path: 'login', data: { title: 'Log in', description: 'Log in to your TableWise account.', noindex: true }, loadComponent: () => import('./pages/auth/login.page').then((m) => m.LoginPage) },
   { path: 'signup', data: { title: 'Start free – 3 hours', description: 'Create your TableWise account and get 3 hours of full access free. No card needed.' }, loadComponent: () => import('./pages/auth/signup.page').then((m) => m.SignupPage) },
   { path: 'account', data: { title: 'Your account', description: '', noindex: true }, canActivate: [authGuard], loadComponent: () => import('./pages/account/account.page').then((m) => m.AccountPage) },
-  { path: 'pro', data: { title: 'Passes and pricing', description: 'Day Pass $20, Monthly $140, Yearly $999. Pay by card or crypto and start instantly. Passes never auto-renew.' }, canActivate: [authGuard], loadComponent: () => import('./pages/pro/pro.page').then((m) => m.ProPage) },
+  { path: 'pro', data: { title: 'Passes and pricing', description: 'Day Pass $20, Monthly $140, Yearly $999. Pay by card or crypto and start instantly. Passes never auto-renew.' }, loadComponent: () => import('./pages/pro/pro.page').then((m) => m.ProPage) },
 
   // Pro (trial or paid)
-  { path: 'coach', data: { title: 'Signal Room', description: '', noindex: true }, canActivate: [proGuard], loadComponent: () => import('./pages/coach/coach.page').then((m) => m.CoachPage) },
+  { path: 'coach', data: { title: 'Signal Room', description: 'Pick a dealer, enter your amount and see your plan: first bet, target and safety limit.' }, canActivate: [signalRoomGuard], loadComponent: () => import('./pages/coach/coach.page').then((m) => m.CoachPage) },
   { path: 'me', data: { title: 'My TableWise', description: '', noindex: true }, canActivate: [authGuard], loadComponent: () => import('./pages/me/me.page').then((m) => m.MePage) },
   { path: 'goal', data: { title: 'My goal', description: '', noindex: true }, canActivate: [authGuard], loadComponent: () => import('./pages/goal/goal.page').then((m) => m.GoalPage) },
   { path: 'history', data: { title: 'Your history', description: '', noindex: true }, canActivate: [proGuard], loadComponent: () => import('./pages/history/history.page').then((m) => m.HistoryPage) },
