@@ -12,6 +12,7 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  agentRules: false,
   serverExternalPackages: ["postgres", "unpdf", "mammoth"],
   experimental: { serverActions: { bodySizeLimit: "6mb" } },
   async headers() {

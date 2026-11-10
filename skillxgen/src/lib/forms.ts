@@ -1,9 +1,10 @@
 import { z } from "zod";
 
-export type ActionState = { ok: boolean; message?: string; errors?: Record<string, string[]>; data?: Record<string, unknown> } | null;
+export type ActionResult = { ok: boolean; message?: string; errors?: Record<string, string[]>; data?: Record<string, unknown> };
+export type ActionState = ActionResult | null;
 
-export const fail = (message: string, errors?: Record<string, string[]>): ActionState => ({ ok: false, message, errors });
-export const ok = (message?: string, data?: Record<string, unknown>): ActionState => ({ ok: true, message, data });
+export const fail = (message: string, errors?: Record<string, string[]>): ActionResult => ({ ok: false, message, errors });
+export const ok = (message?: string, data?: Record<string, unknown>): ActionResult => ({ ok: true, message, data });
 
 export function formToObject(fd: FormData): Record<string, string> {
   const o: Record<string, string> = {};
@@ -11,7 +12,7 @@ export function formToObject(fd: FormData): Record<string, string> {
   return o;
 }
 
-export function parseForm<T extends z.ZodType>(schema: T, fd: FormData): { data: z.infer<T>; error?: undefined } | { data?: undefined; error: ActionState } {
+export function parseForm<T extends z.ZodType>(schema: T, fd: FormData): { data: z.infer<T>; error?: undefined } | { data?: undefined; error: ActionResult } {
   const r = schema.safeParse(formToObject(fd));
   if (r.success) return { data: r.data };
   const errors: Record<string, string[]> = {};
